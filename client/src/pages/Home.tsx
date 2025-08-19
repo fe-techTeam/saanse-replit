@@ -77,7 +77,7 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white">
       
       {/* Netflix-Style Header */}
-      <header className="fixed top-0 w-full bg-gradient-to-b from-black to-transparent z-50">
+      <header className="fixed top-0 w-full bg-black/95 backdrop-blur-md z-50 border-b border-gray-800">
         <div className="px-6 py-4 flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-10">
             <h1 className="text-3xl font-bold text-red-600 tracking-wide">SAANSE</h1>
@@ -101,7 +101,7 @@ export default function Home() {
 
       {/* Hero Section - Netflix Style */}
       {featuredVideo && (
-        <section className="relative h-screen">
+        <section className="relative h-screen pt-16">
           <div className="absolute inset-0">
             <img 
               src={featuredVideo.thumbnailUrl} 
@@ -156,11 +156,15 @@ export default function Home() {
       )}
 
       {/* Content Sections */}
-      <div className="relative -mt-48 space-y-16 px-6 pb-16 max-w-7xl mx-auto">
+      <div className="relative -mt-32 space-y-16 px-6 pb-16 max-w-7xl mx-auto">
         
         {/* Trending Now */}
-        <section>
-          <h2 className="text-2xl font-bold text-white mb-6">Trending Now</h2>
+        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-6 border border-gray-800">
+          <div className="flex items-center mb-6">
+            <div className="w-1 h-8 bg-red-600 mr-4"></div>
+            <h2 className="text-3xl font-bold text-white">Trending Now</h2>
+            <div className="ml-4 px-3 py-1 bg-red-600 text-white text-sm font-bold rounded-full">HOT</div>
+          </div>
           <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">
             {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
               <div 
@@ -220,8 +224,12 @@ export default function Home() {
         </section>
 
         {/* Popular on SAANSE */}
-        <section>
-          <h2 className="text-2xl font-bold text-white mb-6">Popular on SAANSE</h2>
+        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-6 border border-gray-800">
+          <div className="flex items-center mb-6">
+            <div className="w-1 h-8 bg-red-600 mr-4"></div>
+            <h2 className="text-3xl font-bold text-white">Popular on SAANSE</h2>
+            <div className="ml-4 px-3 py-1 bg-yellow-600 text-black text-sm font-bold rounded-full">POPULAR</div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {enhancedVideos.slice(12, 24).map((video: any) => (
               <div 
@@ -273,8 +281,12 @@ export default function Home() {
           if (categoryVideos.length === 0) return null;
           
           return (
-            <section key={category}>
-              <h2 className="text-2xl font-bold text-white mb-6">{category}</h2>
+            <section key={category} className="bg-gradient-to-r from-black/80 to-black/40 backdrop-blur-sm rounded-xl p-6 border border-gray-800">
+              <div className="flex items-center mb-6">
+                <div className="w-1 h-8 bg-red-600 mr-4"></div>
+                <h2 className="text-3xl font-bold text-white">{category} Chronicles</h2>
+                <div className="ml-4 px-3 py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-sm font-bold rounded-full">EPIC</div>
+              </div>
               <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">
                 {categoryVideos.slice(0, 10).map((video: any) => (
                   <div 
