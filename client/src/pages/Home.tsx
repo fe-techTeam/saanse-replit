@@ -112,18 +112,22 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
           </div>
           
-          <div className="relative z-10 flex items-center h-full px-6 max-w-7xl mx-auto">
-            <div className="max-w-2xl space-y-8">
+          <div className="relative z-10 flex items-end h-full px-6 pb-32 max-w-7xl mx-auto">
+            <div className="max-w-2xl">
               
-              <h1 className="text-6xl font-bold leading-tight text-white">
-                {featuredVideo.title}
-              </h1>
+              <div className="h-32 flex items-end mb-6">
+                <h1 className="text-6xl font-bold leading-tight text-white line-clamp-2">
+                  {featuredVideo.title}
+                </h1>
+              </div>
               
-              <p className="text-xl text-gray-200 leading-relaxed max-w-xl">
-                {featuredVideo.description}
-              </p>
+              <div className="h-20 mb-6">
+                <p className="text-xl text-gray-200 leading-relaxed max-w-xl line-clamp-3">
+                  {featuredVideo.description}
+                </p>
+              </div>
               
-              <div className="flex items-center space-x-4 text-lg">
+              <div className="flex items-center space-x-4 text-lg mb-6">
                 <span className="flex items-center text-green-400">
                   <Star className="w-5 h-5 mr-2 fill-current" />
                   {featuredVideo.rating} Rating
@@ -133,7 +137,7 @@ export default function Home() {
                 <span className="px-2 py-1 border border-gray-500 text-sm text-gray-300">HD</span>
               </div>
               
-              <div className="flex items-center space-x-4 pt-2">
+              <div className="flex items-center space-x-4">
                 <button 
                   className="flex items-center justify-center bg-white text-black px-10 py-4 rounded-md font-bold text-lg hover:bg-gray-200 transition-all shadow-lg"
                   onClick={() => setSelectedVideo(featuredVideo)}
@@ -418,6 +422,13 @@ export default function Home() {
           .line-clamp-2 {
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+          
+          .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
           }
