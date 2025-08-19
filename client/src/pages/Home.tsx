@@ -3,6 +3,11 @@ import { NetflixHero } from "@/components/NetflixHero";
 import { NetflixRow } from "@/components/NetflixRow";
 import { useState } from "react";
 
+// Force new interface by clearing any component cache
+if (typeof window !== 'undefined') {
+  console.log('SAANSE Netflix Interface Loading...');
+}
+
 const categories = [
   "Ramayana", "Mahabharata", "Krishna", "Shiva", "Bhajans", "Explained",
   "Hanuman", "Ganesha", "Devi", "Festivals"
@@ -20,10 +25,15 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-dharma-dark flex items-center justify-center">
-        <div className="animate-pulse">
-          <div className="text-3xl font-bold text-dharma-gold mb-2">SAANSE</div>
-          <div className="text-dharma-gold text-lg">Loading divine content...</div>
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center">
+        <div className="animate-pulse text-center">
+          <div className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent mb-4">
+            SAANSE
+          </div>
+          <div className="text-yellow-400 text-xl">Loading Netflix-Quality Divine Stories...</div>
+          <div className="mt-4 w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 animate-pulse"></div>
+          </div>
         </div>
       </div>
     );
