@@ -308,14 +308,14 @@ export default function Home() {
                 {categoryVideos.slice(0, 10).map((video: any) => (
                   <div 
                     key={video.id}
-                    className="flex-shrink-0 w-64 group cursor-pointer"
+                    className="flex-shrink-0 w-80 group cursor-pointer"
                     onClick={() => setSelectedVideo(video)}
                   >
                     <div className="relative">
                       <img 
                         src={video.thumbnailUrl} 
                         alt={video.title}
-                        className="w-full h-36 object-cover rounded-md group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-44 object-cover rounded-md group-hover:scale-105 transition-transform duration-300"
                       />
                       
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
@@ -325,22 +325,32 @@ export default function Home() {
                       </div>
 
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                          <Play className="w-4 h-4 text-black fill-current ml-0.5" />
+                        <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center">
+                          <Play className="w-6 h-6 text-black fill-current ml-1" />
                         </div>
                       </div>
+                      
+                      <button
+                        onClick={(e) => toggleFavorite(video.id, e)}
+                        className="absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                      </button>
                     </div>
                     
-                    <div className="mt-3 space-y-1">
-                      <h3 className="font-semibold text-white text-sm group-hover:text-gray-300 transition-colors line-clamp-1">
+                    <div className="mt-2 space-y-2">
+                      <h3 className="font-semibold text-white group-hover:text-gray-300 transition-colors line-clamp-1">
                         {video.title}
                       </h3>
-                      <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-gray-400 line-clamp-2 leading-relaxed">
                         {video.shortDescription}
                       </p>
-                      <div className="text-xs text-gray-400 flex items-center">
-                        <Star className="w-3 h-3 mr-1 text-green-400" />
-                        {video.rating}
+                      <div className="flex items-center text-sm text-gray-400 space-x-3">
+                        <span className="flex items-center">
+                          <Star className="w-3 h-3 mr-1 text-green-400" />
+                          {video.rating}
+                        </span>
+                        <span>{video.category}</span>
                       </div>
                     </div>
                   </div>
