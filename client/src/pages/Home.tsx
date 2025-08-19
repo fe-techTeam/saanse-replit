@@ -189,12 +189,13 @@ export default function Home() {
             <h2 className="text-xl md:text-3xl font-bold text-white">Trending Now</h2>
             <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-xs md:text-sm font-bold rounded-full">HOT</div>
           </div>
-          <div className="flex gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
+          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
             {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 snap-center w-[85vw] xs:w-[70vw] sm:w-[50vw] md:w-[40vw] lg:w-80 group cursor-pointer"
+                className="flex-shrink-0 snap-start w-[45vw] xs:w-[40vw] sm:w-[35vw] md:w-[30vw] lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
                 onClick={() => setSelectedVideo(video)}
+                style={{ scrollSnapAlign: 'start' }}
               >
                 <div className="relative">
                   <img 
@@ -254,12 +255,13 @@ export default function Home() {
             <h2 className="text-xl md:text-3xl font-bold text-white">Popular on SAANSE</h2>
             <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-xs md:text-sm font-bold rounded-full">POPULAR</div>
           </div>
-          <div className="flex gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
+          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
             {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 snap-center w-[85vw] xs:w-[70vw] sm:w-[50vw] md:w-[40vw] lg:w-80 group cursor-pointer"
+                className="flex-shrink-0 snap-start w-[45vw] xs:w-[40vw] sm:w-[35vw] md:w-[30vw] lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
                 onClick={() => setSelectedVideo(video)}
+                style={{ scrollSnapAlign: 'start' }}
               >
                 <div className="relative">
                   <img 
@@ -324,12 +326,13 @@ export default function Home() {
                 <h2 className="text-xl md:text-3xl font-bold text-white">{category} Chronicles</h2>
                 <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs md:text-sm font-bold rounded-full">EPIC</div>
               </div>
-              <div className="flex gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
+              <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
                 {categoryVideos.slice(0, 10).map((video: any) => (
                   <div 
                     key={video.id}
-                    className="flex-shrink-0 snap-center w-[85vw] xs:w-[70vw] sm:w-[50vw] md:w-[40vw] lg:w-80 group cursor-pointer"
+                    className="flex-shrink-0 snap-start w-[45vw] xs:w-[40vw] sm:w-[35vw] md:w-[30vw] lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
                     onClick={() => setSelectedVideo(video)}
+                    style={{ scrollSnapAlign: 'start' }}
                   >
                     <div className="relative">
                       <img 
@@ -440,19 +443,6 @@ export default function Home() {
           
           .scrollbar-hide::-webkit-scrollbar {
             display: none;
-          }
-          
-          .snap-x {
-            scroll-snap-type: x mandatory;
-            scroll-behavior: smooth;
-          }
-          
-          .snap-center {
-            scroll-snap-align: center;
-          }
-          
-          .snap-mandatory {
-            scroll-snap-stop: always;
           }
           
           .line-clamp-1 {
