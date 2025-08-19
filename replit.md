@@ -2,7 +2,7 @@
 
 ## Overview
 
-SAANSE is a cross-platform mobile web application designed as a premium mythological OTT streaming platform for devotional and spiritual content. The app features a unique React-based frontend with gradient themes (purple/indigo/amber) that distinguish it from existing platforms, offering short-form spiritual videos (1-2 minutes) including Ramayana stories, Mahabharata tales, Krishna leelas, Shiva stories, bhajans, and educational explanations of religious concepts. The platform provides an original, high-quality browsing experience inspired by modern streaming services but with its own distinct spiritual identity and design language.
+SAANSE is a cross-platform mobile web application designed as a premium short-form spiritual content platform for devotional videos. The app features a bold black/yellow design optimized for 2-3 minute spiritual videos including Ramayana stories, Mahabharata tales, Krishna leelas, Shiva stories, bhajans, and educational explanations of religious concepts. Unlike traditional streaming platforms focused on movies/series, SAANSE specializes in bite-sized spiritual content with proper mobile-first responsive design and clean category-based organization.
 
 ## User Preferences
 
