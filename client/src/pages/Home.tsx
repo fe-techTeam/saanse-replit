@@ -120,57 +120,58 @@ export default function Home() {
 
       {/* Hero Section - Netflix Style */}
       {featuredVideo && (
-        <section className="relative h-[60vh] md:h-screen pt-12 md:pt-16">
+        <section className="relative h-[50vh] xs:h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[90vh] xl:h-screen pt-12 md:pt-16">
           <div className="absolute inset-0">
             <img 
               src={featuredVideo.thumbnailUrl} 
               alt={featuredVideo.title}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 md:via-black/50 to-transparent"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 md:via-transparent to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 sm:via-black/70 md:via-black/60 lg:via-black/50 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 sm:via-black/50 md:via-black/40 lg:via-transparent to-transparent"></div>
           </div>
           
-          <div className="relative z-10 flex items-end h-full px-4 md:px-6 pb-16 md:pb-32 max-w-7xl mx-auto">
-            <div className="max-w-full md:max-w-2xl">
+          <div className="relative z-10 flex items-end h-full px-3 xs:px-4 sm:px-5 md:px-6 lg:px-8 pb-8 xs:pb-12 sm:pb-16 md:pb-24 lg:pb-32 max-w-7xl mx-auto">
+            <div className="max-w-full xs:max-w-[90%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
               
-              <div className="h-auto md:h-32 flex items-end mb-3 md:mb-6">
-                <h1 className="text-3xl md:text-6xl font-bold leading-tight text-white line-clamp-2">
+              <div className="h-auto flex items-end mb-2 xs:mb-3 sm:mb-4 md:mb-6">
+                <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-white line-clamp-2">
                   {featuredVideo.title}
                 </h1>
               </div>
               
-              <div className="h-auto md:h-20 mb-3 md:mb-6">
-                <p className="text-sm md:text-xl text-gray-200 leading-relaxed max-w-xl line-clamp-2 md:line-clamp-3">
+              <div className="h-auto mb-2 xs:mb-3 sm:mb-4 md:mb-6">
+                <p className="text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 leading-relaxed max-w-xl line-clamp-2 sm:line-clamp-3">
                   {featuredVideo.description}
                 </p>
               </div>
               
-              <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-lg mb-3 md:mb-6">
+              <div className="flex flex-wrap items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg mb-2 xs:mb-3 sm:mb-4 md:mb-6">
                 <span className="flex items-center text-green-400">
-                  <Star className="w-3 h-3 md:w-5 md:h-5 mr-1 md:mr-2 fill-current" />
+                  <Star className="w-2.5 xs:w-3 sm:w-4 md:w-5 h-2.5 xs:h-3 sm:h-4 md:h-5 mr-0.5 xs:mr-1 md:mr-2 fill-current" />
                   {featuredVideo.rating}
                 </span>
                 <span className="text-gray-300">2024</span>
                 <span className="text-gray-300">3m</span>
-                <span className="px-1 md:px-2 py-0.5 md:py-1 border border-gray-500 text-xs md:text-sm text-gray-300">HD</span>
+                <span className="px-1 xs:px-1.5 sm:px-2 py-0.5 md:py-1 border border-gray-500 text-[10px] xs:text-xs sm:text-sm text-gray-300">HD</span>
               </div>
               
-              <div className="flex items-center space-x-2 md:space-x-4">
+              <div className="flex items-center space-x-1.5 xs:space-x-2 sm:space-x-3 md:space-x-4">
                 <button 
-                  className="flex items-center justify-center bg-white text-black px-4 md:px-10 py-2 md:py-4 rounded-md font-bold text-sm md:text-lg hover:bg-gray-200 transition-all shadow-lg"
+                  className="flex items-center justify-center bg-white text-black px-3 xs:px-4 sm:px-6 md:px-8 lg:px-10 py-1.5 xs:py-2 sm:py-3 md:py-4 rounded-md font-bold text-xs xs:text-sm sm:text-base md:text-lg hover:bg-gray-200 transition-all shadow-lg"
                   onClick={() => setSelectedVideo(featuredVideo)}
                 >
-                  <Play className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-3 fill-current" />
+                  <Play className="w-3 xs:w-4 sm:w-5 md:w-6 h-3 xs:h-4 sm:h-5 md:h-6 mr-1 xs:mr-1.5 sm:mr-2 md:mr-3 fill-current" />
                   Play
                 </button>
                 
                 <button 
-                  className="flex items-center justify-center bg-gray-600/90 text-white px-4 md:px-10 py-2 md:py-4 rounded-md font-bold text-sm md:text-lg hover:bg-gray-500 transition-all shadow-lg"
+                  className="flex items-center justify-center bg-gray-600/90 text-white px-3 xs:px-4 sm:px-6 md:px-8 lg:px-10 py-1.5 xs:py-2 sm:py-3 md:py-4 rounded-md font-bold text-xs xs:text-sm sm:text-base md:text-lg hover:bg-gray-500 transition-all shadow-lg"
                   onClick={() => setSelectedVideo(featuredVideo)}
                 >
-                  <Info className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-3" />
-                  More Info
+                  <Info className="w-3 xs:w-4 sm:w-5 md:w-6 h-3 xs:h-4 sm:h-5 md:h-6 mr-1 xs:mr-1.5 sm:mr-2 md:mr-3" />
+                  <span className="hidden xs:inline">More Info</span>
+                  <span className="xs:hidden">Info</span>
                 </button>
               </div>
             </div>
@@ -188,18 +189,18 @@ export default function Home() {
             <h2 className="text-xl md:text-3xl font-bold text-white">Trending Now</h2>
             <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-xs md:text-sm font-bold rounded-full">HOT</div>
           </div>
-          <div className="flex space-x-3 md:space-x-4 overflow-x-auto scrollbar-hide pb-4">
+          <div className="flex gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
             {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 w-40 sm:w-60 md:w-80 group cursor-pointer"
+                className="flex-shrink-0 snap-center w-[85vw] xs:w-[70vw] sm:w-[50vw] md:w-[40vw] lg:w-80 group cursor-pointer"
                 onClick={() => setSelectedVideo(video)}
               >
                 <div className="relative">
                   <img 
                     src={video.thumbnailUrl} 
                     alt={video.title}
-                    className="w-full h-24 sm:h-32 md:h-44 object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
+                    className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
                   />
                   
                   <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
@@ -253,18 +254,18 @@ export default function Home() {
             <h2 className="text-xl md:text-3xl font-bold text-white">Popular on SAANSE</h2>
             <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-xs md:text-sm font-bold rounded-full">POPULAR</div>
           </div>
-          <div className="flex space-x-3 md:space-x-4 overflow-x-auto scrollbar-hide pb-4">
+          <div className="flex gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
             {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 w-40 sm:w-60 md:w-80 group cursor-pointer"
+                className="flex-shrink-0 snap-center w-[85vw] xs:w-[70vw] sm:w-[50vw] md:w-[40vw] lg:w-80 group cursor-pointer"
                 onClick={() => setSelectedVideo(video)}
               >
                 <div className="relative">
                   <img 
                     src={video.thumbnailUrl} 
                     alt={video.title}
-                    className="w-full h-24 sm:h-32 md:h-44 object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
+                    className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
                   />
                   
                   <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
@@ -323,18 +324,18 @@ export default function Home() {
                 <h2 className="text-xl md:text-3xl font-bold text-white">{category} Chronicles</h2>
                 <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs md:text-sm font-bold rounded-full">EPIC</div>
               </div>
-              <div className="flex space-x-3 md:space-x-4 overflow-x-auto scrollbar-hide pb-4">
+              <div className="flex gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4">
                 {categoryVideos.slice(0, 10).map((video: any) => (
                   <div 
                     key={video.id}
-                    className="flex-shrink-0 w-40 sm:w-60 md:w-80 group cursor-pointer"
+                    className="flex-shrink-0 snap-center w-[85vw] xs:w-[70vw] sm:w-[50vw] md:w-[40vw] lg:w-80 group cursor-pointer"
                     onClick={() => setSelectedVideo(video)}
                   >
                     <div className="relative">
                       <img 
                         src={video.thumbnailUrl} 
                         alt={video.title}
-                        className="w-full h-24 sm:h-32 md:h-44 object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
+                        className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
                       />
                       
                       <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
@@ -439,6 +440,19 @@ export default function Home() {
           
           .scrollbar-hide::-webkit-scrollbar {
             display: none;
+          }
+          
+          .snap-x {
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+          }
+          
+          .snap-center {
+            scroll-snap-align: center;
+          }
+          
+          .snap-mandatory {
+            scroll-snap-stop: always;
           }
           
           .line-clamp-1 {
