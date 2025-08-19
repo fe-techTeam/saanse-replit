@@ -8,6 +8,15 @@ SAANSE is a cross-platform mobile web application designed as a premium short-fo
 
 Preferred communication style: Simple, everyday language.
 
+### Design Requirements (Updated: Aug 19, 2025)
+- **Critical Issue**: Alignment problems across the interface must be fixed with proper responsive design
+- **Header**: Needs complete redesign - current version is "horrible to look at"  
+- **Content Organization**: Current layout lacks finesse and intelligence
+- **Thumbnails**: Each video must have distinct, unique thumbnail images
+- **Functionality**: Static page lacks interactivity - needs working features
+- **Categories**: Header navigation should reflect actual spiritual content types
+- **Content Focus**: 2-3 minute devotional videos, NOT movies/series
+
 ## System Architecture
 
 ### Frontend Architecture
