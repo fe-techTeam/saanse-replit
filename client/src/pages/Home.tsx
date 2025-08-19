@@ -34,7 +34,8 @@ export default function Home() {
   const enhancedVideos = typedVideos.map((video: any, index: number) => ({
     ...video,
     thumbnailUrl: getUniqueThumbnail(index),
-    rating: (4.1 + Math.random() * 0.8).toFixed(1)
+    rating: (4.1 + Math.random() * 0.8).toFixed(1),
+    shortDescription: video.description ? video.description.slice(0, 80) + "..." : "Experience this divine story of faith and devotion."
   }));
 
   // Auto-change hero every 6 seconds
@@ -198,10 +199,13 @@ export default function Home() {
                   </button>
                 </div>
                 
-                <div className="mt-2 space-y-1">
-                  <h3 className="font-semibold text-white group-hover:text-gray-300 transition-colors">
+                <div className="mt-2 space-y-2">
+                  <h3 className="font-semibold text-white group-hover:text-gray-300 transition-colors line-clamp-1">
                     {video.title}
                   </h3>
+                  <p className="text-sm text-gray-400 line-clamp-2 leading-relaxed">
+                    {video.shortDescription}
+                  </p>
                   <div className="flex items-center text-sm text-gray-400 space-x-3">
                     <span className="flex items-center">
                       <Star className="w-3 h-3 mr-1 text-green-400" />
@@ -298,11 +302,14 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    <div className="mt-2">
-                      <h3 className="font-semibold text-white text-sm group-hover:text-gray-300 transition-colors">
+                    <div className="mt-3 space-y-1">
+                      <h3 className="font-semibold text-white text-sm group-hover:text-gray-300 transition-colors line-clamp-1">
                         {video.title}
                       </h3>
-                      <div className="text-xs text-gray-400 mt-1 flex items-center">
+                      <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                        {video.shortDescription}
+                      </p>
+                      <div className="text-xs text-gray-400 flex items-center">
                         <Star className="w-3 h-3 mr-1 text-green-400" />
                         {video.rating}
                       </div>
@@ -374,6 +381,20 @@ export default function Home() {
           
           .scrollbar-hide::-webkit-scrollbar {
             display: none;
+          }
+          
+          .line-clamp-1 {
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+          
+          .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
           }
         `
       }} />
