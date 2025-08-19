@@ -77,6 +77,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white">
       
+      {/* Version Indicator */}
+      <div className="fixed top-0 left-0 z-[100] bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-br">v2.5 MOBILE FIX</div>
+      
       {/* Netflix-Style Header */}
       <header className="fixed top-0 w-full bg-black/95 backdrop-blur-md z-50 border-b border-gray-800">
         <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between max-w-7xl mx-auto">
@@ -158,18 +161,20 @@ export default function Home() {
               
               <div className="flex items-center gap-2">
                 <button 
-                  className="flex-1 max-w-[100px] sm:max-w-[120px] md:max-w-none md:flex-initial flex items-center justify-center bg-white text-black px-4 py-2 sm:px-6 sm:py-2.5 md:px-8 md:py-3 rounded font-bold text-xs sm:text-sm md:text-base hover:bg-gray-200 transition-all shadow-lg"
+                  className="bg-white text-black font-bold text-xs rounded shadow-lg hover:bg-gray-200"
                   onClick={() => setSelectedVideo(featuredVideo)}
+                  style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px' }}
                 >
-                  <Play className="w-3.5 sm:w-4 md:w-5 h-3.5 sm:h-4 md:h-5 mr-1 sm:mr-1.5 md:mr-2 fill-current" />
+                  <Play className="w-3 h-3 mr-1 fill-current" />
                   Play
                 </button>
                 
                 <button 
-                  className="flex-1 max-w-[100px] sm:max-w-[120px] md:max-w-none md:flex-initial flex items-center justify-center bg-gray-600/90 text-white px-4 py-2 sm:px-6 sm:py-2.5 md:px-8 md:py-3 rounded font-bold text-xs sm:text-sm md:text-base hover:bg-gray-500 transition-all shadow-lg"
+                  className="bg-gray-600/90 text-white font-bold text-xs rounded shadow-lg hover:bg-gray-500"
                   onClick={() => setSelectedVideo(featuredVideo)}
+                  style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px' }}
                 >
-                  <Info className="w-3.5 sm:w-4 md:w-5 h-3.5 sm:h-4 md:h-5 mr-1 sm:mr-1.5 md:mr-2" />
+                  <Info className="w-3 h-3 mr-1" />
                   Info
                 </button>
               </div>
@@ -188,13 +193,13 @@ export default function Home() {
             <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">Trending Now</h2>
             <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">HOT</div>
           </div>
-          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-2 sm:pb-3 md:pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 snap-start w-32 xs:w-36 sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
+                className="flex-shrink-0 cursor-pointer"
                 onClick={() => setSelectedVideo(video)}
-                style={{ scrollSnapAlign: 'start' }}
+                style={{ width: '110px', minWidth: '110px' }}
               >
                 <div className="relative">
                   <img 
@@ -254,13 +259,13 @@ export default function Home() {
             <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">Popular</h2>
             <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-[10px] sm:text-xs md:text-sm font-bold rounded-full">TOP</div>
           </div>
-          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-2 sm:pb-3 md:pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 snap-start w-32 xs:w-36 sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
+                className="flex-shrink-0 cursor-pointer md:w-52 lg:w-64 xl:w-72 2xl:w-80"
                 onClick={() => setSelectedVideo(video)}
-                style={{ scrollSnapAlign: 'start' }}
+                style={{ width: '110px', minWidth: '110px' }}
               >
                 <div className="relative">
                   <img 
@@ -325,13 +330,13 @@ export default function Home() {
                 <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">{category}</h2>
                 <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">EPIC</div>
               </div>
-              <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-2 sm:pb-3 md:pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {categoryVideos.slice(0, 10).map((video: any) => (
                   <div 
                     key={video.id}
-                    className="flex-shrink-0 snap-start w-32 xs:w-36 sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
+                    className="flex-shrink-0 cursor-pointer md:w-52 lg:w-64 xl:w-72 2xl:w-80"
                     onClick={() => setSelectedVideo(video)}
-                    style={{ scrollSnapAlign: 'start' }}
+                    style={{ width: '110px', minWidth: '110px' }}
                   >
                     <div className="relative">
                       <img 
