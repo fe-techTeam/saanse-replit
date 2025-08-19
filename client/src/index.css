@@ -1,0 +1,179 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Crimson+Text:wght@400;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(240, 10%, 3.9%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(240, 10%, 3.9%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(240, 10%, 3.9%);
+  --primary: hsl(240, 9%, 89%);
+  --primary-foreground: hsl(240, 5.9%, 10%);
+  --secondary: hsl(240, 4.8%, 95.9%);
+  --secondary-foreground: hsl(240, 5.9%, 10%);
+  --muted: hsl(240, 4.8%, 95.9%);
+  --muted-foreground: hsl(240, 3.8%, 46.1%);
+  --accent: hsl(240, 4.8%, 95.9%);
+  --accent-foreground: hsl(240, 5.9%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 5.9%, 90%);
+  --input: hsl(240, 5.9%, 90%);
+  --ring: hsl(240, 5%, 64.9%);
+  --chart-1: hsl(12, 76%, 61%);
+  --chart-2: hsl(173, 58%, 39%);
+  --chart-3: hsl(197, 37%, 24%);
+  --chart-4: hsl(43, 74%, 66%);
+  --chart-5: hsl(27, 87%, 67%);
+  --radius: 0.5rem;
+  
+  /* Dharma Stream Custom Colors */
+  --dharma-dark: hsl(0, 0%, 3.9%);
+  --dharma-dark-light: hsl(0, 0%, 10.2%);
+  --dharma-gold: hsl(43, 74%, 52%);
+  --dharma-gold-light: hsl(51, 100%, 50%);
+  --dharma-red: hsl(0, 61%, 50%);
+  --dharma-red-light: hsl(0, 74%, 42%);
+}
+
+.dark {
+  --background: hsl(0, 0%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(0, 0%, 10.2%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --popover: hsl(0, 0%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --primary: hsl(0, 0%, 98%);
+  --primary-foreground: hsl(0, 0%, 9%);
+  --secondary: hsl(0, 0%, 14.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(0, 0%, 14.9%);
+  --muted-foreground: hsl(0, 0%, 63.9%);
+  --accent: hsl(0, 0%, 14.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 85.7%, 97.3%);
+  --border: hsl(0, 0%, 14.9%);
+  --input: hsl(0, 0%, 14.9%);
+  --ring: hsl(0, 0%, 83.1%);
+  --chart-1: hsl(220, 70%, 50%);
+  --chart-2: hsl(160, 60%, 45%);
+  --chart-3: hsl(30, 80%, 55%);
+  --chart-4: hsl(280, 65%, 60%);
+  --chart-5: hsl(340, 75%, 55%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-dharma-dark text-white font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .gradient-overlay {
+    background: linear-gradient(to bottom, transparent 0%, rgba(10, 10, 10, 0.8) 70%, rgba(10, 10, 10, 1) 100%);
+  }
+  
+  .devotional-glow {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  }
+  
+  .video-thumbnail {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .video-thumbnail:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+  }
+
+  .category-scroll {
+    scroll-snap-type: x mandatory;
+  }
+  
+  .category-scroll > * {
+    scroll-snap-align: start;
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  .bg-dharma-dark {
+    background-color: var(--dharma-dark);
+  }
+  
+  .bg-dharma-dark-light {
+    background-color: var(--dharma-dark-light);
+  }
+  
+  .bg-dharma-gold {
+    background-color: var(--dharma-gold);
+  }
+  
+  .bg-dharma-gold-light {
+    background-color: var(--dharma-gold-light);
+  }
+  
+  .bg-dharma-red {
+    background-color: var(--dharma-red);
+  }
+  
+  .bg-dharma-red-light {
+    background-color: var(--dharma-red-light);
+  }
+  
+  .text-dharma-dark {
+    color: var(--dharma-dark);
+  }
+  
+  .text-dharma-gold {
+    color: var(--dharma-gold);
+  }
+  
+  .text-dharma-gold-light {
+    color: var(--dharma-gold-light);
+  }
+  
+  .text-dharma-red {
+    color: var(--dharma-red);
+  }
+  
+  .border-dharma-gold {
+    border-color: var(--dharma-gold);
+  }
+  
+  .font-devanagari {
+    font-family: 'Noto Sans Devanagari', sans-serif;
+  }
+  
+  .font-crimson {
+    font-family: 'Crimson Text', serif;
+  }
+}
