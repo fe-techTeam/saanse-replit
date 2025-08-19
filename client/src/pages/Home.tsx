@@ -156,22 +156,21 @@ export default function Home() {
                 <span className="px-1 xs:px-1.5 sm:px-2 py-0.5 md:py-1 border border-gray-500 text-[10px] xs:text-xs sm:text-sm text-gray-300">HD</span>
               </div>
               
-              <div className="flex items-center space-x-1.5 xs:space-x-2 sm:space-x-3 md:space-x-4">
+              <div className="flex items-center gap-2">
                 <button 
-                  className="flex items-center justify-center bg-white text-black px-3 xs:px-4 sm:px-6 md:px-8 lg:px-10 py-1.5 xs:py-2 sm:py-3 md:py-4 rounded-md font-bold text-xs xs:text-sm sm:text-base md:text-lg hover:bg-gray-200 transition-all shadow-lg"
+                  className="flex-1 max-w-[100px] sm:max-w-[120px] md:max-w-none md:flex-initial flex items-center justify-center bg-white text-black px-4 py-2 sm:px-6 sm:py-2.5 md:px-8 md:py-3 rounded font-bold text-xs sm:text-sm md:text-base hover:bg-gray-200 transition-all shadow-lg"
                   onClick={() => setSelectedVideo(featuredVideo)}
                 >
-                  <Play className="w-3 xs:w-4 sm:w-5 md:w-6 h-3 xs:h-4 sm:h-5 md:h-6 mr-1 xs:mr-1.5 sm:mr-2 md:mr-3 fill-current" />
+                  <Play className="w-3.5 sm:w-4 md:w-5 h-3.5 sm:h-4 md:h-5 mr-1 sm:mr-1.5 md:mr-2 fill-current" />
                   Play
                 </button>
                 
                 <button 
-                  className="flex items-center justify-center bg-gray-600/90 text-white px-3 xs:px-4 sm:px-6 md:px-8 lg:px-10 py-1.5 xs:py-2 sm:py-3 md:py-4 rounded-md font-bold text-xs xs:text-sm sm:text-base md:text-lg hover:bg-gray-500 transition-all shadow-lg"
+                  className="flex-1 max-w-[100px] sm:max-w-[120px] md:max-w-none md:flex-initial flex items-center justify-center bg-gray-600/90 text-white px-4 py-2 sm:px-6 sm:py-2.5 md:px-8 md:py-3 rounded font-bold text-xs sm:text-sm md:text-base hover:bg-gray-500 transition-all shadow-lg"
                   onClick={() => setSelectedVideo(featuredVideo)}
                 >
-                  <Info className="w-3 xs:w-4 sm:w-5 md:w-6 h-3 xs:h-4 sm:h-5 md:h-6 mr-1 xs:mr-1.5 sm:mr-2 md:mr-3" />
-                  <span className="hidden xs:inline">More Info</span>
-                  <span className="xs:hidden">Info</span>
+                  <Info className="w-3.5 sm:w-4 md:w-5 h-3.5 sm:h-4 md:h-5 mr-1 sm:mr-1.5 md:mr-2" />
+                  Info
                 </button>
               </div>
             </div>
@@ -183,17 +182,17 @@ export default function Home() {
       <div className="relative -mt-8 md:-mt-16 space-y-8 md:space-y-16 px-4 md:px-6 pb-16 max-w-7xl mx-auto">
         
         {/* Trending Now */}
-        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800">
-          <div className="flex items-center mb-4 md:mb-6">
-            <div className="w-1 h-6 md:h-8 bg-red-600 mr-3 md:mr-4"></div>
-            <h2 className="text-xl md:text-3xl font-bold text-white">Trending Now</h2>
-            <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-xs md:text-sm font-bold rounded-full">HOT</div>
+        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
+          <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
+            <div className="w-1 h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
+            <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">Trending Now</h2>
+            <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">HOT</div>
           </div>
-          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
+          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-2 sm:pb-3 md:pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
             {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 snap-start w-[45vw] xs:w-[40vw] sm:w-[35vw] md:w-[30vw] lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
+                className="flex-shrink-0 snap-start w-32 xs:w-36 sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
                 onClick={() => setSelectedVideo(video)}
                 style={{ scrollSnapAlign: 'start' }}
               >
@@ -249,17 +248,17 @@ export default function Home() {
         </section>
 
         {/* Popular on SAANSE */}
-        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800">
-          <div className="flex items-center mb-4 md:mb-6">
-            <div className="w-1 h-6 md:h-8 bg-red-600 mr-3 md:mr-4"></div>
-            <h2 className="text-xl md:text-3xl font-bold text-white">Popular on SAANSE</h2>
-            <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-xs md:text-sm font-bold rounded-full">POPULAR</div>
+        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
+          <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
+            <div className="w-1 h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
+            <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">Popular</h2>
+            <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-[10px] sm:text-xs md:text-sm font-bold rounded-full">TOP</div>
           </div>
-          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
+          <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-2 sm:pb-3 md:pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
             {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 snap-start w-[45vw] xs:w-[40vw] sm:w-[35vw] md:w-[30vw] lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
+                className="flex-shrink-0 snap-start w-32 xs:w-36 sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
                 onClick={() => setSelectedVideo(video)}
                 style={{ scrollSnapAlign: 'start' }}
               >
@@ -320,17 +319,17 @@ export default function Home() {
           if (categoryVideos.length === 0) return null;
           
           return (
-            <section key={category} className="bg-gradient-to-r from-black/80 to-black/40 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800">
-              <div className="flex items-center mb-4 md:mb-6">
-                <div className="w-1 h-6 md:h-8 bg-red-600 mr-3 md:mr-4"></div>
-                <h2 className="text-xl md:text-3xl font-bold text-white">{category} Chronicles</h2>
-                <div className="ml-3 md:ml-4 px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs md:text-sm font-bold rounded-full">EPIC</div>
+            <section key={category} className="bg-gradient-to-r from-black/80 to-black/40 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
+              <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
+                <div className="w-1 h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
+                <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">{category}</h2>
+                <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">EPIC</div>
               </div>
-              <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
+              <div className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-2 sm:pb-3 md:pb-4" style={{ scrollSnapType: 'x mandatory', scrollPaddingLeft: '8px', scrollPaddingRight: '8px' }}>
                 {categoryVideos.slice(0, 10).map((video: any) => (
                   <div 
                     key={video.id}
-                    className="flex-shrink-0 snap-start w-[45vw] xs:w-[40vw] sm:w-[35vw] md:w-[30vw] lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
+                    className="flex-shrink-0 snap-start w-32 xs:w-36 sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80 group cursor-pointer first:ml-2 last:mr-2"
                     onClick={() => setSelectedVideo(video)}
                     style={{ scrollSnapAlign: 'start' }}
                   >
