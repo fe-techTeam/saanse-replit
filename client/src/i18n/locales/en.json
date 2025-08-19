@@ -67,5 +67,10 @@
     "message": "Access your devotional content offline",
     "install": "Install",
     "later": "Later"
+  },
+  "messages": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "noVideos": "No videos available in this category"
   }
 }

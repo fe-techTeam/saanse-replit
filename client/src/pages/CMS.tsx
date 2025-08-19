@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +30,6 @@ interface VideoFormData {
 }
 
 export default function CMS() {
-  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   

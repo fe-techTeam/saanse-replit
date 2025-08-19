@@ -21,6 +21,10 @@ export default function Home() {
     { title: "Bhajans & Aartis", devanagari: "भजन और आरती", category: "Bhajans" },
     { title: "Mahabharata", devanagari: "महाभारत गाथा", category: "Mahabharata" },
     { title: "Lord Shiva", devanagari: "भोलेनाथ की कथा", category: "Shiva" },
+    { title: "Hanuman Stories", devanagari: "हनुमान जी की कथा", category: "Hanuman" },
+    { title: "Lord Ganesha", devanagari: "गणपति बप्पा", category: "Ganesha" },
+    { title: "Divine Mother", devanagari: "माता की महिमा", category: "Devi" },
+    { title: "Festivals", devanagari: "त्योहार और उत्सव", category: "Festivals" },
     { title: "Explained", devanagari: "व्याख्या", category: "Explained" },
   ];
 
