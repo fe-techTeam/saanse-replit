@@ -16,6 +16,8 @@ Preferred communication style: Simple, everyday language.
 - **Functionality**: Static page lacks interactivity - needs working features
 - **Categories**: Header navigation should reflect actual spiritual content types
 - **Content Focus**: 2-3 minute devotional videos, NOT movies/series
+- **Premium Experience**: Must feel like world-class OTT platform, not basic video listing
+- **Visual Impact**: Cinematic design with rich gradients, animations, and premium aesthetics
 
 ## System Architecture
 
