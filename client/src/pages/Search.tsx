@@ -16,7 +16,7 @@ export default function Search() {
   const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
 
-  const { data: searchResults = [], isLoading } = useQuery({
+  const { data: searchResults = [], isLoading } = useQuery<VideoType[]>({
     queryKey: ["/api/videos/search", searchQuery],
     enabled: !!searchQuery.trim(),
   });

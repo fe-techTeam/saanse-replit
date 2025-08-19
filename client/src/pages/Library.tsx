@@ -5,7 +5,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Clock, BookOpen } from "lucide-react";
-import type { VideoType, PlaylistType } from "@/types/video";
+import type { VideoType, PlaylistType, ViewHistoryType } from "@/types/video";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 
@@ -15,12 +15,12 @@ export default function Library() {
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
   const { user, isAuthenticated } = useAuth();
 
-  const { data: playlists = [] } = useQuery({
+  const { data: playlists = [] } = useQuery<PlaylistType[]>({
     queryKey: ["/api/users", user?.id, "playlists"],
     enabled: !!user?.id,
   });
 
-  const { data: viewHistory = [] } = useQuery({
+  const { data: viewHistory = [] } = useQuery<ViewHistoryType[]>({
     queryKey: ["/api/users", user?.id, "history"],
     enabled: !!user?.id,
   });

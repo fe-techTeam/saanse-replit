@@ -16,7 +16,7 @@ export function CategorySection({
   onVideoClick, 
   onViewAllClick 
 }: CategorySectionProps) {
-  const { data: videos = [], isLoading } = useQuery({
+  const { data: videos = [], isLoading } = useQuery<VideoType[]>({
     queryKey: ["/api/videos/category", category],
   });
 

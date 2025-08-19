@@ -16,7 +16,7 @@ export function SearchModal({ isOpen, onClose, onVideoClick }: SearchModalProps)
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const { data: searchResults = [], isLoading } = useQuery({
+  const { data: searchResults = [], isLoading } = useQuery<VideoType[]>({
     queryKey: ["/api/videos/search", searchQuery],
     enabled: !!searchQuery.trim(),
   });

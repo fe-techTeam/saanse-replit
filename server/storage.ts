@@ -150,7 +150,13 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id, createdAt: new Date() };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      createdAt: new Date(),
+      displayName: insertUser.displayName || null,
+      photoURL: insertUser.photoURL || null
+    };
     this.users.set(id, user);
     return user;
   }
@@ -188,7 +194,10 @@ export class MemStorage implements IStorage {
       id, 
       likes: 0, 
       views: 0, 
-      createdAt: new Date() 
+      createdAt: new Date(),
+      description: insertVideo.description || null,
+      tags: Array.isArray(insertVideo.tags) ? insertVideo.tags : [],
+      isActive: insertVideo.isActive !== undefined ? insertVideo.isActive : true
     };
     this.videos.set(id, video);
     return video;
@@ -221,7 +230,12 @@ export class MemStorage implements IStorage {
 
   async createPlaylist(insertPlaylist: InsertPlaylist): Promise<Playlist> {
     const id = randomUUID();
-    const playlist: Playlist = { ...insertPlaylist, id, createdAt: new Date() };
+    const playlist: Playlist = { 
+      ...insertPlaylist, 
+      id, 
+      createdAt: new Date(),
+      videoIds: Array.isArray(insertPlaylist.videoIds) ? insertPlaylist.videoIds : []
+    };
     this.playlists.set(id, playlist);
     return playlist;
   }
@@ -252,7 +266,8 @@ export class MemStorage implements IStorage {
     const viewHistory: ViewHistory = { 
       ...insertViewHistory, 
       id, 
-      watchedAt: new Date() 
+      watchedAt: new Date(),
+      progress: insertViewHistory.progress || 0
     };
     this.viewHistory.set(id, viewHistory);
     return viewHistory;
