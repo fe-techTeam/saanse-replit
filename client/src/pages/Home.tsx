@@ -78,7 +78,7 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white">
       
       {/* Version Indicator */}
-      <div className="fixed top-0 left-0 z-[100] bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-br">v2.5 MOBILE FIX</div>
+      <div className="fixed top-0 left-0 z-[100] bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-br">v3.0 MOBILE</div>
       
       {/* Netflix-Style Header */}
       <header className="fixed top-0 w-full bg-black/95 backdrop-blur-md z-50 border-b border-gray-800">
@@ -184,22 +184,22 @@ export default function Home() {
       )}
 
       {/* Content Sections */}
-      <div className="relative -mt-8 md:-mt-16 space-y-8 md:space-y-16 px-4 md:px-6 pb-16 max-w-7xl mx-auto">
+      <div className="relative mt-4 sm:mt-0 sm:-mt-8 md:-mt-16 space-y-6 sm:space-y-8 md:space-y-16 px-4 md:px-6 pb-16 max-w-7xl mx-auto">
         
         {/* Trending Now */}
         <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
           <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-            <div className="w-1 h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-            <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">Trending Now</h2>
-            <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">HOT</div>
+            <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
+            <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">Trending Now</h2>
+            <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">HOT</div>
           </div>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 cursor-pointer"
+                className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
                 onClick={() => setSelectedVideo(video)}
-                style={{ width: '110px', minWidth: '110px' }}
+                style={{ width: '140px', minWidth: '140px' }}
               >
                 <div className="relative">
                   <img 
@@ -255,17 +255,17 @@ export default function Home() {
         {/* Popular on SAANSE */}
         <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
           <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-            <div className="w-1 h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-            <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">Popular</h2>
-            <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-[10px] sm:text-xs md:text-sm font-bold rounded-full">TOP</div>
+            <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
+            <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">Popular</h2>
+            <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-[10px] sm:text-xs md:text-sm font-bold rounded-full">TOP</div>
           </div>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="flex-shrink-0 cursor-pointer md:w-52 lg:w-64 xl:w-72 2xl:w-80"
+                className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
                 onClick={() => setSelectedVideo(video)}
-                style={{ width: '110px', minWidth: '110px' }}
+                style={{ width: '140px', minWidth: '140px' }}
               >
                 <div className="relative">
                   <img 
@@ -326,17 +326,17 @@ export default function Home() {
           return (
             <section key={category} className="bg-gradient-to-r from-black/80 to-black/40 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
               <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-                <div className="w-1 h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-                <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-white">{category}</h2>
-                <div className="ml-2 sm:ml-3 md:ml-4 px-1.5 sm:px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">EPIC</div>
+                <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
+                <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">{category}</h2>
+                <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">EPIC</div>
               </div>
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {categoryVideos.slice(0, 10).map((video: any) => (
                   <div 
                     key={video.id}
-                    className="flex-shrink-0 cursor-pointer md:w-52 lg:w-64 xl:w-72 2xl:w-80"
+                    className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
                     onClick={() => setSelectedVideo(video)}
-                    style={{ width: '110px', minWidth: '110px' }}
+                    style={{ width: '140px', minWidth: '140px' }}
                   >
                     <div className="relative">
                       <img 
