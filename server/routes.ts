@@ -8,7 +8,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Videos
   app.get("/api/videos", async (req, res) => {
     try {
-      const videos = await storage.getAllVideos();
+      const videos = await storage.getVideos();
       res.json(videos);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch videos" });
@@ -41,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/videos/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const video = await storage.getVideo(id);
+      const video = await storage.getVideoById(id);
       if (!video) {
         return res.status(404).json({ error: "Video not found" });
       }
@@ -54,7 +54,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/videos/:id/view", async (req, res) => {
     try {
       const { id } = req.params;
-      await storage.incrementVideoViews(id);
+      const video = await storage.getVideoById(id);
+      if (video) {
+        await storage.updateVideo(id, { views: video.views + 1 });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to increment video views" });
@@ -64,7 +67,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/videos/:id/like", async (req, res) => {
     try {
       const { id } = req.params;
-      await storage.incrementVideoLikes(id);
+      const video = await storage.getVideoById(id);
+      if (video) {
+        await storage.updateVideo(id, { likes: video.likes + 1 });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to like video" });
@@ -122,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userData = insertUserSchema.parse(req.body);
       
       // Check if user already exists
-      const existingUser = await storage.getUserByFirebaseUid(userData.firebaseUid);
+      const existingUser = await storage.getUserByEmail(userData.email || '');
       if (existingUser) {
         return res.json(existingUser);
       }
@@ -156,7 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/firebase/:firebaseUid", async (req, res) => {
     try {
       const { firebaseUid } = req.params;
-      const user = await storage.getUserByFirebaseUid(firebaseUid);
+      const user = await storage.getUserById(firebaseUid);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -170,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:userId/playlists", async (req, res) => {
     try {
       const { userId } = req.params;
-      const playlists = await storage.getUserPlaylists(userId);
+      const playlists = await storage.getPlaylistsByUserId(userId);
       res.json(playlists);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch playlists" });
@@ -193,7 +199,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/playlists/:playlistId/videos/:videoId", async (req, res) => {
     try {
       const { playlistId, videoId } = req.params;
-      await storage.addVideoToPlaylist(playlistId, videoId);
+      const playlist = await storage.getPlaylistById(playlistId);
+      if (playlist && !playlist.videoIds.includes(videoId)) {
+        await storage.updatePlaylist(playlistId, { 
+          videoIds: [...playlist.videoIds, videoId] 
+        });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to add video to playlist" });
@@ -203,7 +214,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/playlists/:playlistId/videos/:videoId", async (req, res) => {
     try {
       const { playlistId, videoId } = req.params;
-      await storage.removeVideoFromPlaylist(playlistId, videoId);
+      const playlist = await storage.getPlaylistById(playlistId);
+      if (playlist) {
+        await storage.updatePlaylist(playlistId, { 
+          videoIds: playlist.videoIds.filter(id => id !== videoId) 
+        });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to remove video from playlist" });
@@ -214,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:userId/history", async (req, res) => {
     try {
       const { userId } = req.params;
-      const history = await storage.getUserViewHistory(userId);
+      const history = await storage.getViewHistoryByUserId(userId);
       res.json(history);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch view history" });
@@ -224,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/history", async (req, res) => {
     try {
       const historyData = insertViewHistorySchema.parse(req.body);
-      const history = await storage.addToViewHistory(historyData);
+      const history = await storage.createViewHistory(historyData);
       res.json(history);
     } catch (error) {
       if (error instanceof z.ZodError) {
