@@ -1,0 +1,99 @@
+📱 Prompt for Replit (Mythological OTT-Style App)
+
+Build me a cross-platform mobile app (React Native or Flutter) that looks and feels like a mini-OTT streaming platform. The app will feature short devotional and mythological content (1–2 minute videos) across categories like Ramayana, Mahabharata, Lord Krishna, Lord Shiva, Bhajans, Aartis, Religious Myths Explained, and more.
+
+🔹 Core Requirements:
+
+Landing/Home Screen
+
+Clean, elegant UI with dark + golden-accent theme (to match devotional/mythological content).
+
+Featured carousel/banner (highlight trending videos or festivals like Diwali, Janmashtami, Navratri).
+
+Category sections (horizontal scrolls):
+
+Ramayana Stories
+
+Mahabharata Stories
+
+Lord Krishna
+
+Lord Shiva
+
+Bhajans & Aartis
+
+Explained: Religious Myths
+
+Infinite scroll for browsing.
+
+Video Player Page
+
+Fullscreen player with short video playback (1–2 mins).
+
+Like, Share, Save, and Playlist options.
+
+Option to autoplay next video.
+
+Categories & Discovery
+
+Category tabs / Explore screen.
+
+Search bar with filters (by God, Epic, Genre, Duration).
+
+User Accounts (Basic)
+
+Sign in via Google/Email.
+
+Saved playlists (favourites, watch later).
+
+History tracking.
+
+UI/UX Expectations
+
+OTT-style feel but simplified for short-form content.
+
+Smooth animations (category transitions, hover effects).
+
+Typography: Elegant Sanskrit-inspired fonts for headings + modern readable fonts for descriptions.
+
+Icons: Use spiritual-inspired iconography (lotus, diya, conch).
+
+Tech Details
+
+Backend: Firebase (Auth + Firestore + Storage for video URLs).
+
+Video hosting: Firebase Storage / YouTube embed (configurable).
+
+Code must be modular, scalable, and production-ready.
+
+Include comments and instructions for future scaling (like push notifications for festivals, donation/in-app offerings, or premium subscription for ad-free experience).
+
+Future-Ready Features (Scaffold only, not full build)
+
+Push notifications (e.g., “New Ramayana video uploaded for Janmashtami”).
+
+Download offline mode.
+
+Multi-language support (Hindi, English, regional languages).
+
+Live-streaming events (aartis/festivals).
+
+🔹 Deliverables
+
+Full React Native/Flutter codebase with navigation, video player, and Firebase integration.
+
+Dummy seed data (5–6 sample videos per category).
+
+Styled UI with dark + golden devotional theme.
+
+Modular structure for easy feature expansion.
+
+🎨 UI Inspiration Keywords for Styling
+
+Netflix/OTT-inspired UI,
+
+Dark theme with gold/red accent,
+
+Smooth transitions,
+
+Devotional yet modern.
