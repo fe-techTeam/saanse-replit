@@ -230,44 +230,57 @@ export default function Home() {
             <h2 className="text-3xl font-bold text-white">Popular on SAANSE</h2>
             <div className="ml-4 px-3 py-1 bg-yellow-600 text-black text-sm font-bold rounded-full">POPULAR</div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {enhancedVideos.slice(12, 24).map((video: any) => (
+          <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">
+            {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="group cursor-pointer"
+                className="flex-shrink-0 w-80 group cursor-pointer"
                 onClick={() => setSelectedVideo(video)}
               >
                 <div className="relative">
                   <img 
                     src={video.thumbnailUrl} 
                     alt={video.title}
-                    className="w-full h-36 object-cover rounded-md group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-44 object-cover rounded-md group-hover:scale-105 transition-transform duration-300"
                   />
                   
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent rounded-md"></div>
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
+                  
+                  <div className="absolute top-2 left-2 bg-yellow-600 text-black px-2 py-1 rounded text-sm font-bold">
+                    TOP {index + 1}
+                  </div>
                   
                   <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
                     3m
                   </div>
 
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <h3 className="font-semibold text-white text-sm mb-1">{video.title}</h3>
-                    <div className="flex items-center justify-between text-xs text-gray-300">
-                      <span className="flex items-center">
-                        <Eye className="w-3 h-3 mr-1" />
-                        {Math.floor(Math.random() * 200 + 50)}K
-                      </span>
-                      <span className="flex items-center">
-                        <Star className="w-3 h-3 mr-1 text-green-400" />
-                        {video.rating}
-                      </span>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center">
+                      <Play className="w-6 h-6 text-black fill-current ml-1" />
                     </div>
                   </div>
 
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-md">
-                    <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                      <Play className="w-4 h-4 text-black fill-current ml-0.5" />
-                    </div>
+                  <button
+                    onClick={(e) => toggleFavorite(video.id, e)}
+                    className="absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                  </button>
+                </div>
+                
+                <div className="mt-2 space-y-2">
+                  <h3 className="font-semibold text-white group-hover:text-gray-300 transition-colors line-clamp-1">
+                    {video.title}
+                  </h3>
+                  <p className="text-sm text-gray-400 line-clamp-2 leading-relaxed">
+                    {video.shortDescription}
+                  </p>
+                  <div className="flex items-center text-sm text-gray-400 space-x-3">
+                    <span className="flex items-center">
+                      <Star className="w-3 h-3 mr-1 text-green-400" />
+                      {video.rating}
+                    </span>
+                    <span>{video.category}</span>
                   </div>
                 </div>
               </div>
