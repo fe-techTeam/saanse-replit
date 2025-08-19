@@ -24,17 +24,41 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration - Force Refresh for SAANSE -->
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('SW registered: ', registration);
-            })
-            .catch((registrationError) => {
-              console.log('SW registration failed: ', registrationError);
+        window.addEventListener('load', async () => {
+          try {
+            // Unregister any existing service workers
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+              await registration.unregister();
+            }
+            
+            // Clear all caches
+            if ('caches' in window) {
+              const cacheNames = await caches.keys();
+              for (let cacheName of cacheNames) {
+                await caches.delete(cacheName);
+              }
+            }
+            
+            // Register new service worker
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('SAANSE SW registered: ', registration);
+            
+            // Force page reload if service worker is updated
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.location.reload();
+                }
+              });
             });
+          } catch (error) {
+            console.log('SW registration failed: ', error);
+          }
         });
       }
     </script>
