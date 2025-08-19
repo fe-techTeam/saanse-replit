@@ -17,7 +17,7 @@ export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
           <div className="w-8 h-8 bg-dharma-gold rounded-full flex items-center justify-center">
             <span className="text-dharma-dark font-bold text-lg">ॐ</span>
           </div>
-          <h1 className="text-xl font-devanagari font-bold text-dharma-gold">Dharma Stream</h1>
+          <h1 className="text-2xl font-bold text-dharma-gold tracking-wide">SAANSE</h1>
         </div>
         
         <div className="flex items-center space-x-4">

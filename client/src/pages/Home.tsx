@@ -1,119 +1,128 @@
+import { useQuery } from "@tanstack/react-query";
+import { NetflixHero } from "@/components/NetflixHero";
+import { NetflixRow } from "@/components/NetflixRow";
 import { useState } from "react";
-import { Header } from "@/components/Header";
-import { FeaturedBanner } from "@/components/FeaturedBanner";
-import { CategorySection } from "@/components/CategorySection";
-import { BottomNavigation } from "@/components/BottomNavigation";
-import { VideoPlayer } from "@/components/VideoPlayer";
-import { SearchModal } from "@/components/SearchModal";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
-import type { VideoType } from "@/types/video";
-import { useLocation } from "wouter";
+
+const categories = [
+  "Ramayana", "Mahabharata", "Krishna", "Shiva", "Bhajans", "Explained",
+  "Hanuman", "Ganesha", "Devi", "Festivals"
+];
 
 export default function Home() {
-  const [, setLocation] = useLocation();
-  const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
-  const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { data: videos = [], isLoading } = useQuery({
+    queryKey: ["/api/videos"]
+  });
 
-  const categories = [
-    { title: "Ramayana Stories", devanagari: "रामायण कथा", category: "Ramayana" },
-    { title: "Krishna Stories", devanagari: "श्रीकृष्ण लीला", category: "Krishna" },
-    { title: "Bhajans & Aartis", devanagari: "भजन और आरती", category: "Bhajans" },
-    { title: "Mahabharata", devanagari: "महाभारत गाथा", category: "Mahabharata" },
-    { title: "Lord Shiva", devanagari: "भोलेनाथ की कथा", category: "Shiva" },
-    { title: "Hanuman Stories", devanagari: "हनुमान जी की कथा", category: "Hanuman" },
-    { title: "Lord Ganesha", devanagari: "गणपति बप्पा", category: "Ganesha" },
-    { title: "Divine Mother", devanagari: "माता की महिमा", category: "Devi" },
-    { title: "Festivals", devanagari: "त्योहार और उत्सव", category: "Festivals" },
-    { title: "Explained", devanagari: "व्याख्या", category: "Explained" },
-  ];
+  // Type assertion for videos data
+  const typedVideos = videos as any[];
+  
+  const [selectedVideo, setSelectedVideo] = useState<any>(null);
 
-  const handleVideoClick = (video: VideoType) => {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-dharma-dark flex items-center justify-center">
+        <div className="animate-pulse">
+          <div className="text-3xl font-bold text-dharma-gold mb-2">SAANSE</div>
+          <div className="text-dharma-gold text-lg">Loading divine content...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Get featured video (highest views)
+  const featuredVideo = typedVideos.reduce((prev: any, current: any) => {
+    return (prev.views > current.views) ? prev : current;
+  }, typedVideos[0] || null);
+
+  const handleVideoClick = (video: any) => {
     setSelectedVideo(video);
-    setIsVideoPlayerOpen(true);
-  };
-
-  const handleCloseVideoPlayer = () => {
-    setIsVideoPlayerOpen(false);
-    setSelectedVideo(null);
-  };
-
-  const handleSearchClick = () => {
-    setIsSearchOpen(true);
-  };
-
-  const handleCloseSearch = () => {
-    setIsSearchOpen(false);
-  };
-
-  const handleProfileClick = () => {
-    setLocation("/profile");
-  };
-
-  const handleFeaturedPlay = () => {
-    // Create a mock featured video for demo
-    const featuredVideo: VideoType = {
-      id: "featured",
-      title: "Shrimad Bhagavad Gita - Episode 1",
-      description: "The eternal wisdom through animated storytelling. The Battlefield of Life",
-      category: "Explained",
-      duration: 600,
-      thumbnailUrl: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&h=225&fit=crop",
-      videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
-      likes: 0,
-      views: 0,
-      tags: ["bhagavad", "gita", "wisdom", "krishna"],
-      isActive: true,
-      createdAt: new Date(),
-    };
-    handleVideoClick(featuredVideo);
-  };
-
-  const handleAddToList = () => {
-    // TODO: Implement add to playlist functionality
-    console.log("Add to list clicked");
+    // In a real app, this would navigate to video player
+    console.log("Playing video:", video.title);
   };
 
   return (
     <div className="min-h-screen bg-dharma-dark">
-      <Header 
-        onSearchClick={handleSearchClick}
-        onProfileClick={handleProfileClick}
-      />
-
-      <main className="pt-20 pb-20">
-        <FeaturedBanner 
-          onPlayClick={handleFeaturedPlay}
-          onAddToListClick={handleAddToList}
+      {/* Netflix-style Hero Section */}
+      {featuredVideo && (
+        <NetflixHero
+          title={featuredVideo.title}
+          description={featuredVideo.description}
+          backgroundImage={featuredVideo.thumbnailUrl}
+          onPlay={() => handleVideoClick(featuredVideo)}
+          onAddToList={() => console.log("Added to list:", featuredVideo.title)}
+          onMoreInfo={() => console.log("More info:", featuredVideo.title)}
         />
+      )}
 
-        {categories.map((category) => (
-          <CategorySection
-            key={category.category}
-            title={category.title}
-            devanagariTitle={category.devanagari}
-            category={category.category}
+      {/* Netflix-style Content Rows */}
+      <div className="relative z-10 -mt-32 bg-gradient-to-t from-dharma-dark via-dharma-dark/95 to-transparent">
+        <div className="pt-32 pb-12 space-y-8">
+          {/* Trending Now */}
+          <NetflixRow
+            title="🔥 Trending Divine Stories"
+            videos={typedVideos
+              .sort((a: any, b: any) => b.views - a.views)
+              .slice(0, 12)
+            }
             onVideoClick={handleVideoClick}
-            onViewAllClick={() => console.log(`View all ${category.category}`)}
           />
-        ))}
-      </main>
 
-      <BottomNavigation />
-      
-      <VideoPlayer
-        video={selectedVideo}
-        isOpen={isVideoPlayerOpen}
-        onClose={handleCloseVideoPlayer}
-      />
-      
-      <SearchModal
-        isOpen={isSearchOpen}
-        onClose={handleCloseSearch}
-        onVideoClick={handleVideoClick}
-      />
-      
-      <PWAInstallPrompt />
+          {/* Popular Episodes */}
+          <NetflixRow
+            title="⭐ Most Loved Episodes"
+            videos={typedVideos
+              .sort((a: any, b: any) => b.likes - a.likes)
+              .slice(0, 12)
+            }
+            onVideoClick={handleVideoClick}
+          />
+
+          {/* Category Rows */}
+          {categories.map(category => {
+            const categoryVideos = typedVideos.filter((video: any) => video.category === category);
+            if (categoryVideos.length === 0) return null;
+            
+            return (
+              <NetflixRow
+                key={category}
+                title={`📿 ${category} Chronicles`}
+                videos={categoryVideos}
+                onVideoClick={handleVideoClick}
+              />
+            );
+          })}
+
+          {/* New Releases */}
+          <NetflixRow
+            title="✨ Recently Added"
+            videos={typedVideos
+              .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .slice(0, 12)
+            }
+            onVideoClick={handleVideoClick}
+          />
+
+          {/* Devotional Bhajans */}
+          <NetflixRow
+            title="🎵 Sacred Melodies"
+            videos={typedVideos
+              .filter((video: any) => video.category === "Bhajans")
+              .sort((a: any, b: any) => b.views - a.views)
+            }
+            onVideoClick={handleVideoClick}
+          />
+
+          {/* Educational Content */}
+          <NetflixRow
+            title="📚 Spiritual Wisdom"
+            videos={typedVideos
+              .filter((video: any) => video.category === "Explained")
+              .sort((a: any, b: any) => b.likes - a.likes)
+            }
+            onVideoClick={handleVideoClick}
+          />
+        </div>
+      </div>
     </div>
   );
 }

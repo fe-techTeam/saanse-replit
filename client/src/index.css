@@ -30,13 +30,12 @@
   --chart-5: hsl(27, 87%, 67%);
   --radius: 0.5rem;
   
-  /* Dharma Stream Custom Colors */
-  --dharma-dark: hsl(0, 0%, 3.9%);
-  --dharma-dark-light: hsl(0, 0%, 10.2%);
-  --dharma-gold: hsl(43, 74%, 52%);
-  --dharma-gold-light: hsl(51, 100%, 50%);
-  --dharma-red: hsl(0, 61%, 50%);
-  --dharma-red-light: hsl(0, 74%, 42%);
+  /* SAANSE Custom Colors - Netflix Quality */
+  --dharma-dark: hsl(240, 10%, 6%);
+  --dharma-secondary: hsl(240, 8%, 10%);
+  --dharma-gold: hsl(45, 90%, 70%);
+  --dharma-text: hsl(45, 25%, 90%);
+  --dharma-accent: hsl(30, 85%, 60%);
 }
 
 .dark {
