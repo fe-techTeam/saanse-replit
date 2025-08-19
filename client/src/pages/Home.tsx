@@ -133,9 +133,9 @@ export default function Home() {
                 <span className="px-2 py-1 border border-gray-500 text-sm text-gray-300">HD</span>
               </div>
               
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 pt-2">
                 <button 
-                  className="flex items-center bg-white text-black px-8 py-3 rounded font-bold text-lg hover:bg-gray-200 transition-all"
+                  className="flex items-center justify-center bg-white text-black px-10 py-4 rounded-md font-bold text-lg hover:bg-gray-200 transition-all shadow-lg"
                   onClick={() => setSelectedVideo(featuredVideo)}
                 >
                   <Play className="w-6 h-6 mr-3 fill-current" />
@@ -143,7 +143,7 @@ export default function Home() {
                 </button>
                 
                 <button 
-                  className="flex items-center bg-gray-600 text-white px-8 py-3 rounded font-bold text-lg hover:bg-gray-500 transition-all"
+                  className="flex items-center justify-center bg-gray-600/90 text-white px-10 py-4 rounded-md font-bold text-lg hover:bg-gray-500 transition-all shadow-lg"
                   onClick={() => setSelectedVideo(featuredVideo)}
                 >
                   <Info className="w-6 h-6 mr-3" />
