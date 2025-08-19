@@ -156,7 +156,7 @@ export default function Home() {
       )}
 
       {/* Content Sections */}
-      <div className="relative -mt-32 space-y-16 px-6 pb-16 max-w-7xl mx-auto">
+      <div className="relative -mt-16 space-y-16 px-6 pb-16 max-w-7xl mx-auto">
         
         {/* Trending Now */}
         <section className="bg-black/60 backdrop-blur-sm rounded-xl p-6 border border-gray-800">
