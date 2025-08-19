@@ -1,0 +1,71 @@
+{
+  "app": {
+    "name": "Dharma Stream",
+    "tagline": "Your Spiritual Journey Begins Here"
+  },
+  "navigation": {
+    "home": "Home",
+    "search": "Search",
+    "library": "Library",
+    "profile": "Profile"
+  },
+  "categories": {
+    "ramayana": "Ramayana Stories",
+    "mahabharata": "Mahabharata",
+    "krishna": "Krishna Stories",
+    "shiva": "Lord Shiva",
+    "bhajans": "Bhajans & Aartis",
+    "explained": "Explained",
+    "hanuman": "Hanuman Stories",
+    "ganesha": "Lord Ganesha",
+    "devi": "Divine Mother",
+    "festivals": "Festivals"
+  },
+  "actions": {
+    "play": "Play",
+    "addToList": "My List",
+    "share": "Share",
+    "like": "Like",
+    "viewAll": "View All",
+    "search": "Search",
+    "signIn": "Sign In",
+    "signOut": "Sign Out"
+  },
+  "search": {
+    "placeholder": "Search for devotional content...",
+    "noResults": "No videos found for",
+    "startTyping": "Start typing to search devotional content",
+    "filters": "Filters"
+  },
+  "library": {
+    "title": "Your Library",
+    "favorites": "Favorites",
+    "watchLater": "Watch Later",
+    "history": "History",
+    "noFavorites": "No favorite videos yet",
+    "noWatchLater": "No videos saved for later",
+    "noHistory": "No viewing history",
+    "signInRequired": "Sign in to access your library"
+  },
+  "profile": {
+    "welcome": "Welcome to Dharma Stream",
+    "signInMessage": "Sign in to save your favorite devotional content and sync across devices",
+    "settings": "Settings",
+    "appSettings": "App Settings",
+    "notifications": "Notifications, language & more",
+    "version": "Dharma Stream v1.0.0",
+    "taglineBottom": "Bringing devotional wisdom to your fingertips"
+  },
+  "video": {
+    "views": "views",
+    "likes": "likes",
+    "duration": "Duration",
+    "category": "Category"
+  },
+  "install": {
+    "title": "Install Dharma Stream",
+    "message": "Access your devotional content offline",
+    "install": "Install",
+    "later": "Later"
+  }
+}

@@ -7,6 +7,7 @@ import Home from "@/pages/Home";
 import Search from "@/pages/Search";
 import Library from "@/pages/Library";
 import Profile from "@/pages/Profile";
+import CMS from "@/pages/CMS";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/search" component={Search} />
       <Route path="/library" component={Library} />
       <Route path="/profile" component={Profile} />
+      <Route path="/cms" component={CMS} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,5 +1,7 @@
-import { Search, User } from "lucide-react";
+import { Search, User, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
   onSearchClick: () => void;
@@ -8,6 +10,7 @@ interface HeaderProps {
 
 export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-gradient-to-b from-dharma-dark to-transparent z-50 px-4 py-4">
@@ -17,14 +20,18 @@ export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
           <div className="w-8 h-8 bg-dharma-gold rounded-full flex items-center justify-center">
             <span className="text-dharma-dark font-bold text-lg">ॐ</span>
           </div>
-          <h1 className="text-xl font-devanagari font-bold text-dharma-gold">Dharma Stream</h1>
+          <h1 className="text-xl font-devanagari font-bold text-dharma-gold">{t('app.name')}</h1>
         </div>
         
         <div className="flex items-center space-x-4">
+          {/* Language switcher */}
+          <LanguageSwitcher />
+          
           {/* Search icon */}
           <button 
             className="p-2 hover:bg-gray-800 rounded-full transition-colors"
             onClick={onSearchClick}
+            title={t('actions.search')}
           >
             <Search className="w-6 h-6" />
           </button>
