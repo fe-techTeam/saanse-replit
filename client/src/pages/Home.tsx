@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Play, Plus, Info, ChevronDown, Volume2, VolumeX } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Play, Heart, BookOpen, Star, Clock, Users } from "lucide-react";
+import { useState } from "react";
 
 export default function Home() {
   const { data: videos = [], isLoading } = useQuery({
@@ -9,290 +9,345 @@ export default function Home() {
 
   const typedVideos = videos as any[];
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
-  const [isMuted, setIsMuted] = useState(true);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl font-bold text-red-600 mb-4">SAANSE</div>
-          <div className="text-white text-xl">Loading...</div>
+          <div className="text-6xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent mb-4">
+            SAANSE
+          </div>
+          <div className="text-amber-200 text-xl">Awakening Divine Stories...</div>
+          <div className="mt-4 w-64 h-1 bg-purple-800 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 w-1/3 animate-pulse"></div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Get featured video
   const featuredVideo = typedVideos.length > 0 ? typedVideos[0] : null;
 
+  const toggleFavorite = (videoId: string) => {
+    setFavorites(prev => 
+      prev.includes(videoId) 
+        ? prev.filter(id => id !== videoId)
+        : [...prev, videoId]
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
-      {/* Netflix-style Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center justify-between p-4 max-w-screen-2xl mx-auto">
-          <div className="flex items-center space-x-8">
-            <h1 className="text-3xl font-bold text-red-600">SAANSE</h1>
-            <nav className="hidden md:flex space-x-6">
-              <a href="#" className="text-white hover:text-gray-300">Home</a>
-              <a href="#" className="text-gray-400 hover:text-gray-300">TV Shows</a>
-              <a href="#" className="text-gray-400 hover:text-gray-300">Movies</a>
-              <a href="#" className="text-gray-400 hover:text-gray-300">My List</a>
-            </nav>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-red-600 rounded"></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 text-white">
+      
+      {/* Custom Header */}
+      <header className="relative z-50 bg-gradient-to-r from-purple-900/80 to-indigo-900/80 backdrop-blur-md border-b border-amber-400/20">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+                SAANSE
+              </h1>
+              <div className="hidden md:flex items-center space-x-6">
+                <span className="text-amber-200 border-b-2 border-amber-400 pb-1">Stories</span>
+                <span className="text-gray-300 hover:text-amber-200 cursor-pointer">Devotional</span>
+                <span className="text-gray-300 hover:text-amber-200 cursor-pointer">My Journey</span>
+                <span className="text-gray-300 hover:text-amber-200 cursor-pointer">Wisdom</span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
+                <span className="text-black font-bold">🕉</span>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section - Unique Design */}
       {featuredVideo && (
-        <div className="relative h-screen">
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ 
-              backgroundImage: `url(${featuredVideo.thumbnailUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent"></div>
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent"></div>
+        <section className="relative overflow-hidden">
+          <div className="absolute inset-0">
+            <img 
+              src={featuredVideo.thumbnailUrl} 
+              alt={featuredVideo.title}
+              className="w-full h-full object-cover opacity-30"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-purple-900/50 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-transparent to-slate-900/40"></div>
           </div>
           
-          <div className="relative z-10 flex items-center h-full max-w-screen-2xl mx-auto px-4 md:px-16">
-            <div className="max-w-lg space-y-4">
-              <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-                {featuredVideo.title}
-              </h1>
-              
-              <p className="text-lg md:text-xl text-gray-200 leading-relaxed line-clamp-3">
-                {featuredVideo.description}
-              </p>
-              
-              <div className="flex items-center space-x-4 pt-4">
-                <button 
-                  className="flex items-center space-x-2 bg-white text-black px-8 py-3 rounded font-semibold text-lg hover:bg-gray-200 transition-colors"
-                  onClick={() => setSelectedVideo(featuredVideo)}
-                >
-                  <Play className="w-6 h-6 fill-current" />
-                  <span>Play</span>
-                </button>
+          <div className="relative z-10 max-w-7xl mx-auto px-4 py-20">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="space-y-6">
+                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-full border border-amber-400/30">
+                  <Star className="w-4 h-4 text-amber-400 mr-2" />
+                  <span className="text-amber-200 text-sm font-medium">Featured Divine Story</span>
+                </div>
                 
-                <button className="flex items-center space-x-2 bg-gray-600/70 text-white px-8 py-3 rounded font-semibold text-lg hover:bg-gray-600/90 transition-colors">
-                  <Info className="w-6 h-6" />
-                  <span>More Info</span>
-                </button>
+                <h2 className="text-5xl md:text-6xl font-bold leading-tight">
+                  <span className="bg-gradient-to-r from-white to-amber-100 bg-clip-text text-transparent">
+                    {featuredVideo.title}
+                  </span>
+                </h2>
+                
+                <p className="text-xl text-gray-300 leading-relaxed max-w-lg">
+                  {featuredVideo.description}
+                </p>
+                
+                <div className="flex items-center space-x-6 text-sm text-gray-400">
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {Math.floor((featuredVideo.duration || 0) / 60)} min
+                  </div>
+                  <div className="flex items-center">
+                    <Users className="w-4 h-4 mr-1" />
+                    {((featuredVideo.views || 0) / 1000).toFixed(0)}K seekers
+                  </div>
+                  <div className="px-3 py-1 bg-purple-700/30 rounded-full border border-purple-500/30">
+                    {featuredVideo.category}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4 pt-4">
+                  <button 
+                    className="flex items-center space-x-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-4 rounded-xl font-bold text-lg hover:from-amber-400 hover:to-orange-400 transition-all duration-300 shadow-lg hover:shadow-amber-500/25"
+                    onClick={() => setSelectedVideo(featuredVideo)}
+                  >
+                    <Play className="w-6 h-6 fill-current" />
+                    <span>Begin Journey</span>
+                  </button>
+                  
+                  <button 
+                    className="flex items-center space-x-3 bg-white/10 backdrop-blur-md text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/20 transition-all duration-300 border border-white/20"
+                    onClick={() => toggleFavorite(featuredVideo.id)}
+                  >
+                    <Heart 
+                      className={`w-6 h-6 ${favorites.includes(featuredVideo.id) ? 'fill-red-500 text-red-500' : ''}`} 
+                    />
+                    <span>Save to Heart</span>
+                  </button>
+                </div>
               </div>
               
-              <div className="flex items-center space-x-4 text-sm text-gray-300 pt-2">
-                <span className="bg-gray-800 px-2 py-1 rounded">{featuredVideo.category}</span>
-                <span>{Math.floor((featuredVideo.duration || 0) / 60)}m</span>
-                <span>{((featuredVideo.views || 0) / 1000).toFixed(0)}K views</span>
+              <div className="relative">
+                <div className="aspect-video bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-2xl backdrop-blur-sm border border-white/10 p-6">
+                  <img 
+                    src={featuredVideo.thumbnailUrl} 
+                    alt={featuredVideo.title}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                  <div className="absolute inset-6 flex items-center justify-center">
+                    <div className="w-20 h-20 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-300">
+                      <Play className="w-8 h-8 text-black fill-current ml-1" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <button 
-            className="absolute bottom-8 right-8 p-3 bg-gray-800/70 rounded-full hover:bg-gray-700 transition-colors"
-            onClick={() => setIsMuted(!isMuted)}
-          >
-            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-          </button>
-        </div>
+        </section>
       )}
 
-      {/* Content Rows */}
-      <div className="relative z-10 -mt-32 space-y-12 pb-20">
+      {/* Content Sections - Original Design */}
+      <div className="max-w-7xl mx-auto px-4 py-16 space-y-16">
         
-        {/* Trending Now */}
-        <div className="px-4 md:px-16">
-          <h2 className="text-2xl font-bold mb-6">Trending Now</h2>
-          <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">
-            {typedVideos.slice(0, 20).map((video: any, index: number) => (
+        {/* Trending Wisdom */}
+        <section>
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+              Trending Wisdom
+            </h3>
+            <button className="text-amber-400 hover:text-amber-300 font-medium">
+              Explore All →
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {typedVideos.slice(0, 8).map((video: any, index: number) => (
               <div 
                 key={video.id}
-                className="min-w-[300px] group cursor-pointer"
+                className="group relative bg-gradient-to-br from-slate-800/50 to-purple-800/30 rounded-2xl overflow-hidden border border-white/10 hover:border-amber-400/30 transition-all duration-300 cursor-pointer"
                 onClick={() => setSelectedVideo(video)}
               >
-                <div className="relative">
+                <div className="aspect-video relative">
                   <img 
                     src={video.thumbnailUrl} 
                     alt={video.title}
-                    className="w-full h-44 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 rounded-lg"></div>
-                  <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-sm font-bold">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                  <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black px-3 py-1 rounded-full text-sm font-bold">
                     #{index + 1}
                   </div>
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <div className="bg-black/80 p-2 rounded">
-                      <h3 className="font-semibold text-sm truncate">{video.title}</h3>
-                      <div className="flex items-center justify-between text-xs text-gray-300 mt-1">
-                        <span>{Math.floor((video.duration || 0) / 60)}m</span>
-                        <span>{((video.views || 0) / 1000).toFixed(0)}K views</span>
-                      </div>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="w-16 h-16 bg-amber-500/90 rounded-full flex items-center justify-center">
+                      <Play className="w-6 h-6 text-black fill-current ml-1" />
                     </div>
+                  </div>
+                </div>
+                
+                <div className="p-4">
+                  <h4 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-amber-200 transition-colors">
+                    {video.title}
+                  </h4>
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <span>{Math.floor((video.duration || 0) / 60)} min</span>
+                    <span>{((video.views || 0) / 1000).toFixed(0)}K</span>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Popular on Saanse */}
-        <div className="px-4 md:px-16">
-          <h2 className="text-2xl font-bold mb-6">Popular on Saanse</h2>
-          <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">
-            {typedVideos
-              .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
-              .slice(0, 20)
-              .map((video: any) => (
-              <div 
-                key={video.id}
-                className="min-w-[280px] group cursor-pointer"
-                onClick={() => setSelectedVideo(video)}
-              >
-                <div className="relative">
-                  <img 
-                    src={video.thumbnailUrl} 
-                    alt={video.title}
-                    className="w-full h-40 object-cover rounded group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent rounded"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-3">
-                    <h3 className="font-semibold text-sm mb-1 line-clamp-2">{video.title}</h3>
-                    <div className="flex items-center justify-between text-xs text-gray-300">
-                      <span className="bg-yellow-600 px-2 py-1 rounded">{video.category}</span>
-                      <span>{((video.likes || 0) / 1000).toFixed(0)}K likes</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Categories */}
+        {/* Sacred Categories */}
         {['Ramayana', 'Krishna', 'Mahabharata', 'Shiva', 'Bhajans'].map(category => {
           const categoryVideos = typedVideos.filter((video: any) => video.category === category);
-          
           if (categoryVideos.length === 0) return null;
           
           return (
-            <div key={category} className="px-4 md:px-16">
-              <h2 className="text-2xl font-bold mb-6">{category} Stories</h2>
-              <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">
+            <section key={category}>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-3xl font-bold text-white">
+                  Sacred {category}
+                </h3>
+                <button className="text-amber-400 hover:text-amber-300 font-medium">
+                  View Collection →
+                </button>
+              </div>
+              
+              <div className="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide">
                 {categoryVideos.map((video: any) => (
                   <div 
                     key={video.id}
-                    className="min-w-[240px] group cursor-pointer"
+                    className="min-w-[280px] group cursor-pointer"
                     onClick={() => setSelectedVideo(video)}
                   >
-                    <div className="relative">
-                      <img 
-                        src={video.thumbnailUrl} 
-                        alt={video.title}
-                        className="w-full h-36 object-cover rounded group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 rounded"></div>
-                      <div className="absolute top-2 right-2">
-                        <button className="p-1 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Plus className="w-4 h-4" />
-                        </button>
+                    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-slate-700/30 to-purple-700/20 border border-white/5 hover:border-amber-400/20 transition-all duration-300">
+                      <div className="aspect-video relative">
+                        <img 
+                          src={video.thumbnailUrl} 
+                          alt={video.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                       </div>
-                    </div>
-                    <div className="mt-2">
-                      <h3 className="font-medium text-sm truncate">{video.title}</h3>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {((video.views || 0) / 1000).toFixed(0)}K views
-                      </p>
+                      
+                      <div className="p-4 space-y-3">
+                        <h4 className="font-semibold text-lg line-clamp-2 group-hover:text-amber-200 transition-colors">
+                          {video.title}
+                        </h4>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 text-sm text-gray-400">
+                            <BookOpen className="w-4 h-4" />
+                            <span>{((video.views || 0) / 1000).toFixed(0)}K seekers</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(video.id);
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                          >
+                            <Heart 
+                              className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} 
+                            />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           );
         })}
 
-        {/* Continue Watching */}
-        <div className="px-4 md:px-16">
-          <h2 className="text-2xl font-bold mb-6">Continue Watching</h2>
-          <div className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">
-            {typedVideos.slice(10, 25).map((video: any) => (
+        {/* Continue Your Journey */}
+        <section>
+          <h3 className="text-3xl font-bold mb-8 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Continue Your Spiritual Journey
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {typedVideos.slice(10, 16).map((video: any) => (
               <div 
                 key={video.id}
-                className="min-w-[320px] group cursor-pointer"
+                className="group relative bg-gradient-to-br from-indigo-900/30 to-purple-900/30 rounded-2xl overflow-hidden border border-indigo-500/20 hover:border-purple-400/40 transition-all duration-300 cursor-pointer"
                 onClick={() => setSelectedVideo(video)}
               >
-                <div className="relative">
+                <div className="aspect-video relative">
                   <img 
                     src={video.thumbnailUrl} 
                     alt={video.title}
-                    className="w-full h-48 object-cover rounded group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
-                    <div className="h-full bg-red-600 w-1/3"></div>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="bg-black/80 p-3 rounded-full">
-                      <Play className="w-8 h-8 fill-current" />
-                    </div>
+                  <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-700">
+                    <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 w-1/3"></div>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <h3 className="font-semibold text-lg truncate">{video.title}</h3>
-                  <p className="text-sm text-gray-400 mt-1">{video.category}</p>
+                
+                <div className="p-4">
+                  <h4 className="font-bold text-lg mb-2 group-hover:text-purple-200 transition-colors">
+                    {video.title}
+                  </h4>
+                  <p className="text-sm text-gray-400">{video.category} • Continue from 33%</p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
       </div>
 
       {/* Video Modal */}
       {selectedVideo && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-800 to-purple-900 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-auto border border-amber-400/20">
             <div className="relative">
               <img 
                 src={selectedVideo.thumbnailUrl} 
                 alt={selectedVideo.title}
-                className="w-full h-64 object-cover rounded-t-lg"
+                className="w-full h-80 object-cover rounded-t-3xl"
               />
               <button 
-                className="absolute top-4 right-4 p-2 bg-black/70 rounded-full text-white hover:bg-black"
+                className="absolute top-6 right-6 p-3 bg-black/70 backdrop-blur-sm rounded-full text-white hover:bg-black/90 transition-colors"
                 onClick={() => setSelectedVideo(null)}
               >
-                ×
+                ✕
               </button>
-              <div className="absolute bottom-4 left-4 right-4">
-                <button className="flex items-center space-x-2 bg-white text-black px-6 py-2 rounded font-semibold">
+              <div className="absolute bottom-6 left-6 right-6">
+                <button className="flex items-center space-x-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-xl font-bold">
                   <Play className="w-5 h-5 fill-current" />
-                  <span>Play</span>
+                  <span>Begin This Journey</span>
                 </button>
               </div>
             </div>
             
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-2">{selectedVideo.title}</h2>
-              <div className="flex items-center space-x-4 text-sm text-gray-400 mb-4">
-                <span className="text-green-500">98% Match</span>
-                <span>{Math.floor((selectedVideo.duration || 0) / 60)}m</span>
-                <span className="border border-gray-600 px-2 py-1 text-xs">HD</span>
+            <div className="p-8">
+              <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-white to-amber-100 bg-clip-text text-transparent">
+                {selectedVideo.title}
+              </h2>
+              <div className="flex items-center space-x-6 text-sm text-gray-400 mb-6">
+                <div className="flex items-center">
+                  <Star className="w-4 h-4 text-amber-400 mr-1" />
+                  <span className="text-amber-400">Divine Content</span>
+                </div>
+                <span>{Math.floor((selectedVideo.duration || 0) / 60)} minutes</span>
+                <span className="px-3 py-1 bg-purple-700/30 rounded-full">{selectedVideo.category}</span>
               </div>
-              <p className="text-gray-300 leading-relaxed mb-6">
+              <p className="text-gray-300 leading-relaxed text-lg mb-8">
                 {selectedVideo.description}
               </p>
               
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-6 text-sm">
                 <div>
-                  <span className="text-gray-400">Category: </span>
-                  <span className="text-white">{selectedVideo.category}</span>
+                  <span className="text-gray-400">Sacred Category: </span>
+                  <span className="text-amber-300">{selectedVideo.category}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Views: </span>
+                  <span className="text-gray-400">Spiritual Seekers: </span>
                   <span className="text-white">{((selectedVideo.views || 0) / 1000).toFixed(0)}K</span>
                 </div>
               </div>
@@ -312,12 +367,6 @@ export default function Home() {
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .line-clamp-3 {
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
         }

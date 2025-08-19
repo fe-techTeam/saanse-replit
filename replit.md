@@ -2,7 +2,7 @@
 
 ## Overview
 
-Dharma Stream is a cross-platform mobile web application designed as a mini-OTT streaming platform for devotional and mythological content. The app features a React-based frontend with a dark theme and golden accents, offering short-form spiritual videos (1-2 minutes) including Ramayana stories, Mahabharata tales, Krishna leelas, Shiva stories, bhajans, and educational explanations of religious concepts. The platform provides a Netflix-like browsing experience with categories, search functionality, user accounts, playlists, and viewing history.
+SAANSE is a cross-platform mobile web application designed as a premium mythological OTT streaming platform for devotional and spiritual content. The app features a unique React-based frontend with gradient themes (purple/indigo/amber) that distinguish it from existing platforms, offering short-form spiritual videos (1-2 minutes) including Ramayana stories, Mahabharata tales, Krishna leelas, Shiva stories, bhajans, and educational explanations of religious concepts. The platform provides an original, high-quality browsing experience inspired by modern streaming services but with its own distinct spiritual identity and design language.
 
 ## User Preferences
 
