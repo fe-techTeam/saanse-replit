@@ -8,6 +8,8 @@ import Search from "@/pages/Search";
 import Library from "@/pages/Library";
 import Profile from "@/pages/Profile";
 import CMS from "@/pages/CMS";
+import Admin from "@/pages/Admin";
+import AuthCallback from "@/pages/auth-callback";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,6 +20,8 @@ function Router() {
       <Route path="/library" component={Library} />
       <Route path="/profile" component={Profile} />
       <Route path="/cms" component={CMS} />
+      <Route path="/admin" component={Admin} />
+      <Route path="/auth/callback" component={AuthCallback} />
       <Route component={NotFound} />
     </Switch>
   );

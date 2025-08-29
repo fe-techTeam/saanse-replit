@@ -1,17 +1,22 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { Express } from "express";
 import { storage } from "./storage";
-import { insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertVideoSchema } from "@shared/schema";
+import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema } from "@shared/schema";
 import { z } from "zod";
+import { registerAdminRoutes } from "./admin/admin-routes";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
   // Videos
   app.get("/api/videos", async (req, res) => {
     try {
       const videos = await storage.getVideos();
       res.json(videos);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch videos" });
+      console.error("Error fetching videos:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch videos", 
+        details: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
+      });
     }
   });
 
@@ -22,19 +27,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(videos);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch videos by category" });
-    }
-  });
-
-  app.get("/api/videos/search", async (req, res) => {
-    try {
-      const { q } = req.query;
-      if (!q || typeof q !== 'string') {
-        return res.status(400).json({ error: "Query parameter 'q' is required" });
-      }
-      const videos = await storage.searchVideos(q);
-      res.json(videos);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to search videos" });
     }
   });
 
@@ -51,41 +43,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/videos/:id/view", async (req, res) => {
+  app.get("/api/videos/search/:query", async (req, res) => {
     try {
-      const { id } = req.params;
-      const video = await storage.getVideoById(id);
-      if (video) {
-        await storage.updateVideo(id, { views: video.views + 1 });
-      }
-      res.json({ success: true });
+      const { query } = req.params;
+      const videos = await storage.searchVideos(query);
+      res.json(videos);
     } catch (error) {
-      res.status(500).json({ error: "Failed to increment video views" });
+      res.status(500).json({ error: "Failed to search videos" });
     }
   });
 
-  app.post("/api/videos/:id/like", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const video = await storage.getVideoById(id);
-      if (video) {
-        await storage.updateVideo(id, { likes: video.likes + 1 });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to like video" });
-    }
-  });
-
-  // CMS Video Management Routes
   app.post("/api/videos", async (req, res) => {
     try {
-      const validatedData = insertVideoSchema.parse(req.body);
-      const video = await storage.createVideo(validatedData);
+      const videoData = insertVideoSchema.parse(req.body);
+      const video = await storage.createVideo(videoData);
       res.status(201).json(video);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid data", details: error.errors });
+        return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: "Failed to create video" });
     }
@@ -94,16 +69,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/videos/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const updateVideoSchema = insertVideoSchema.partial();
-      const validatedData = updateVideoSchema.parse(req.body);
-      const video = await storage.updateVideo(id, validatedData);
+      const videoData = insertVideoSchema.partial().parse(req.body);
+      const video = await storage.updateVideo(id, videoData);
       if (!video) {
         return res.status(404).json({ error: "Video not found" });
       }
       res.json(video);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid data", details: error.errors });
+        return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: "Failed to update video" });
     }
@@ -119,6 +93,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete video" });
+    }
+  });
+
+  app.post("/api/videos/:id/views", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.incrementVideoViews(id);
+      res.status(200).json({ message: "View count incremented" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to increment view count" });
+    }
+  });
+
+  app.post("/api/videos/:id/likes", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.incrementVideoLikes(id);
+      res.status(200).json({ message: "Like count incremented" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to increment like count" });
+    }
+  });
+
+  // Series
+  app.get("/api/series", async (req, res) => {
+    try {
+      const series = await storage.getSeries();
+      res.json(series);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch series" });
+    }
+  });
+
+  app.get("/api/series/category/:category", async (req, res) => {
+    try {
+      const { category } = req.params;
+      const series = await storage.getSeriesByCategory(category);
+      res.json(series);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch series by category" });
+    }
+  });
+
+  app.get("/api/series/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const series = await storage.getSeriesById(id);
+      if (!series) {
+        return res.status(404).json({ error: "Series not found" });
+      }
+      res.json(series);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch series" });
+    }
+  });
+
+  app.get("/api/series/:id/videos", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const videos = await storage.getVideosBySeries(id);
+      res.json(videos);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch series videos" });
+    }
+  });
+
+  app.post("/api/series", async (req, res) => {
+    try {
+      const seriesData = insertSeriesSchema.parse(req.body);
+      const series = await storage.createSeries(seriesData);
+      res.status(201).json(series);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create series" });
+    }
+  });
+
+  app.patch("/api/series/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const seriesData = insertSeriesSchema.partial().parse(req.body);
+      const series = await storage.updateSeries(id, seriesData);
+      if (!series) {
+        return res.status(404).json({ error: "Series not found" });
+      }
+      res.json(series);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update series" });
+    }
+  });
+
+  app.delete("/api/series/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteSeries(id);
+      if (!success) {
+        return res.status(404).json({ error: "Series not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete series" });
     }
   });
 
@@ -159,10 +239,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/firebase/:firebaseUid", async (req, res) => {
+  app.get("/api/users/supabase/:supabaseUid", async (req, res) => {
     try {
-      const { firebaseUid } = req.params;
-      const user = await storage.getUserById(firebaseUid);
+      const { supabaseUid } = req.params;
+      const user = await storage.getUserBySupabaseUid(supabaseUid);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -183,11 +263,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/playlists/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const playlist = await storage.getPlaylistById(id);
+      if (!playlist) {
+        return res.status(404).json({ error: "Playlist not found" });
+      }
+      res.json(playlist);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch playlist" });
+    }
+  });
+
   app.post("/api/playlists", async (req, res) => {
     try {
       const playlistData = insertPlaylistSchema.parse(req.body);
       const playlist = await storage.createPlaylist(playlistData);
-      res.json(playlist);
+      res.status(201).json(playlist);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
@@ -196,33 +289,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/playlists/:playlistId/videos/:videoId", async (req, res) => {
+  app.patch("/api/playlists/:id", async (req, res) => {
     try {
-      const { playlistId, videoId } = req.params;
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (playlist && !playlist.videoIds.includes(videoId)) {
-        await storage.updatePlaylist(playlistId, { 
-          videoIds: [...playlist.videoIds, videoId] 
-        });
+      const { id } = req.params;
+      const playlistData = insertPlaylistSchema.partial().parse(req.body);
+      const playlist = await storage.updatePlaylist(id, playlistData);
+      if (!playlist) {
+        return res.status(404).json({ error: "Playlist not found" });
       }
-      res.json({ success: true });
+      res.json(playlist);
     } catch (error) {
-      res.status(500).json({ error: "Failed to add video to playlist" });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update playlist" });
     }
   });
 
-  app.delete("/api/playlists/:playlistId/videos/:videoId", async (req, res) => {
+  app.delete("/api/playlists/:id", async (req, res) => {
     try {
-      const { playlistId, videoId } = req.params;
-      const playlist = await storage.getPlaylistById(playlistId);
-      if (playlist) {
-        await storage.updatePlaylist(playlistId, { 
-          videoIds: playlist.videoIds.filter(id => id !== videoId) 
-        });
+      const { id } = req.params;
+      const success = await storage.deletePlaylist(id);
+      if (!success) {
+        return res.status(404).json({ error: "Playlist not found" });
       }
-      res.json({ success: true });
+      res.status(204).send();
     } catch (error) {
-      res.status(500).json({ error: "Failed to remove video from playlist" });
+      res.status(500).json({ error: "Failed to delete playlist" });
     }
   });
 
@@ -241,15 +334,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const historyData = insertViewHistorySchema.parse(req.body);
       const history = await storage.createViewHistory(historyData);
+      res.status(201).json(history);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create view history" });
+    }
+  });
+
+  app.patch("/api/history/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const historyData = insertViewHistorySchema.partial().parse(req.body);
+      const history = await storage.updateViewHistory(id, historyData);
+      if (!history) {
+        return res.status(404).json({ error: "View history not found" });
+      }
       res.json(history);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
-      res.status(500).json({ error: "Failed to add to view history" });
+      res.status(500).json({ error: "Failed to update view history" });
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  app.delete("/api/history/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteViewHistory(id);
+      if (!success) {
+        return res.status(404).json({ error: "View history not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete view history" });
+    }
+  });
+
+  // Register admin routes
+  await registerAdminRoutes(app);
 }

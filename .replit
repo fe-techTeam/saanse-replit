@@ -11,11 +11,11 @@ build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 
 [[ports]]
-localPort = 5001
+localPort = 3000
 externalPort = 80
 
 [env]
-PORT = "5001"
+PORT = "3000"
 
 [workflows]
 runButton = "Project"
@@ -36,7 +36,7 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
-waitForPort = 5001
+waitForPort = 3000
 
 [agent]
 integrations = ["firebase_barebones_javascript==1.0.0"]

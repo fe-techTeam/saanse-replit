@@ -1,0 +1,380 @@
+# MythosStream - Netflix-like Devotional Video Platform
+# Cursor Rules for Development
+
+## Project Overview
+MythosStream (SAANSE) is a Netflix-style platform for sharing short devotional videos focused on Hindu mythology, spiritual content, and religious stories. The platform includes both user-facing features and an admin CMS panel.
+
+## Tech Stack
+- **Frontend**: React 18 + TypeScript + Vite
+- **Backend**: Express.js + TypeScript
+- **Database**: PostgreSQL with Drizzle ORM
+- **Authentication**: Firebase Auth
+- **UI**: Tailwind CSS + Radix UI + shadcn/ui
+- **State Management**: TanStack Query (React Query)
+- **Routing**: Wouter
+- **Internationalization**: i18next
+- **PWA**: Service Worker + Manifest
+
+## Project Structure
+```
+/
+├── client/                 # React frontend application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Route components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── lib/           # Utility libraries
+│   │   ├── types/         # TypeScript type definitions
+│   │   └── i18n/          # Internationalization
+├── server/                # Express.js backend
+│   ├── routes.ts          # API route definitions
+│   ├── storage.ts         # Data layer implementation
+│   └── index.ts           # Server entry point
+├── shared/                # Shared types and schemas
+└── attached_assets/       # Project assets and images
+```
+
+## Development Guidelines
+
+### 1. Code Style & Architecture
+
+#### TypeScript
+- Use strict TypeScript configuration
+- Define proper interfaces and types for all data structures
+- Use Zod schemas for runtime validation
+- Prefer type inference when types are obvious
+- Use discriminated unions for complex state management
+
+#### React Components
+- Use functional components with hooks
+- Implement proper prop typing with TypeScript
+- Use React.memo() for performance optimization when needed
+- Follow the single responsibility principle
+- Use composition over inheritance
+
+#### File Naming
+- Use PascalCase for React components: `VideoPlayer.tsx`
+- Use camelCase for utilities and hooks: `useAuth.ts`
+- Use kebab-case for CSS files: `video-player.css`
+- Use descriptive names that indicate purpose
+
+### 2. Component Architecture
+
+#### Component Structure
+```typescript
+// Component template
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import type { VideoType } from "@/types/video";
+
+interface ComponentProps {
+  videoId: string;
+  onPlay?: (video: VideoType) => void;
+}
+
+export default function ComponentName({ videoId, onPlay }: ComponentProps) {
+  const [state, setState] = useState();
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["/api/videos", videoId],
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading data</div>;
+
+  return (
+    <div className="component-container">
+      {/* Component content */}
+    </div>
+  );
+}
+```
+
+#### Custom Hooks
+- Create reusable hooks for common functionality
+- Use the `use` prefix: `useAuth`, `useVideo`, `usePlaylist`
+- Return objects with clear property names
+- Handle loading and error states
+
+### 3. State Management
+
+#### TanStack Query
+- Use for server state management
+- Implement proper cache invalidation
+- Use optimistic updates where appropriate
+- Handle loading and error states consistently
+
+#### Local State
+- Use useState for component-specific state
+- Use useReducer for complex state logic
+- Use Context for global state when needed
+
+### 4. API Design
+
+#### RESTful Endpoints
+- Follow REST conventions
+- Use proper HTTP methods (GET, POST, PATCH, DELETE)
+- Return consistent response formats
+- Implement proper error handling
+
+#### Response Format
+```typescript
+// Success response
+{
+  data: VideoType[],
+  message?: string
+}
+
+// Error response
+{
+  error: string,
+  details?: any
+}
+```
+
+### 5. Database & Data Layer
+
+#### Drizzle ORM
+- Use schema-first approach
+- Define proper relationships
+- Use migrations for schema changes
+- Implement proper validation with Zod
+
+#### Data Models
+- Users: Authentication and profile data
+- Videos: Content metadata and URLs
+- Playlists: User-created collections
+- ViewHistory: User engagement tracking
+
+### 6. Authentication & Security
+
+#### Firebase Auth
+- Implement proper authentication flow
+- Handle user state changes
+- Secure API endpoints
+- Validate user permissions
+
+#### Security Best Practices
+- Validate all inputs with Zod
+- Sanitize user-generated content
+- Implement rate limiting
+- Use HTTPS in production
+
+### 7. UI/UX Guidelines
+
+#### Design System
+- Use shadcn/ui components consistently
+- Follow Tailwind CSS utility-first approach
+- Maintain consistent spacing and typography
+- Use semantic color tokens
+
+#### Responsive Design
+- Mobile-first approach
+- Use Tailwind responsive prefixes
+- Test on multiple screen sizes
+- Implement proper touch interactions
+
+#### Accessibility
+- Use semantic HTML elements
+- Implement proper ARIA labels
+- Ensure keyboard navigation
+- Maintain color contrast ratios
+
+### 8. Performance Optimization
+
+#### Frontend
+- Implement code splitting with React.lazy()
+- Use React.memo() for expensive components
+- Optimize images and assets
+- Implement proper caching strategies
+
+#### Backend
+- Use database indexing
+- Implement query optimization
+- Use connection pooling
+- Cache frequently accessed data
+
+### 9. Content Management
+
+#### Video Content
+- Support multiple video formats
+- Implement proper thumbnail generation
+- Use CDN for video delivery
+- Implement adaptive bitrate streaming
+
+#### CMS Features
+- Video upload and management
+- Category and tag management
+- User management
+- Analytics and reporting
+
+### 10. Testing Strategy
+
+#### Unit Testing
+- Test individual components
+- Test utility functions
+- Test custom hooks
+- Maintain good test coverage
+
+#### Integration Testing
+- Test API endpoints
+- Test authentication flows
+- Test user interactions
+- Test error scenarios
+
+### 11. Deployment & DevOps
+
+#### Environment Configuration
+- Use environment variables for configuration
+- Separate development and production configs
+- Implement proper logging
+- Use health check endpoints
+
+#### Build Process
+- Optimize bundle size
+- Implement proper asset optimization
+- Use production builds
+- Implement CI/CD pipeline
+
+### 12. Content Guidelines
+
+#### Video Categories
+- Ramayana: Stories from the epic
+- Krishna: Krishna Leela and teachings
+- Mahabharata: Epic tales and wisdom
+- Shiva: Lord Shiva's stories
+- Hanuman: Hanuman's devotion and strength
+- Ganesha: Lord Ganesha's tales
+- Devi: Goddess stories and worship
+- Festivals: Religious celebrations
+- Bhajans: Devotional songs and chants
+- Explained: Spiritual concepts and philosophy
+
+#### Content Quality
+- High-quality video and audio
+- Accurate mythological content
+- Respectful representation
+- Multi-language support (Hindi, English, Gujarati, Marathi)
+
+### 13. Feature Priorities
+
+#### Phase 1 (Current)
+- ✅ Basic video streaming
+- ✅ User authentication
+- ✅ Video browsing and search
+- ✅ Playlist management
+- ✅ Basic CMS
+
+#### Phase 2 (Next)
+- 🔄 Advanced video player
+- 🔄 User recommendations
+- 🔄 Social features (comments, sharing)
+- 🔄 Mobile app development
+- 🔄 Advanced analytics
+
+#### Phase 3 (Future)
+- 📋 Live streaming capabilities
+- 📋 Community features
+- 📋 Multi-language dubbing
+- 📋 VR/AR experiences
+- 📋 Educational content
+
+### 14. Code Review Guidelines
+
+#### Review Checklist
+- [ ] TypeScript types are properly defined
+- [ ] Components follow naming conventions
+- [ ] Error handling is implemented
+- [ ] Loading states are handled
+- [ ] Accessibility requirements are met
+- [ ] Performance considerations are addressed
+- [ ] Tests are included (if applicable)
+- [ ] Documentation is updated
+
+### 15. Documentation
+
+#### Code Documentation
+- Use JSDoc for complex functions
+- Document component props
+- Explain business logic
+- Keep README updated
+
+#### API Documentation
+- Document all endpoints
+- Include request/response examples
+- Explain error codes
+- Provide usage examples
+
+## Common Patterns
+
+### Video Player Component
+```typescript
+interface VideoPlayerProps {
+  video: VideoType;
+  onProgress?: (progress: number) => void;
+  onEnd?: () => void;
+  autoplay?: boolean;
+}
+
+export default function VideoPlayer({ video, onProgress, onEnd, autoplay }: VideoPlayerProps) {
+  // Implementation
+}
+```
+
+### API Request Hook
+```typescript
+export function useApiRequest<T>(endpoint: string, options?: RequestOptions) {
+  return useQuery({
+    queryKey: [endpoint],
+    queryFn: () => apiRequest<T>(endpoint),
+    ...options
+  });
+}
+```
+
+### Form Validation
+```typescript
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const formSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  category: z.enum(["Ramayana", "Krishna", "Mahabharata"]),
+});
+
+type FormData = z.infer<typeof formSchema>;
+```
+
+## Troubleshooting
+
+### Common Issues
+1. **TypeScript errors**: Check import paths and type definitions
+2. **Build failures**: Verify all dependencies are installed
+3. **API errors**: Check server logs and network requests
+4. **Styling issues**: Verify Tailwind classes and CSS imports
+
+### Debug Tools
+- React Developer Tools
+- Network tab for API debugging
+- Console for error messages
+- Drizzle Studio for database inspection
+
+## Resources
+
+### Documentation
+- [React Documentation](https://react.dev/)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [TanStack Query Docs](https://tanstack.com/query/latest)
+- [Drizzle ORM Docs](https://orm.drizzle.team/)
+- [Tailwind CSS Docs](https://tailwindcss.com/docs)
+
+### Tools
+- [shadcn/ui](https://ui.shadcn.com/)
+- [Radix UI](https://www.radix-ui.com/)
+- [Lucide Icons](https://lucide.dev/)
+- [Framer Motion](https://www.framer.com/motion/)
+
+This cursor rules file should help maintain consistency and quality across the MythosStream project development.

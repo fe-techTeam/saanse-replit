@@ -10,6 +10,21 @@ export interface VideoType {
   views: number;
   tags: string[];
   isActive: boolean;
+  contentType: 'standalone' | 'series';
+  seriesId?: string;
+  episodeNumber?: number;
+  createdAt: Date;
+}
+
+export interface SeriesType {
+  id: string;
+  title: string;
+  description?: string;
+  category: string;
+  thumbnailUrl: string;
+  bannerUrl?: string;
+  totalEpisodes: number;
+  isActive: boolean;
   createdAt: Date;
 }
 
@@ -27,7 +42,7 @@ export interface UserType {
   email: string;
   displayName?: string;
   photoURL?: string;
-  firebaseUid: string;
+  supabaseUid: string;
   createdAt: Date;
 }
 
@@ -41,9 +56,13 @@ export interface ViewHistoryType {
 
 export const VIDEO_CATEGORIES = [
   'Ramayana',
-  'Mahabharata', 
   'Krishna',
+  'Mahabharata',
   'Shiva',
+  'Hanuman',
+  'Ganesha',
+  'Devi',
+  'Festivals',
   'Bhajans',
   'Explained'
 ] as const;

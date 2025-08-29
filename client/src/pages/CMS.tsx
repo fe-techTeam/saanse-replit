@@ -1,440 +1,318 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Eye, Upload, Settings } from "lucide-react";
+import { 
+  Video, 
+  Users, 
+  BarChart3, 
+  Settings, 
+  Shield,
+  Home,
+  TrendingUp,
+  Flag
+} from "lucide-react";
 import type { VideoType } from "@/types/video";
 
-const categories = [
-  "Ramayana", "Mahabharata", "Krishna", "Shiva", "Bhajans", "Explained",
-  "Hanuman", "Ganesha", "Devi", "Festivals"
-];
+// Import CMS components
+import VideoManager from "@/components/admin/VideoManager";
+import UserManager from "@/components/admin/UserManager";
+import Analytics from "@/components/admin/Analytics";
+import SettingsComponent from "@/components/admin/Settings";
+import ContentModeration from "@/components/admin/ContentModeration";
 
-interface VideoFormData {
-  title: string;
-  description: string;
-  category: string;
-  duration: number;
-  thumbnailUrl: string;
-  videoUrl: string;
-  tags: string;
+interface DashboardStats {
+  totalVideos: number;
+  totalUsers: number;
+  totalViews: number;
+  totalLikes: number;
+  activeVideos: number;
+  recentUsers: any[];
+  recentVideos: VideoType[];
 }
 
 export default function CMS() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
-  const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("videos");
-  
-  const [formData, setFormData] = useState<VideoFormData>({
-    title: "",
-    description: "",
-    category: "Ramayana",
-    duration: 0,
-    thumbnailUrl: "",
-    videoUrl: "",
-    tags: ""
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Fetch dashboard stats
+  const { data: stats, isLoading, error } = useQuery<DashboardStats>({
+    queryKey: ["/api/admin/dashboard"],
+    retry: false,
+    staleTime: 30000,
   });
 
-  // Fetch all videos for management
-  const { data: videos = [], refetch: refetchVideos } = useQuery<VideoType[]>({
-    queryKey: ["/api/videos"],
-  });
-
-  // Create video mutation
-  const createVideoMutation = useMutation({
-    mutationFn: (newVideo: Omit<VideoType, "id" | "likes" | "views" | "createdAt">) => 
-      apiRequest("/api/videos", "POST", newVideo),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      toast({
-        title: "Success",
-        description: "Video created successfully",
-      });
-      resetForm();
-      setIsDialogOpen(false);
+  const navigationItems = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: Home,
+      description: "Overview and key metrics"
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to create video",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Update video mutation
-  const updateVideoMutation = useMutation({
-    mutationFn: ({ id, ...video }: VideoType) => 
-      apiRequest(`/api/videos/${id}`, "PATCH", video),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      toast({
-        title: "Success",
-        description: "Video updated successfully",
-      });
-      resetForm();
-      setIsDialogOpen(false);
+    {
+      id: "videos",
+      label: "Videos",
+      icon: Video,
+      description: "Manage video content"
     },
-    onError: () => {
-      toast({
-        title: "Error", 
-        description: "Failed to update video",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Delete video mutation
-  const deleteVideoMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/videos/${id}`, "DELETE"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      toast({
-        title: "Success",
-        description: "Video deleted successfully",
-      });
+    {
+      id: "users",
+      label: "Users",
+      icon: Users,
+      description: "Manage user accounts"
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to delete video", 
-        variant: "destructive"
-      });
+    {
+      id: "analytics",
+      label: "Analytics",
+      icon: BarChart3,
+      description: "View detailed analytics"
+    },
+    {
+      id: "moderation",
+      label: "Moderation",
+      icon: Shield,
+      description: "Content moderation"
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: Settings,
+      description: "System configuration"
     }
-  });
+  ];
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      category: "Ramayana",
-      duration: 0,
-      thumbnailUrl: "",
-      videoUrl: "",
-      tags: ""
-    });
-    setSelectedVideo(null);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const videoData = {
-      ...formData,
-      tags: formData.tags.split(",").map(tag => tag.trim()).filter(Boolean),
-      duration: Number(formData.duration),
-      isActive: true
-    };
-
-    if (selectedVideo) {
-      updateVideoMutation.mutate({ ...videoData, id: selectedVideo.id } as VideoType);
-    } else {
-      createVideoMutation.mutate(videoData);
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <DashboardContent stats={stats} isLoading={isLoading} />;
+      case "videos":
+        return <VideoManager />;
+      case "users":
+        return <UserManager />;
+      case "analytics":
+        return <Analytics />;
+      case "moderation":
+        return <ContentModeration />;
+      case "settings":
+        return <SettingsComponent />;
+      default:
+        return <DashboardContent stats={stats} isLoading={isLoading} />;
     }
-  };
-
-  const handleEdit = (video: VideoType) => {
-    setSelectedVideo(video);
-    setFormData({
-      title: video.title,
-      description: video.description || "",
-      category: video.category,
-      duration: video.duration,
-      thumbnailUrl: video.thumbnailUrl,
-      videoUrl: video.videoUrl,
-      tags: video.tags?.join(", ") || ""
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (video: VideoType) => {
-    if (confirm(`Are you sure you want to delete "${video.title}"?`)) {
-      deleteVideoMutation.mutate(video.id);
-    }
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Content Management System</h1>
-            <p className="text-muted-foreground mt-2">Manage your devotional content library</p>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="flex h-16 items-center px-6">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold">SAANSE CMS</h1>
+            <div className="h-6 w-px bg-border" />
+            <nav className="flex items-center space-x-4 text-sm">
+              {navigationItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                    activeTab === item.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add New Video
-              </Button>
-            </DialogTrigger>
-            
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedVideo ? "Edit Video" : "Add New Video"}
-                </DialogTitle>
-              </DialogHeader>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Title</label>
-                    <Input
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Enter video title"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Category</label>
-                    <Select 
-                      value={formData.category} 
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Duration (seconds)</label>
-                    <Input
-                      type="number"
-                      value={formData.duration}
-                      onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
-                      placeholder="120"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Thumbnail URL</label>
-                    <Input
-                      value={formData.thumbnailUrl}
-                      onChange={(e) => setFormData(prev => ({ ...prev, thumbnailUrl: e.target.value }))}
-                      placeholder="https://..."
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Video URL</label>
-                    <Input
-                      value={formData.videoUrl}
-                      onChange={(e) => setFormData(prev => ({ ...prev, videoUrl: e.target.value }))}
-                      placeholder="https://..."
-                      required
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Description</label>
-                    <Textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Enter video description"
-                      rows={3}
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Tags (comma-separated)</label>
-                    <Input
-                      value={formData.tags}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-                      placeholder="krishna, devotion, divine, love"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createVideoMutation.isPending || updateVideoMutation.isPending}>
-                    {createVideoMutation.isPending || updateVideoMutation.isPending ? "Saving..." : "Save Video"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
         </div>
+      </header>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="videos">Videos ({videos.length})</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="videos" className="mt-6">
-            <div className="grid gap-4">
-              {videos.map((video) => (
-                <Card key={video.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <img
-                        src={video.thumbnailUrl}
-                        alt={video.title}
-                        className="w-32 h-18 object-cover rounded-lg"
-                      />
-                      
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">
-                          {video.title}
-                        </h3>
-                        
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          <Badge variant="secondary">{video.category}</Badge>
-                          <Badge variant="outline">{formatDuration(video.duration)}</Badge>
-                          <Badge variant="outline">{video.views} views</Badge>
-                          <Badge variant="outline">{video.likes} likes</Badge>
-                        </div>
-                        
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                          {video.description}
-                        </p>
-                        
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {video.tags?.map((tag, index) => (
-                            <span key={index} className="text-xs bg-muted px-2 py-1 rounded">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(video)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(video)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+      {/* Content */}
+      <div className="flex-1 space-y-4 p-6 pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">
+              {navigationItems.find(item => item.id === activeTab)?.label}
+            </h2>
+            <p className="text-muted-foreground">
+              {navigationItems.find(item => item.id === activeTab)?.description}
+            </p>
+          </div>
+        </div>
+        
+        {renderContent()}
+      </div>
+    </div>
+  );
+}
+
+// Dashboard Content Component
+function DashboardContent({ stats, isLoading }: { stats?: DashboardStats; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">No data available</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Key Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Videos</CardTitle>
+            <Video className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalVideos}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.activeVideos} active
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              Registered users
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.totalViews.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Video views
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.totalLikes.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              User interactions
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Videos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.recentVideos.slice(0, 5).map((video) => (
+                <div key={video.id} className="flex items-center space-x-4">
+                  <img
+                    src={video.thumbnailUrl}
+                    alt={video.title}
+                    className="w-12 h-8 object-cover rounded"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{video.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Added {new Date(video.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {video.category}
+                  </Badge>
+                </div>
               ))}
             </div>
-          </TabsContent>
-          
-          <TabsContent value="analytics" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Videos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{videos.length}</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Views</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {videos.reduce((sum, video) => sum + video.views, 0).toLocaleString()}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.recentUsers.slice(0, 5).map((user: any) => (
+                <div key={user.id} className="flex items-center space-x-4">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-bold">
+                    {user.displayName?.charAt(0) || user.email.charAt(0)}
                   </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Likes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {videos.reduce((sum, video) => sum + video.likes, 0).toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="mt-8">
-              <h3 className="text-xl font-semibold mb-4">Popular Categories</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {categories.map(category => {
-                  const categoryVideos = videos.filter(v => v.category === category);
-                  const totalViews = categoryVideos.reduce((sum, v) => sum + v.views, 0);
-                  return (
-                    <Card key={category}>
-                      <CardContent className="p-4 text-center">
-                        <div className="font-semibold">{category}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {categoryVideos.length} videos
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {totalViews.toLocaleString()} views
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="settings" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>App Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                  Configure app-wide settings and preferences here.
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Featured Content</label>
-                    <p className="text-sm text-muted-foreground">
-                      The most recent videos are automatically featured on the home page.
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {user.displayName || "Anonymous"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user.email}
                     </p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Categories</label>
-                    <p className="text-sm text-muted-foreground">
-                      Current categories: {categories.join(", ")}
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(user.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Button variant="outline" className="h-20 flex-col">
+              <Video className="h-6 w-6 mb-2" />
+              <span>Add New Video</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col">
+              <Users className="h-6 w-6 mb-2" />
+              <span>Manage Users</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col">
+              <Shield className="h-6 w-6 mb-2" />
+              <span>Content Moderation</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

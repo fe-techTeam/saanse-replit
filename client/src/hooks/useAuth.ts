@@ -1,42 +1,51 @@
 import { useState, useEffect } from "react";
-import { auth, signInWithGoogle, signOutUser, onAuthStateChange, handleRedirectResult } from "@/lib/firebase";
-import { User as FirebaseUser } from "firebase/auth";
+import { supabase, signInWithGoogle, signOutUser, onAuthStateChange, getCurrentUser } from "@/lib/supabase";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { UserType } from "@/types/video";
 
+// Temporary type until @supabase/supabase-js is installed
+interface SupabaseUser {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    full_name?: string;
+    avatar_url?: string;
+  };
+}
+
 export function useAuth() {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
 
-  // Check for redirect result on app load
+  // Check for current user on app load
   useEffect(() => {
-    handleRedirectResult()
-      .then((result) => {
-        if (result?.user) {
-          console.log("User signed in via redirect:", result.user);
-        }
+    getCurrentUser()
+      .then((user) => {
+        setSupabaseUser(user);
+        setLoading(false);
       })
       .catch((error) => {
-        console.error("Error handling redirect:", error);
+        console.error("Error getting current user:", error);
+        setLoading(false);
       });
   }, []);
 
   // Listen to auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      setFirebaseUser(user);
+    const { data: { subscription } } = onAuthStateChange((user) => {
+      setSupabaseUser(user);
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => subscription.unsubscribe();
   }, []);
 
   // Fetch or create user in our database
   const { data: user } = useQuery({
-    queryKey: ["/api/users/firebase", firebaseUser?.uid],
-    enabled: !!firebaseUser?.uid,
+    queryKey: ["/api/users/supabase", supabaseUser?.id],
+    enabled: !!supabaseUser?.id,
     staleTime: Infinity,
   });
 
@@ -46,27 +55,27 @@ export function useAuth() {
       email: string; 
       displayName?: string; 
       photoURL?: string; 
-      firebaseUid: string; 
+      supabaseUid: string; 
     }) => {
       const response = await apiRequest("POST", "/api/users", userData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users/firebase"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/supabase"] });
     },
   });
 
-  // Create user in database when Firebase user is available but our user doesn't exist
+  // Create user in database when Supabase user is available but our user doesn't exist
   useEffect(() => {
-    if (firebaseUser && !user && !createUserMutation.isPending) {
+    if (supabaseUser && !user && !createUserMutation.isPending) {
       createUserMutation.mutate({
-        email: firebaseUser.email!,
-        displayName: firebaseUser.displayName || undefined,
-        photoURL: firebaseUser.photoURL || undefined,
-        firebaseUid: firebaseUser.uid,
+        email: supabaseUser.email!,
+        displayName: supabaseUser.user_metadata?.full_name || undefined,
+        photoURL: supabaseUser.user_metadata?.avatar_url || undefined,
+        supabaseUid: supabaseUser.id,
       });
     }
-  }, [firebaseUser, user, createUserMutation]);
+  }, [supabaseUser, user, createUserMutation]);
 
   const signIn = () => {
     signInWithGoogle();
@@ -83,10 +92,10 @@ export function useAuth() {
 
   return {
     user: user as UserType | undefined,
-    firebaseUser,
+    supabaseUser,
     loading,
     signIn,
     signOut,
-    isAuthenticated: !!firebaseUser,
+    isAuthenticated: !!supabaseUser,
   };
 }
