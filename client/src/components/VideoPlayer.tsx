@@ -69,6 +69,8 @@ export function VideoPlayer({ video, isOpen, onClose, onNext }: VideoPlayerProps
 
     const updateTime = () => setCurrentTime(videoEl.currentTime);
     const updateDuration = () => setDuration(videoEl.duration);
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
       setIsPlaying(false);
       if (onNext) onNext();
@@ -76,25 +78,34 @@ export function VideoPlayer({ video, isOpen, onClose, onNext }: VideoPlayerProps
 
     videoEl.addEventListener('timeupdate', updateTime);
     videoEl.addEventListener('loadedmetadata', updateDuration);
+    videoEl.addEventListener('play', handlePlay);
+    videoEl.addEventListener('pause', handlePause);
     videoEl.addEventListener('ended', handleEnded);
 
     return () => {
       videoEl.removeEventListener('timeupdate', updateTime);
       videoEl.removeEventListener('loadedmetadata', updateDuration);
+      videoEl.removeEventListener('play', handlePlay);
+      videoEl.removeEventListener('pause', handlePause);
       videoEl.removeEventListener('ended', handleEnded);
     };
   }, [onNext]);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
-    if (isPlaying) {
-      videoEl.pause();
-    } else {
-      videoEl.play();
+    try {
+      if (isPlaying) {
+        videoEl.pause();
+        setIsPlaying(false);
+      } else {
+        await videoEl.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Error playing video:', error);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const toggleMute = () => {
@@ -208,9 +219,9 @@ export function VideoPlayer({ video, isOpen, onClose, onNext }: VideoPlayerProps
         <div className="flex-1 flex items-center justify-center bg-black">
           <video
             ref={videoRef}
-            src={video.videoUrl}
+            src={video.video_url}
             className="w-full h-full object-contain"
-            poster={video.thumbnailUrl}
+            poster={video.thumbnail_url}
             playsInline
             onClick={togglePlay}
           />

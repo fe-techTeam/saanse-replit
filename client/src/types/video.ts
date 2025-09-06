@@ -4,16 +4,16 @@ export interface VideoType {
   description?: string;
   category: string;
   duration: number;
-  thumbnailUrl: string;
-  videoUrl: string;
+  thumbnail_url: string;
+  video_url: string;
   likes: number;
   views: number;
   tags: string[];
-  isActive: boolean;
-  contentType: 'standalone' | 'series';
-  seriesId?: string;
-  episodeNumber?: number;
-  createdAt: Date;
+  is_active: boolean;
+  content_type: 'standalone' | 'series';
+  series_id?: string;
+  episode_number?: number;
+  created_at: string;
 }
 
 export interface SeriesType {
@@ -21,11 +21,11 @@ export interface SeriesType {
   title: string;
   description?: string;
   category: string;
-  thumbnailUrl: string;
-  bannerUrl?: string;
-  totalEpisodes: number;
-  isActive: boolean;
-  createdAt: Date;
+  thumbnail_url: string;
+  banner_url?: string;
+  total_episodes: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface PlaylistType {

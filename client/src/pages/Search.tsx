@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { VideoPlayer } from "@/components/VideoPlayer";
+import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { Input } from "@/components/ui/input";
 import { Search as SearchIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -129,7 +129,7 @@ export default function Search() {
                 onClick={() => handleVideoClick(video)}
               >
                 <img
-                  src={video.thumbnailUrl}
+                  src={video.thumbnail_url}
                   alt={video.title}
                   className="w-20 h-16 object-cover rounded"
                   loading="lazy"
@@ -157,7 +157,7 @@ export default function Search() {
 
       <BottomNavigation />
       
-      <VideoPlayer
+      <YouTubeStylePlayer
         video={selectedVideo}
         isOpen={isVideoPlayerOpen}
         onClose={handleCloseVideoPlayer}

@@ -1,0 +1,715 @@
+import { useState, useRef, useEffect } from "react";
+import { 
+  X, 
+  Play, 
+  Pause, 
+  Volume2, 
+  VolumeX, 
+  Maximize, 
+  Minimize, 
+  SkipBack, 
+  SkipForward,
+  Heart,
+  Share2,
+  Download,
+  Settings,
+  MoreVertical
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { VideoType } from "@/types/video";
+import { useAuth } from "@/hooks/useAuth";
+
+interface YouTubeStylePlayerProps {
+  video: VideoType | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
+}
+
+export function YouTubeStylePlayer({ 
+  video, 
+  isOpen, 
+  onClose, 
+  onNext, 
+  onPrevious 
+}: YouTubeStylePlayerProps) {
+  // Test video URLs - will try in order if one fails
+  const testVideoUrls = [
+    "https://res.cloudinary.com/demo/video/upload/samples/cld-sample-video.mp4",
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    "https://file-examples.com/wp-content/uploads/2017/10/file_example_MP4_640_3MG.mp4",
+    "https://www.w3schools.com/html/mov_bbb.mp4"
+  ];
+  
+  const [currentVideoUrlIndex, setCurrentVideoUrlIndex] = useState(0);
+  const getCurrentVideoUrl = () => testVideoUrls[currentVideoUrlIndex] || testVideoUrls[0];
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
+  const [showInfo, setShowInfo] = useState(true);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Increment view count
+  const viewMutation = useMutation({
+    mutationFn: async (videoId: string) => {
+      await apiRequest("POST", `/api/videos/${videoId}/views`);
+    },
+  });
+
+  // Like video
+  const likeMutation = useMutation({
+    mutationFn: async (videoId: string) => {
+      await apiRequest("POST", `/api/videos/${videoId}/likes`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
+    },
+  });
+
+  // Add to view history
+  const historyMutation = useMutation({
+    mutationFn: async (data: { userId: string; videoId: string; progress: number }) => {
+      await apiRequest("POST", "/api/history", data);
+    },
+  });
+
+  useEffect(() => {
+    if (isOpen && video) {
+      // Increment view count
+      viewMutation.mutate(video.id);
+      
+      // Add to view history if user is authenticated
+      if (user) {
+        historyMutation.mutate({
+          userId: user.id,
+          videoId: video.id,
+          progress: 0,
+        });
+      }
+    }
+  }, [isOpen, video, user]);
+
+  // Force video reload when URL changes
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (videoEl && isOpen) {
+      console.log('Video URL changed to:', getCurrentVideoUrl());
+      videoEl.load(); // Force reload
+    }
+  }, [currentVideoUrlIndex, isOpen]);
+
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const updateTime = () => setCurrentTime(videoEl.currentTime);
+    const updateDuration = () => setDuration(videoEl.duration);
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      if (onNext) onNext();
+    };
+    const handleVolumeChange = () => {
+      setVolume(videoEl.volume);
+      setIsMuted(videoEl.muted);
+    };
+
+    videoEl.addEventListener('timeupdate', updateTime);
+    videoEl.addEventListener('loadedmetadata', updateDuration);
+    videoEl.addEventListener('play', handlePlay);
+    videoEl.addEventListener('pause', handlePause);
+    videoEl.addEventListener('ended', handleEnded);
+    videoEl.addEventListener('volumechange', handleVolumeChange);
+
+    return () => {
+      videoEl.removeEventListener('timeupdate', updateTime);
+      videoEl.removeEventListener('loadedmetadata', updateDuration);
+      videoEl.removeEventListener('play', handlePlay);
+      videoEl.removeEventListener('pause', handlePause);
+      videoEl.removeEventListener('ended', handleEnded);
+      videoEl.removeEventListener('volumechange', handleVolumeChange);
+    };
+  }, [onNext]);
+
+  // Auto-hide controls
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const resetTimeout = () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      
+      setShowControls(true);
+      
+      if (isPlaying) {
+        controlsTimeoutRef.current = setTimeout(() => {
+          setShowControls(false);
+        }, 3000);
+      }
+    };
+
+    resetTimeout();
+
+    const handleMouseMove = () => resetTimeout();
+    const handleMouseLeave = () => {
+      if (isPlaying) {
+        setShowControls(false);
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('mousemove', handleMouseMove);
+      container.addEventListener('mouseleave', handleMouseLeave);
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('mousemove', handleMouseMove);
+        container.removeEventListener('mouseleave', handleMouseLeave);
+      }
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, [isOpen, isPlaying]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          skipTime(-10);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          skipTime(10);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          adjustVolume(0.1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          adjustVolume(-0.1);
+          break;
+        case 'KeyM':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'KeyF':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 'Escape':
+          if (isFullscreen) {
+            toggleFullscreen();
+          } else {
+            onClose();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [isOpen, isFullscreen]);
+
+  const togglePlay = async () => {
+    const videoEl = videoRef.current;
+    if (!videoEl) {
+      console.log('Video element not found');
+      return;
+    }
+
+    console.log('Toggle play called, current playing state:', isPlaying);
+    console.log('Video readyState:', videoEl.readyState);
+    console.log('Video src:', videoEl.src);
+    console.log('Video paused:', videoEl.paused);
+    console.log('Video current time:', videoEl.currentTime);
+
+    try {
+      if (isPlaying) {
+        console.log('Pausing video');
+        videoEl.pause();
+        setIsPlaying(false);
+      } else {
+        console.log('Attempting to play video');
+        
+        // Make sure video is loaded enough to play
+        if (videoEl.readyState < 2) {
+          console.log('Video not ready, waiting for loadeddata...');
+          return;
+        }
+        
+        const playPromise = videoEl.play();
+        
+        if (playPromise !== undefined) {
+          await playPromise;
+          console.log('Video play successful');
+          setIsPlaying(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error playing video:', error);
+      console.log('Error name:', error.name);
+      console.log('Error message:', error.message);
+      
+      // Handle common autoplay errors
+      if (error.name === 'NotAllowedError') {
+        console.log('Autoplay was blocked by browser. User interaction required.');
+      } else if (error.name === 'NotSupportedError') {
+        console.log('Video format not supported');
+      }
+    }
+  };
+
+  const skipTime = (seconds: number) => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    videoEl.currentTime = Math.max(0, Math.min(duration, videoEl.currentTime + seconds));
+  };
+
+  const adjustVolume = (change: number) => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const newVolume = Math.max(0, Math.min(1, volume + change));
+    videoEl.volume = newVolume;
+    if (newVolume > 0) {
+      videoEl.muted = false;
+    }
+  };
+
+  const toggleMute = () => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    videoEl.muted = !isMuted;
+  };
+
+  const toggleFullscreen = () => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!isFullscreen) {
+      container.requestFullscreen?.();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setIsFullscreen(false);
+    }
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const newTime = (clickX / width) * duration;
+    
+    videoEl.currentTime = newTime;
+  };
+
+  const handleVolumeClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const newVolume = Math.max(0, Math.min(1, clickX / width));
+    
+    videoEl.volume = newVolume;
+    if (newVolume > 0) {
+      videoEl.muted = false;
+    }
+  };
+
+  const handleLike = () => {
+    if (!video) return;
+    
+    setIsLiked(!isLiked);
+    likeMutation.mutate(video.id);
+  };
+
+  const handleShare = async () => {
+    if (!video) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: video.title,
+          text: video.description,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log('Share cancelled');
+      }
+    } else {
+      // Fallback to clipboard
+      navigator.clipboard.writeText(window.location.href);
+    }
+  };
+
+  const formatTime = (time: number) => {
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = Math.floor(time % 60);
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  if (!isOpen || !video) {
+    return null;
+  }
+
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const volumePercent = volume * 100;
+
+  return (
+    <div 
+      ref={containerRef}
+      className={`fixed inset-0 bg-black z-50 flex ${isFullscreen ? '' : 'p-4'}`}
+    >
+      {/* Video Container */}
+      <div className="relative flex-1 flex items-center justify-center">
+        <video
+          ref={videoRef}
+          src={getCurrentVideoUrl()}
+          className="w-full h-full object-contain"
+          poster="https://res.cloudinary.com/demo/image/upload/samples/cld-sample-video.jpg"
+          playsInline
+          preload="metadata"
+          controls={false}
+          onClick={togglePlay}
+          onError={(e) => {
+            console.error('Video loading error:', e);
+            console.log('Current src:', e.currentTarget.src);
+            console.log('Trying next video URL...');
+            
+            // Try next video URL if available
+            if (currentVideoUrlIndex < testVideoUrls.length - 1) {
+              setCurrentVideoUrlIndex(prev => prev + 1);
+            } else {
+              console.error('All video URLs failed');
+            }
+          }}
+          onLoadStart={() => console.log('Video loading started')}
+          onCanPlay={() => {
+            console.log('Video can play - ready for user interaction');
+          }}
+          onLoadedData={() => console.log('Video loaded data')}
+          onLoadedMetadata={() => {
+            console.log('Video metadata loaded, duration:', videoRef.current?.duration);
+          }}
+        />
+        
+        {/* Loading Overlay */}
+        {!duration && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="text-white">Loading video...</p>
+              <p className="text-gray-400 text-sm mt-2">URL: {getCurrentVideoUrl()}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Debug Info Overlay - Temporary */}
+        {duration > 0 && !isPlaying && (
+          <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white p-2 rounded text-xs">
+            <div>Duration: {formatTime(duration)}</div>
+            <div>Ready State: {videoRef.current?.readyState}</div>
+            <div>Can Play: {videoRef.current?.readyState >= 3 ? 'Yes' : 'No'}</div>
+            <Button
+              size="sm"
+              className="mt-2 bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                const videoEl = videoRef.current;
+                if (videoEl) {
+                  console.log('Direct play test');
+                  videoEl.play().catch(e => console.error('Direct play failed:', e));
+                }
+              }}
+            >
+              Test Direct Play
+            </Button>
+          </div>
+        )}
+
+        {/* Play/Pause Overlay */}
+        {!isPlaying && duration > 0 && (
+          <div 
+            className="absolute inset-0 flex items-center justify-center cursor-pointer group"
+            onClick={togglePlay}
+          >
+            <div className="bg-black bg-opacity-50 rounded-full p-6 group-hover:bg-opacity-70 transition-all">
+              <Play className="w-16 h-16 text-white fill-current" />
+            </div>
+          </div>
+        )}
+
+        {/* Controls Overlay */}
+        {showControls && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black pointer-events-none">
+            {/* Top Controls */}
+            <div className="absolute top-0 left-0 right-0 p-4 pointer-events-auto">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white hover:bg-opacity-20"
+                  onClick={onClose}
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white hover:bg-opacity-20"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white hover:bg-opacity-20"
+                  >
+                    <MoreVertical className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Controls */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-auto">
+              {/* Progress Bar */}
+              <div 
+                className="w-full bg-gray-600 bg-opacity-50 rounded-full h-1 mb-4 cursor-pointer hover:h-2 transition-all"
+                onClick={handleProgressClick}
+              >
+                <div 
+                  className="bg-red-500 h-full rounded-full transition-all relative"
+                  style={{ width: `${progressPercent}%` }}
+                >
+                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full opacity-0 hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+
+              {/* Control Buttons */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white hover:bg-opacity-20"
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-6 h-6" />
+                    ) : (
+                      <Play className="w-6 h-6 fill-current" />
+                    )}
+                  </Button>
+                  
+                  {onPrevious && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white hover:bg-opacity-20"
+                      onClick={onPrevious}
+                    >
+                      <SkipBack className="w-5 h-5" />
+                    </Button>
+                  )}
+                  
+                  {onNext && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white hover:bg-opacity-20"
+                      onClick={onNext}
+                    >
+                      <SkipForward className="w-5 h-5" />
+                    </Button>
+                  )}
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white hover:bg-opacity-20"
+                      onClick={toggleMute}
+                    >
+                      {isMuted || volume === 0 ? (
+                        <VolumeX className="w-5 h-5" />
+                      ) : (
+                        <Volume2 className="w-5 h-5" />
+                      )}
+                    </Button>
+                    
+                    <div 
+                      className="w-20 bg-gray-600 bg-opacity-50 rounded-full h-1 cursor-pointer hover:h-2 transition-all"
+                      onClick={handleVolumeClick}
+                    >
+                      <div 
+                        className="bg-white h-full rounded-full transition-all"
+                        style={{ width: `${volumePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <span className="text-white text-sm">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white hover:bg-opacity-20"
+                    onClick={toggleFullscreen}
+                  >
+                    {isFullscreen ? (
+                      <Minimize className="w-5 h-5" />
+                    ) : (
+                      <Maximize className="w-5 h-5" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Side Panel (only in non-fullscreen mode) */}
+      {!isFullscreen && (
+        <div className="w-96 bg-dharma-dark border-l border-gray-700 flex flex-col">
+          {/* Video Info */}
+          <div className="p-4 border-b border-gray-700">
+            <h2 className="text-white text-lg font-semibold mb-2 line-clamp-2">
+              {video.title}
+            </h2>
+            
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-gray-400 text-sm">
+                <span>{video.views} views</span>
+                <span className="mx-2">•</span>
+                <span>{formatTime(video.duration)}</span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`text-white hover:bg-gray-700 ${isLiked ? 'text-red-500' : ''}`}
+                  onClick={handleLike}
+                >
+                  <Heart className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
+                  {video.likes + (isLiked ? 1 : 0)}
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-gray-700"
+                  onClick={handleShare}
+                >
+                  <Share2 className="w-4 h-4 mr-1" />
+                  Share
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-gray-700"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Save
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-1 mb-4">
+              {video.tags.map((tag) => (
+                <span 
+                  key={tag}
+                  className="bg-dharma-gold bg-opacity-20 text-dharma-gold text-xs px-2 py-1 rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            
+            {showInfo && video.description && (
+              <div className="text-gray-300 text-sm">
+                <p className="line-clamp-3">{video.description}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-dharma-gold hover:bg-gray-700 p-0 mt-2"
+                  onClick={() => setShowInfo(false)}
+                >
+                  Show less
+                </Button>
+              </div>
+            )}
+            
+            {!showInfo && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-dharma-gold hover:bg-gray-700 p-0"
+                onClick={() => setShowInfo(true)}
+              >
+                Show more
+              </Button>
+            )}
+          </div>
+          
+          {/* Related Videos or Comments section could go here */}
+          <div className="flex-1 p-4">
+            <h3 className="text-white font-medium mb-4">Related Videos</h3>
+            <div className="text-gray-400 text-sm">
+              More videos from this category coming soon...
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

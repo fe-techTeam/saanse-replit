@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 
 export default function Home() {
   const { data: videos = [], isLoading } = useQuery({
@@ -12,6 +13,8 @@ export default function Home() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
+  const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
 
   // High quality thumbnails
   const getUniqueThumbnail = (index: number) => {
@@ -34,7 +37,7 @@ export default function Home() {
 
   const enhancedVideos = typedVideos.map((video: any, index: number) => ({
     ...video,
-    thumbnailUrl: getUniqueThumbnail(index),
+    thumbnail_url: getUniqueThumbnail(index),
     rating: (4.1 + Math.random() * 0.8).toFixed(1),
     shortDescription: video.description ? video.description.slice(0, 80) + "..." : "Experience this divine story of faith and devotion."
   }));
@@ -56,6 +59,17 @@ export default function Home() {
         ? prev.filter(id => id !== videoId)
         : [...prev, videoId]
     );
+  };
+
+  const handleVideoPlay = (video: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setVideoForPlayer(video);
+    setIsVideoPlayerOpen(true);
+  };
+
+  const handleCloseVideoPlayer = () => {
+    setIsVideoPlayerOpen(false);
+    setVideoForPlayer(null);
   };
 
   if (isLoading) {
@@ -126,7 +140,7 @@ export default function Home() {
         <section className="relative h-[50vh] xs:h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[90vh] xl:h-screen pt-12 md:pt-16">
           <div className="absolute inset-0">
             <img 
-              src={featuredVideo.thumbnailUrl} 
+              src={featuredVideo.thumbnail_url} 
               alt={featuredVideo.title}
               className="w-full h-full object-cover"
             />
@@ -203,7 +217,7 @@ export default function Home() {
               >
                 <div className="relative">
                   <img 
-                    src={video.thumbnailUrl} 
+                    src={video.thumbnail_url} 
                     alt={video.title}
                     className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
                   />
@@ -269,7 +283,7 @@ export default function Home() {
               >
                 <div className="relative">
                   <img 
-                    src={video.thumbnailUrl} 
+                    src={video.thumbnail_url} 
                     alt={video.title}
                     className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
                   />
@@ -340,7 +354,7 @@ export default function Home() {
                   >
                     <div className="relative">
                       <img 
-                        src={video.thumbnailUrl} 
+                        src={video.thumbnail_url} 
                         alt={video.title}
                         className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
                       />
@@ -395,7 +409,7 @@ export default function Home() {
           <div className="bg-gray-900 rounded-lg max-w-full md:max-w-4xl w-full max-h-[90vh] overflow-auto">
             <div className="relative">
               <img 
-                src={selectedVideo.thumbnailUrl} 
+                src={selectedVideo.thumbnail_url} 
                 alt={selectedVideo.title}
                 className="w-full h-48 md:h-64 object-cover rounded-t-lg"
               />
@@ -408,7 +422,10 @@ export default function Home() {
               </button>
               
               <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 flex space-x-2 md:space-x-3">
-                <button className="bg-white text-black px-4 md:px-6 py-1.5 md:py-2 rounded font-bold text-sm md:text-base flex items-center">
+                <button 
+                  className="bg-white text-black px-4 md:px-6 py-1.5 md:py-2 rounded font-bold text-sm md:text-base flex items-center"
+                  onClick={(e) => handleVideoPlay(selectedVideo, e)}
+                >
                   <Play className="w-4 md:w-5 h-4 md:h-5 mr-1.5 md:mr-2 fill-current" />
                   Play
                 </button>
@@ -437,6 +454,12 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <YouTubeStylePlayer
+        video={videoForPlayer}
+        isOpen={isVideoPlayerOpen}
+        onClose={handleCloseVideoPlayer}
+      />
 
       <style dangerouslySetInnerHTML={{
         __html: `
