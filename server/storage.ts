@@ -113,15 +113,42 @@ export class SupabaseStorage implements IStorage {
     return data || [];
   }
 
+  // Helper function to transform camelCase to snake_case for database fields
+  private transformVideoFields(video: any): any {
+    return {
+      title: video.title?.trim(),
+      description: video.description?.trim(),
+      category: video.category,
+      duration: video.duration,
+      // Handle both camelCase and snake_case input
+      thumbnail_url: (video.thumbnailUrl || video.thumbnail_url)?.trim(),
+      video_url: (video.videoUrl || video.video_url)?.trim(),
+      tags: video.tags || [],
+      content_type: video.contentType || video.content_type || 'standalone',
+      series_id: (video.seriesId || video.series_id) && (video.seriesId || video.series_id).trim() !== '' ? (video.seriesId || video.series_id).trim() : null,
+      episode_number: video.episodeNumber || video.episode_number || null,
+      is_active: video.isActive !== undefined ? video.isActive : (video.is_active !== undefined ? video.is_active : true)
+    };
+  }
+
   async createVideo(video: InsertVideo): Promise<Video> {
-    const validatedVideo = insertVideoSchema.parse(video);
+    console.log("Storage.createVideo input:", video);
+    
+    // Transform camelCase fields to snake_case for database
+    const transformedVideo = this.transformVideoFields(video);
+    console.log("Transformed video data:", transformedVideo);
+    
     const { data, error } = await supabase
       .from('videos')
-      .insert(validatedVideo)
+      .insert(transformedVideo)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase insert error:", error);
+      throw error;
+    }
+    console.log("Video created successfully:", data);
     return data;
   }
 

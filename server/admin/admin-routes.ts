@@ -196,10 +196,27 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
   app.post("/api/admin/videos", adminAuthMiddleware, async (req, res) => {
     try {
       const videoData = req.body;
-      const video = await storage.createVideo(videoData);
+      
+      // Use snake_case field names as expected by database
+      const transformedData = {
+        title: videoData.title,
+        description: videoData.description,
+        category: videoData.category,
+        duration: videoData.duration,
+        thumbnail_url: videoData.thumbnail_url,
+        video_url: videoData.video_url,
+        tags: videoData.tags,
+        is_active: videoData.is_active,
+        content_type: videoData.content_type,
+        series_id: videoData.series_id || null,
+        episode_number: videoData.episode_number || null,
+      };
+      
+      const video = await storage.createVideo(transformedData);
       res.status(201).json(video);
     } catch (error) {
-      res.status(500).json({ error: "Failed to create video" });
+      console.error("Video creation error:", error);
+      res.status(500).json({ error: "Failed to create video", details: error.message });
     }
   });
 

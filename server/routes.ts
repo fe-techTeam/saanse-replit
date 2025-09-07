@@ -53,9 +53,25 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Helper to normalize field names to camelCase for validation
+  function normalizeVideoFields(data: any) {
+    return {
+      ...data,
+      // Convert snake_case to camelCase for validation
+      thumbnailUrl: data.thumbnailUrl || data.thumbnail_url,
+      videoUrl: data.videoUrl || data.video_url,
+      contentType: data.contentType || data.content_type,
+      seriesId: data.seriesId || data.series_id,
+      episodeNumber: data.episodeNumber || data.episode_number,
+      isActive: data.isActive !== undefined ? data.isActive : data.is_active
+    };
+  }
+
   app.post("/api/videos", async (req, res) => {
     try {
-      const videoData = insertVideoSchema.parse(req.body);
+      // Normalize field names before validation
+      const normalizedData = normalizeVideoFields(req.body);
+      const videoData = insertVideoSchema.parse(normalizedData);
       const video = await storage.createVideo(videoData);
       res.status(201).json(video);
     } catch (error) {
