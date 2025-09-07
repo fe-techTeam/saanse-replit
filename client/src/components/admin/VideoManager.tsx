@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Edit, Trash2, Eye, MoreHorizontal, Filter, Download } from "lucide-react";
 import type { VideoType } from "@/types/video";
-// import VideoFormDialog from "./VideoFormDialog";
+import VideoFormDialog from "./VideoFormDialog";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 const categories = [
@@ -32,7 +32,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [filters, setFilters] = useState({
-    category: "",
+    category: "all",
     search: "",
     status: "all",
     sortBy: "createdAt",
@@ -42,6 +42,17 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
   // Fetch videos with admin endpoint
   const { data: videos = [], isLoading, error } = useQuery<VideoType[]>({
     queryKey: ["/api/admin/videos"],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/videos', {
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch videos');
+      }
+      
+      return response.json();
+    },
     retry: false, // Don't retry on auth errors
     staleTime: 30000, // Cache for 30 seconds
   });
@@ -49,13 +60,13 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
   // Filter and sort videos
   const filteredVideos = useMemo(() => {
     let filtered = videos.filter(video => {
-      const matchesCategory = !filters.category || video.category === filters.category;
+      const matchesCategory = filters.category === "all" || !filters.category || video.category === filters.category;
       const matchesSearch = !filters.search || 
         video.title.toLowerCase().includes(filters.search.toLowerCase()) ||
         video.description?.toLowerCase().includes(filters.search.toLowerCase());
       const matchesStatus = filters.status === "all" || 
-        (filters.status === "active" && video.isActive) ||
-        (filters.status === "inactive" && !video.isActive);
+        (filters.status === "active" && video.is_active) ||
+        (filters.status === "inactive" && !video.is_active);
       
       return matchesCategory && matchesSearch && matchesStatus;
     });
@@ -82,8 +93,8 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
           bValue = b.duration;
           break;
         default:
-          aValue = new Date(a.createdAt).getTime();
-          bValue = new Date(b.createdAt).getTime();
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
       }
 
       if (filters.sortOrder === "asc") {
@@ -98,8 +109,22 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
 
   // Create video mutation
   const createVideoMutation = useMutation({
-    mutationFn: (data: Omit<VideoType, "id" | "likes" | "views" | "createdAt">) => 
-      apiRequest("/api/admin/videos", "POST", data, getAuthHeaders()),
+    mutationFn: async (data: Omit<VideoType, "id" | "likes" | "views" | "created_at">) => {
+      const response = await fetch('/api/admin/videos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create video');
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
       toast({
@@ -119,8 +144,22 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
 
   // Update video mutation
   const updateVideoMutation = useMutation({
-    mutationFn: ({ id, ...data }: VideoType) => 
-      apiRequest(`/api/admin/videos/${id}`, "PATCH", data, getAuthHeaders()),
+    mutationFn: async ({ id, ...data }: VideoType) => {
+      const response = await fetch(`/api/admin/videos/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update video');
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
       toast({
@@ -140,7 +179,18 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
 
   // Delete video mutation
   const deleteVideoMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/admin/videos/${id}`, "DELETE", undefined, getAuthHeaders()),
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/admin/videos/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete video');
+      }
+      
+      return response.ok;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
       toast({
@@ -171,20 +221,54 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
     switch (action) {
       case "delete":
         if (confirm(`Are you sure you want to delete ${selectedVideos.length} videos?`)) {
-          selectedVideos.forEach(id => deleteVideoMutation.mutate(id));
+          selectedVideos.forEach(async (id) => {
+            try {
+              await fetch(`/api/admin/videos/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+              });
+            } catch (error) {
+              console.error('Failed to delete video:', error);
+            }
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
           setSelectedVideos([]);
         }
         break;
       case "activate":
-        selectedVideos.forEach(id => 
-          updateVideoMutation.mutate({ id, isActive: true } as VideoType)
-        );
+        selectedVideos.forEach(async (id) => {
+          try {
+            await fetch(`/api/admin/videos/${id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+              },
+              body: JSON.stringify({ is_active: true })
+            });
+          } catch (error) {
+            console.error('Failed to activate video:', error);
+          }
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
         setSelectedVideos([]);
         break;
       case "deactivate":
-        selectedVideos.forEach(id => 
-          updateVideoMutation.mutate({ id, isActive: false } as VideoType)
-        );
+        selectedVideos.forEach(async (id) => {
+          try {
+            await fetch(`/api/admin/videos/${id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+              },
+              body: JSON.stringify({ is_active: false })
+            });
+          } catch (error) {
+            console.error('Failed to deactivate video:', error);
+          }
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
         setSelectedVideos([]);
         break;
     }
@@ -260,7 +344,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               {categories.map(category => (
                 <SelectItem key={category} value={category}>
                   {category}
@@ -305,7 +389,10 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
             </DropdownMenu>
           )}
           
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button onClick={() => {
+            setSelectedVideo(null);
+            setIsDialogOpen(true);
+          }}>
             <Plus className="w-4 h-4 mr-2" />
             Add Video
           </Button>
@@ -373,7 +460,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
                     />
                     
                     <img
-                      src={video.thumbnailUrl}
+                      src={video.thumbnail_url}
                       alt={video.title}
                       className="w-32 h-18 object-cover rounded-lg cursor-pointer"
                       onClick={() => onVideoSelect?.(video)}
@@ -387,8 +474,8 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
                           </h3>
                           
                           <div className="flex flex-wrap gap-2 mb-2">
-                            <Badge variant={video.isActive ? "default" : "secondary"}>
-                              {video.isActive ? "Active" : "Inactive"}
+                            <Badge variant={video.is_active ? "default" : "secondary"}>
+                              {video.is_active ? "Active" : "Inactive"}
                             </Badge>
                             <Badge variant="outline">{video.category}</Badge>
                             <Badge variant="outline">{formatDuration(video.duration)}</Badge>
@@ -409,7 +496,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
                           </div>
                           
                           <div className="text-xs text-muted-foreground">
-                            Created: {new Date(video.createdAt).toLocaleDateString()}
+                            Created: {new Date(video.created_at).toLocaleDateString()}
                           </div>
                         </div>
                         
@@ -444,8 +531,8 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
         )}
       </div>
 
-      {/* Video Form Dialog - Temporarily disabled */}
-      {/* <VideoFormDialog
+      {/* Video Form Dialog */}
+      <VideoFormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         video={selectedVideo}
@@ -453,11 +540,11 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
           if (selectedVideo) {
             updateVideoMutation.mutate({ ...data, id: selectedVideo.id } as VideoType);
           } else {
-            createVideoMutation.mutate(data);
+            createVideoMutation.mutate(data as any);
           }
         }}
         isLoading={createVideoMutation.isPending || updateVideoMutation.isPending}
-      /> */}
+      />
     </div>
   );
 }

@@ -67,11 +67,35 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   body {
     @apply bg-dharma-dark text-white font-sans antialiased;
     font-family: 'Inter', sans-serif;
+  }
+  
+  /* Ensure form inputs have dark text on light background */
+  input, textarea, select {
+    @apply text-gray-900 bg-white;
+  }
+  
+  /* Ensure input elements in forms have proper contrast */
+  .form-input, 
+  [role="textbox"], 
+  [role="combobox"],
+  input[type="text"],
+  input[type="email"], 
+  input[type="password"],
+  input[type="number"],
+  input[type="url"],
+  textarea {
+    @apply text-gray-900 bg-white border-gray-300;
+  }
+  
+  /* Specific styles for shadcn/ui components */
+  .ui-input,
+  .ui-textarea {
+    @apply text-gray-900 bg-white;
   }
 }
 

@@ -3,6 +3,10 @@ import { Route, Switch } from "wouter";
 import AdminLogin from "../components/admin/AdminLogin";
 import AdminDashboard from "../components/admin/AdminDashboard";
 import AdminLayout from "../components/admin/AdminLayout";
+import VideoManager from "../components/admin/VideoManager";
+import UserManager from "../components/admin/UserManager";
+import Analytics from "../components/admin/Analytics";
+import Settings from "../components/admin/Settings";
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,12 +68,12 @@ export default function Admin() {
       <Switch>
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
-        <Route path="/admin/videos" component={() => <div>Videos Management</div>} />
+        <Route path="/admin/videos" component={() => <VideoManager />} />
         <Route path="/admin/series" component={() => <div>Series Management</div>} />
-        <Route path="/admin/users" component={() => <div>Users Management</div>} />
+        <Route path="/admin/users" component={() => <UserManager />} />
         <Route path="/admin/admins" component={() => <div>Admins Management</div>} />
-        <Route path="/admin/analytics" component={() => <div>Analytics</div>} />
-        <Route path="/admin/settings" component={() => <div>Settings</div>} />
+        <Route path="/admin/analytics" component={() => <Analytics />} />
+        <Route path="/admin/settings" component={() => <Settings />} />
         <Route component={() => <div>404 - Admin Page Not Found</div>} />
       </Switch>
     </AdminLayout>
