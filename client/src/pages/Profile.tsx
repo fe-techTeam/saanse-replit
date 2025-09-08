@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 
 export default function Profile() {
   const [, setLocation] = useLocation();
-  const { user, firebaseUser, isAuthenticated, signIn, signOut, loading } = useAuth();
+  const { user, supabaseUser, isAuthenticated, signIn, signOut, loading } = useAuth();
 
   const handleProfileClick = () => {
     // Already on profile page
@@ -48,7 +48,7 @@ export default function Profile() {
             </p>
             
             <Button
-              onClick={signIn}
+              onClick={() => signIn()}
               className="w-full bg-dharma-gold text-dharma-dark hover:bg-dharma-gold-light flex items-center justify-center space-x-2 py-3"
             >
               <LogIn className="w-5 h-5" />

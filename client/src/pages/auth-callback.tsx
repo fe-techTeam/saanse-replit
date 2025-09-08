@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthCallback() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +20,7 @@ export default function AuthCallback() {
 
         if (data.session) {
           // Successfully authenticated, redirect to home
-          setLocation("/");
+          navigate("/");
         } else {
           setError("Authentication failed");
           setLoading(false);
@@ -32,7 +32,7 @@ export default function AuthCallback() {
     };
 
     handleAuthCallback();
-  }, [setLocation]);
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -53,7 +53,7 @@ export default function AuthCallback() {
           <h1 className="text-white text-2xl font-bold mb-4">Authentication Error</h1>
           <p className="text-gray-300 mb-6">{error}</p>
           <button
-            onClick={() => setLocation("/")}
+            onClick={() => navigate("/")}
             className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg transition-colors"
           >
             Return to Home

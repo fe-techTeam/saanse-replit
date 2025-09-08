@@ -1,12 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X } from "lucide-react";
+import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const { data: videos = [], isLoading } = useQuery({
     queryKey: ["/api/videos"]
   });
+
+  const { user, signOut, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const typedVideos = videos as any[];
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
@@ -15,6 +24,24 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
   const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out of MythosStream.",
+      });
+      navigate('/login');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Logout failed",
+        description: "An error occurred while logging out.",
+      });
+    }
+  };
 
   // High quality thumbnails
   const getUniqueThumbnail = (index: number) => {
@@ -110,9 +137,65 @@ export default function Home() {
 
           <div className="flex items-center space-x-3 md:space-x-6">
             <Search className="w-5 h-5 md:w-6 md:h-6 text-white cursor-pointer hover:text-gray-300" />
-            <div className="w-7 h-7 md:w-8 md:h-8 bg-red-600 rounded flex items-center justify-center cursor-pointer">
-              <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
-            </div>
+            
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-7 h-7 md:w-8 md:h-8 bg-red-600 rounded flex items-center justify-center cursor-pointer hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black">
+                  {isAuthenticated && user?.avatar ? (
+                    <Avatar className="w-7 h-7 md:w-8 md:h-8">
+                      <AvatarImage src={user.avatar} />
+                      <AvatarFallback className="bg-red-600 text-white text-xs">
+                        {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-black/95 border-gray-700 text-white">
+                <div className="px-3 py-2">
+                  <p className="text-sm font-medium text-white">
+                    {user?.name || 'User'}
+                  </p>
+                  <p className="text-xs text-gray-300">
+                    {user?.email}
+                  </p>
+                </div>
+                <DropdownMenuSeparator className="bg-gray-700" />
+                <DropdownMenuItem 
+                  onClick={() => navigate('/profile')}
+                  className="text-white hover:bg-gray-800 cursor-pointer"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => navigate('/library')}
+                  className="text-white hover:bg-gray-800 cursor-pointer"
+                >
+                  <Heart className="mr-2 h-4 w-4" />
+                  My Library
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => navigate('/cms')}
+                  className="text-white hover:bg-gray-800 cursor-pointer"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-gray-700" />
+                <DropdownMenuItem 
+                  onClick={handleLogout}
+                  className="text-red-400 hover:bg-gray-800 cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden"

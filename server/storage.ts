@@ -330,13 +330,18 @@ export class SupabaseStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const validatedUser = insertUserSchema.parse(user);
+    
     const { data, error } = await supabase
       .from('users')
       .insert(validatedUser)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Database error creating user:", error);
+      throw error;
+    }
+    
     return data;
   }
 

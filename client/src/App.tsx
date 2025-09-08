@@ -8,9 +8,12 @@ import Search from "@/pages/Search";
 import Library from "@/pages/Library";
 import Profile from "@/pages/Profile";
 import CMS from "@/pages/CMS";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import AuthCallback from "@/pages/auth-callback";
 import NotFound from "@/pages/not-found";
 import AdminApp from "@/pages/admin/AdminApp";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 function App() {
   return (
@@ -20,13 +23,22 @@ function App() {
           <div className="min-h-screen bg-black text-white">
             <Toaster />
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/cms" element={<CMS />} />
-              <Route path="/admin/*" element={<AdminApp />} />
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              
+              {/* Protected routes */}
+              <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+              <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/cms" element={<ProtectedRoute><CMS /></ProtectedRoute>} />
+              
+              {/* Admin routes (separate authentication) */}
+              <Route path="/admin/*" element={<AdminApp />} />
+              
+              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

@@ -8,7 +8,10 @@
       "Bash(npx tsx:*)",
       "Bash(npx:*)",
       "Bash(taskkill:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(grep:*)",
+      "Bash(pkill:*)",
+      "Bash(true)"
     ],
     "deny": [],
     "ask": []
