@@ -280,53 +280,98 @@ export default function Home() {
         />
       </div>
 
-      {/* Video Modal */}
+      {/* Netflix-Style Video Modal */}
       {selectedVideo && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-lg max-w-full md:max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="relative">
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-300"
+          onClick={() => setSelectedVideo(null)}
+        >
+          <div 
+            className="bg-zinc-900 rounded-xl max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-2xl transform animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Hero Section with Video Thumbnail */}
+            <div className="relative h-[50vh] overflow-hidden">
               <img 
                 src={selectedVideo.thumbnail_url} 
                 alt={selectedVideo.title}
-                className="w-full h-48 md:h-64 object-cover rounded-t-lg"
+                className="w-full h-full object-cover"
               />
               
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
+              
+              {/* Close Button */}
               <button 
-                className="absolute top-2 right-2 md:top-4 md:right-4 p-1.5 md:p-2 bg-black/70 rounded-full text-white text-lg md:text-base"
+                className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110"
                 onClick={() => setSelectedVideo(null)}
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
               
-              <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 flex space-x-2 md:space-x-3">
+              {/* Action Buttons */}
+              <div className="absolute bottom-6 left-6 flex items-center space-x-3">
                 <button 
-                  className="bg-white text-black px-4 md:px-6 py-1.5 md:py-2 rounded font-bold text-sm md:text-base flex items-center"
+                  className="bg-white hover:bg-gray-200 text-black px-8 py-3 rounded-md font-semibold text-lg flex items-center transition-all duration-200 shadow-lg hover:shadow-xl"
                   onClick={(e) => handleVideoPlay(selectedVideo, e)}
                 >
-                  <Play className="w-4 md:w-5 h-4 md:h-5 mr-1.5 md:mr-2 fill-current" />
+                  <Play className="w-6 h-6 mr-2 fill-current" />
                   Play
                 </button>
+                
                 <button 
                   onClick={(e) => toggleFavorite(selectedVideo.id, e)}
-                  className="p-2 bg-gray-700 rounded-full"
+                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
                 >
-                  <Heart className={`w-5 h-5 ${favorites.includes(selectedVideo.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                  <Plus className="w-6 h-6 text-white" />
+                </button>
+                
+                <button 
+                  onClick={(e) => toggleFavorite(selectedVideo.id, e)}
+                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                >
+                  <Heart className={`w-6 h-6 ${favorites.includes(selectedVideo.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
                 </button>
               </div>
             </div>
             
-            <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-              <h2 className="text-lg md:text-2xl font-bold text-white">{selectedVideo.title}</h2>
-              <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-400">
-                <span className="flex items-center text-green-400">
-                  <Star className="w-3 md:w-4 h-3 md:h-4 mr-1" />
-                  {selectedVideo.rating}
-                </span>
-                <span>2024</span>
-                <span>3 minutes</span>
-                <span>HD</span>
+            {/* Content Section */}
+            <div className="p-6 space-y-6">
+              {/* Title and Meta Info */}
+              <div className="space-y-4">
+                <h1 className="text-3xl font-bold text-white leading-tight">
+                  {selectedVideo.title}
+                </h1>
+                
+                <div className="flex items-center space-x-4 text-sm">
+                  <span className="flex items-center text-green-400 font-medium">
+                    <Star className="w-4 h-4 mr-1 fill-current" />
+                    {selectedVideo.rating}
+                  </span>
+                  <span className="text-gray-400">2024</span>
+                  <span className="px-2 py-1 bg-zinc-700 text-white text-xs rounded">HD</span>
+                  <span className="text-gray-400">{Math.floor(selectedVideo.duration / 60)}m</span>
+                </div>
               </div>
-              <p className="text-sm md:text-base text-gray-300">{selectedVideo.description}</p>
+              
+              {/* Description */}
+              <div className="space-y-4">
+                <p className="text-gray-300 text-lg leading-relaxed">
+                  {selectedVideo.description || selectedVideo.shortDescription}
+                </p>
+              </div>
+              
+              {/* Additional Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-700">
+                <div>
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Category</h3>
+                  <span className="text-white">{selectedVideo.category}</span>
+                </div>
+                <div>
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Views</h3>
+                  <span className="text-white">{selectedVideo.views?.toLocaleString()} views</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -368,6 +413,34 @@ export default function Home() {
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
+          }
+          
+          @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes zoom-in-95 {
+            from { 
+              opacity: 0;
+              transform: scale(0.95);
+            }
+            to { 
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          
+          .animate-in {
+            animation-fill-mode: both;
+          }
+          
+          .fade-in {
+            animation: fade-in 0.3s ease-out;
+          }
+          
+          .zoom-in-95 {
+            animation: zoom-in-95 0.3s ease-out;
           }
         `
       }} />
