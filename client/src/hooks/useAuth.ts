@@ -19,35 +19,231 @@ interface AuthToken {
   user: AuthUser;
 }
 
+// Secure storage configuration
+const AUTH_STORAGE_KEY = 'saanse_auth';
+const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // Refresh 5 minutes before expiry
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours max session
+const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check activity every minute
+
+// Simple encryption for localStorage (XOR cipher)
+const encryptData = (data: string): string => {
+  const key = 'SAANSE_2024_SECURE';
+  return btoa(data.split('').map((char, i) => 
+    String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+  ).join(''));
+};
+
+const decryptData = (encryptedData: string): string => {
+  const key = 'SAANSE_2024_SECURE';
+  return atob(encryptedData).split('').map((char, i) => 
+    String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+  ).join('');
+};
+
+// Secure storage functions
+const storeAuthData = (authData: AuthToken): void => {
+  try {
+    const encryptedData = encryptData(JSON.stringify(authData));
+    localStorage.setItem(AUTH_STORAGE_KEY, encryptedData);
+  } catch (error) {
+    console.error('Failed to store auth data:', error);
+  }
+};
+
+const getStoredAuthData = (): AuthToken | null => {
+  try {
+    const storedData = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!storedData) return null;
+    
+    const decryptedData = decryptData(storedData);
+    return JSON.parse(decryptedData);
+  } catch (error) {
+    console.error('Failed to retrieve auth data:', error);
+    // Clear corrupted data
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+};
+
+const clearAuthData = (): void => {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  // Clear legacy storage
+  localStorage.removeItem('mythosstream_auth');
+};
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTimer, setRefreshTimer] = useState<NodeJS.Timeout | null>(null);
+  const [activityTimer, setActivityTimer] = useState<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
+
+  // Track user activity for security
+  const updateLastActivity = () => {
+    localStorage.setItem('saanse_last_activity', Date.now().toString());
+  };
+
+  const checkSessionTimeout = async () => {
+    const lastActivity = localStorage.getItem('saanse_last_activity');
+    if (lastActivity) {
+      const timeSinceActivity = Date.now() - parseInt(lastActivity);
+      
+      if (timeSinceActivity > SESSION_TIMEOUT) {
+        console.log('Session timeout due to inactivity');
+        await signOut();
+        return;
+      }
+    }
+    
+    const authData = getStoredAuthData();
+    if (authData && Date.now() > authData.expires_at) {
+      console.log('Session timeout due to token expiry');
+      await signOut();
+    }
+  };
+
+  // Monitor user activity
+  const startActivityMonitoring = () => {
+    // Update activity on user interaction
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const updateActivity = () => updateLastActivity();
+    
+    events.forEach(event => {
+      document.addEventListener(event, updateActivity, true);
+    });
+
+    // Periodic session validation
+    const timer = setInterval(checkSessionTimeout, ACTIVITY_CHECK_INTERVAL);
+    setActivityTimer(timer);
+
+    // Initial activity timestamp
+    updateLastActivity();
+  };
+
+  const stopActivityMonitoring = () => {
+    if (activityTimer) {
+      clearInterval(activityTimer);
+      setActivityTimer(null);
+    }
+    
+    // Clean up activity tracking
+    localStorage.removeItem('saanse_last_activity');
+  };
 
   // Check if user is logged in on app start
   useEffect(() => {
     checkAuthState();
+    
+    // Cleanup timers on unmount
+    return () => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+      if (activityTimer) {
+        clearInterval(activityTimer);
+      }
+    };
   }, []);
+
+  // Start/stop activity monitoring based on auth state
+  useEffect(() => {
+    if (user) {
+      startActivityMonitoring();
+    } else {
+      stopActivityMonitoring();
+    }
+    
+    return () => {
+      stopActivityMonitoring();
+    };
+  }, [user]);
+
+  // Auto-refresh token before expiry
+  const scheduleTokenRefresh = (authData: AuthToken) => {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+
+    const timeUntilRefresh = authData.expires_at - Date.now() - TOKEN_REFRESH_BUFFER;
+    
+    if (timeUntilRefresh > 0) {
+      const timer = setTimeout(() => {
+        refreshToken();
+      }, timeUntilRefresh);
+      
+      setRefreshTimer(timer);
+      console.log(`Token refresh scheduled in ${Math.round(timeUntilRefresh / 1000 / 60)} minutes`);
+    }
+  };
+
+  // Refresh authentication token
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      console.log('Refreshing authentication token...');
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error || !data.session) {
+        console.error('Token refresh failed:', error);
+        await signOut();
+        return false;
+      }
+
+      const authUser: AuthUser = {
+        id: data.session.user.id,
+        email: data.session.user.email || '',
+        name: data.session.user.user_metadata?.full_name,
+        avatar: data.session.user.user_metadata?.avatar_url
+      };
+
+      const newAuthData: AuthToken = {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token || '',
+        expires_at: (data.session.expires_at || 0) * 1000,
+        user: authUser
+      };
+
+      storeAuthData(newAuthData);
+      setUser(authUser);
+      scheduleTokenRefresh(newAuthData);
+      
+      console.log('Token refreshed successfully');
+      return true;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      await signOut();
+      return false;
+    }
+  };
 
   const checkAuthState = async () => {
     try {
       console.log('Checking auth state...');
       
       // Check for stored auth token
-      const storedAuth = localStorage.getItem('mythosstream_auth');
-      if (storedAuth) {
+      const storedAuthData = getStoredAuthData();
+      if (storedAuthData) {
         console.log('Found stored auth token');
-        const authData: AuthToken = JSON.parse(storedAuth);
         
-        // Check if token is still valid
-        if (authData.expires_at > Date.now()) {
+        // Check if token needs refresh
+        const timeUntilExpiry = storedAuthData.expires_at - Date.now();
+        
+        if (timeUntilExpiry > TOKEN_REFRESH_BUFFER) {
           console.log('Stored token is valid, setting user');
-          setUser(authData.user);
+          setUser(storedAuthData.user);
+          scheduleTokenRefresh(storedAuthData);
           setLoading(false);
           return;
+        } else if (timeUntilExpiry > 0) {
+          console.log('Token needs refresh, attempting refresh...');
+          const refreshSuccess = await refreshToken();
+          if (refreshSuccess) {
+            setLoading(false);
+            return;
+          }
         } else {
           console.log('Stored token expired, clearing it');
-          localStorage.removeItem('mythosstream_auth');
+          clearAuthData();
         }
       }
 
@@ -76,8 +272,9 @@ export function useAuth() {
           user: authUser
         };
 
-        localStorage.setItem('mythosstream_auth', JSON.stringify(authData));
+        storeAuthData(authData);
         setUser(authUser);
+        scheduleTokenRefresh(authData);
       } else {
         console.log('No valid session found');
       }
@@ -116,8 +313,9 @@ export function useAuth() {
         };
 
         console.log('Storing auth data:', authData);
-        localStorage.setItem('mythosstream_auth', JSON.stringify(authData));
+        storeAuthData(authData);
         setUser(authUser);
+        scheduleTokenRefresh(authData);
         console.log('Sign in successful!');
         return true;
       }
@@ -142,27 +340,84 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
+      // Clear all timers
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+        setRefreshTimer(null);
+      }
+      
+      // Stop activity monitoring
+      stopActivityMonitoring();
+      
+      // Sign out from Supabase
       await signOutUser();
-      localStorage.removeItem('mythosstream_auth');
+      
+      // Clear all stored data
+      clearAuthData();
       setUser(null);
       queryClient.clear();
+      
+      // Clear all session storage
+      sessionStorage.clear();
+      
+      // Clear any remaining localStorage items related to the app
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('saanse_') || key.startsWith('mythosstream_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      console.log('User signed out successfully - all session data cleared');
     } catch (error) {
       console.error("Sign out failed:", error);
+      // Still clear local data even if server sign-out fails
+      stopActivityMonitoring();
+      clearAuthData();
+      setUser(null);
+      sessionStorage.clear();
+      
+      // Force clear all app-related localStorage
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('saanse_') || key.startsWith('mythosstream_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
     }
   };
 
   // Get auth headers for API requests
   const getAuthHeaders = () => {
-    const storedAuth = localStorage.getItem('mythosstream_auth');
-    if (storedAuth) {
-      const authData: AuthToken = JSON.parse(storedAuth);
-      if (authData.expires_at > Date.now()) {
-        return {
-          'Authorization': `Bearer ${authData.access_token}`
-        };
-      }
+    const authData = getStoredAuthData();
+    if (authData && authData.expires_at > Date.now()) {
+      return {
+        'Authorization': `Bearer ${authData.access_token}`,
+        'Content-Type': 'application/json'
+      };
     }
-    return {};
+    return {
+      'Content-Type': 'application/json'
+    };
+  };
+
+  // Validate session server-side (optional enhanced security)
+  const validateSession = async (): Promise<boolean> => {
+    try {
+      const authData = getStoredAuthData();
+      if (!authData) return false;
+      
+      // In a real app, you'd validate the token server-side here
+      // For now, just check if it's not expired
+      return authData.expires_at > Date.now();
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return false;
+    }
   };
 
   return {
@@ -173,5 +428,7 @@ export function useAuth() {
     signOut,
     getAuthHeaders,
     isAuthenticated: !!user,
+    refreshToken,
+    validateSession,
   };
 }

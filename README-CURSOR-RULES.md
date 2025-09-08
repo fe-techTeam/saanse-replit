@@ -1,12 +1,12 @@
-# MythosStream - Cursor Rules Documentation
+# SAANSE - Cursor Rules Documentation
 
-This directory contains comprehensive cursor rules for developing the MythosStream Netflix-like devotional video platform. These rules help maintain consistency, quality, and best practices across the entire project.
+This directory contains comprehensive cursor rules for developing the SAANSE Netflix-like devotional video platform. These rules help maintain consistency, quality, and best practices across the entire project.
 
 ## 📁 Cursor Rules Files
 
 ### 1. `.cursorrules` - Main Project Rules
 The primary cursor rules file containing:
-- **Project Overview**: Complete understanding of the MythosStream platform
+- **Project Overview**: Complete understanding of the SAANSE platform
 - **Tech Stack**: React 18, TypeScript, Express.js, PostgreSQL, Firebase, etc.
 - **Development Guidelines**: Code style, architecture, and patterns
 - **Feature Priorities**: Current, next, and future development phases
@@ -63,8 +63,8 @@ Specialized rules for content management system:
 
 ## 📋 Project Overview
 
-### What is MythosStream?
-MythosStream (SAANSE) is a Netflix-style platform for sharing short devotional videos focused on Hindu mythology, spiritual content, and religious stories. The platform includes:
+### What is SAANSE?
+SAANSE (SAANSE) is a Netflix-style platform for sharing short devotional videos focused on Hindu mythology, spiritual content, and religious stories. The platform includes:
 
 - **User-facing features**: Video streaming, search, playlists, user profiles
 - **Admin panel**: Content management, user management, analytics
@@ -260,4 +260,4 @@ For questions about these cursor rules or the project:
 
 ---
 
-**Remember**: These cursor rules are living documents. Update them as the project evolves and new patterns emerge. They should help maintain consistency and quality across the entire MythosStream platform.
+**Remember**: These cursor rules are living documents. Update them as the project evolves and new patterns emerge. They should help maintain consistency and quality across the entire SAANSE platform.

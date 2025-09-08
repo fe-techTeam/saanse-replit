@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings, Plus, ThumbsUp } from "lucide-react";
+import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings, Plus, ThumbsUp, Crown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,7 +7,7 @@ import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { NetflixHero } from "@/components/NetflixHero";
 import { NetflixRow } from "@/components/NetflixRow";
 import { Header } from "@/components/Header";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,15 +38,19 @@ export default function Home() {
       await signOut();
       toast({
         title: "Signed out successfully",
-        description: "You have been logged out of MythosStream.",
+        description: "You have been logged out of SAANSE.",
       });
-      navigate('/login');
+      navigate('/signup', { replace: true });
+      setTimeout(() => {
+        window.location.href = '/signup';
+      }, 100);
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Logout failed",
         description: "An error occurred while logging out.",
       });
+      navigate('/signup', { replace: true });
     }
   };
 
@@ -147,23 +151,83 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <Header 
-        onSearchClick={() => setShowSearchModal(true)}
-        onProfileClick={() => navigate('/profile')}
-      />
+      {/* Header with Plans and Logout */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between p-4">
+          <h1 className="text-red-600 text-2xl font-bold tracking-wide">SAANSE</h1>
+          
+          <div className="flex items-center space-x-4">
+            {/* Plans Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-500">
+                  <Crown className="w-4 h-4 mr-1" />
+                  Plans
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>Choose Your Plan</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem className="p-3">
+                  <div className="w-full">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium">Basic</span>
+                      <span className="text-blue-500 font-bold">₹149/mo</span>
+                    </div>
+                    <p className="text-xs text-gray-500">HD streaming, 1 device</p>
+                  </div>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem className="p-3">
+                  <div className="w-full">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium">Premium</span>
+                      <span className="text-yellow-500 font-bold">₹299/mo</span>
+                    </div>
+                    <p className="text-xs text-gray-500">4K streaming, 4 devices</p>
+                  </div>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem className="p-3">
+                  <div className="w-full">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium">Pro</span>
+                      <span className="text-purple-500 font-bold">₹499/mo</span>
+                    </div>
+                    <p className="text-xs text-gray-500">All features + exclusive content</p>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {/* Logout Button */}
+            <Button 
+              onClick={handleLogout}
+              variant="ghost" 
+              size="sm" 
+              className="text-white hover:bg-red-600/20"
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Hero Section */}
-      {featuredVideo && (
-        <NetflixHero
-          title={featuredVideo.title}
-          description={featuredVideo.description || featuredVideo.shortDescription}
-          backgroundImage={featuredVideo.thumbnail_url}
-          onPlay={() => handlePlayVideo(featuredVideo)}
-          onAddToList={() => toggleFavorite(featuredVideo.id)}
-          onMoreInfo={() => setSelectedVideo(featuredVideo)}
-        />
-      )}
+      <div className="pt-16">
+        {featuredVideo && (
+          <NetflixHero
+            title={featuredVideo.title}
+            description={featuredVideo.description || featuredVideo.shortDescription}
+            backgroundImage={featuredVideo.thumbnail_url}
+            onPlay={() => handlePlayVideo(featuredVideo)}
+            onAddToList={() => toggleFavorite(featuredVideo.id)}
+            onMoreInfo={() => setSelectedVideo(featuredVideo)}
+          />
+        )}
+      </div>
 
       {/* Content Sections - Netflix Style Grid */}
       <div className="bg-black pb-20">

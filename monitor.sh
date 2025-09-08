@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# MythosStream Server Monitoring Script
+# SAANSE Server Monitoring Script
 # This script monitors the server status, API endpoints, and system resources
 
-echo "🚀 MythosStream Server Monitor"
+echo "🚀 SAANSE Server Monitor"
 echo "================================"
 echo "Started at: $(date)"
 echo ""
@@ -122,7 +122,7 @@ show_logs() {
 monitor_loop() {
     while true; do
         clear
-        echo "🚀 MythosStream Server Monitor"
+        echo "🚀 SAANSE Server Monitor"
         echo "================================"
         echo "Last updated: $(date)"
         echo ""

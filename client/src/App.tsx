@@ -6,8 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import Search from "@/pages/Search";
 import Library from "@/pages/Library";
-import Profile from "@/pages/Profile";
-import CMS from "@/pages/CMS";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import AuthCallback from "@/pages/auth-callback";
@@ -32,8 +30,6 @@ function App() {
               <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
               <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
               <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/cms" element={<ProtectedRoute><CMS /></ProtectedRoute>} />
               
               {/* Admin routes (separate authentication) */}
               <Route path="/admin/*" element={<AdminApp />} />

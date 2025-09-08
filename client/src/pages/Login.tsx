@@ -47,7 +47,7 @@ export default function Login() {
       
       if (success) {
         toast({
-          title: "Welcome to MythosStream!",
+          title: "Welcome to SAANSE!",
           description: "Successfully signed in. Redirecting to home...",
         });
         // Navigation will be handled by the useEffect when isAuthenticated becomes true
@@ -85,14 +85,14 @@ export default function Login() {
       
       {/* Netflix logo */}
       <div className="absolute top-6 left-6 z-10">
-        <h1 className="text-red-600 text-3xl font-bold tracking-wide">MYTHOSSTREAM</h1>
+        <h1 className="text-red-600 text-3xl font-bold tracking-wide">SAANSE</h1>
       </div>
       
       {/* Login Form */}
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="w-full max-w-md bg-black/75 backdrop-blur-sm rounded-md p-12">
           <h2 className="text-white text-3xl font-semibold mb-8">
-            Sign In to MythosStream
+            Sign In to SAANSE
           </h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -163,7 +163,7 @@ export default function Login() {
           </div>
           
           <div className="mt-8 text-gray-400 text-sm">
-            New to MythosStream?{' '}
+            New to SAANSE?{' '}
             <button
               type="button"
               onClick={() => navigate('/signup')}

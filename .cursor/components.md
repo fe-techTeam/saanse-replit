@@ -1,5 +1,5 @@
 # Component Development Rules
-# MythosStream - React Components Guidelines
+# SAANSE - React Components Guidelines
 
 ## Component Structure
 

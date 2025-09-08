@@ -1,8 +1,8 @@
-# MythosStream - Netflix-like Devotional Video Platform
+# SAANSE - Netflix-like Devotional Video Platform
 # Cursor Rules for Development
 
 ## Project Overview
-MythosStream (SAANSE) is a Netflix-style platform for sharing short devotional videos focused on Hindu mythology, spiritual content, and religious stories. The platform includes both user-facing features and an admin CMS panel.
+SAANSE (SAANSE) is a Netflix-style platform for sharing short devotional videos focused on Hindu mythology, spiritual content, and religious stories. The platform includes both user-facing features and an admin CMS panel.
 
 ## Tech Stack
 - **Frontend**: React 18 + TypeScript + Vite
@@ -377,4 +377,4 @@ type FormData = z.infer<typeof formSchema>;
 - [Lucide Icons](https://lucide.dev/)
 - [Framer Motion](https://www.framer.com/motion/)
 
-This cursor rules file should help maintain consistency and quality across the MythosStream project development.
+This cursor rules file should help maintain consistency and quality across the SAANSE project development.

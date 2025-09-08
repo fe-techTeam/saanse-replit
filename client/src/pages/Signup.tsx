@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -11,10 +11,22 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
+  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const { signUp } = useAuth();
+  const { signUp, isAuthenticated, loading } = useAuth();
+  
+  const from = location.state?.from?.pathname || '/';
+
+  // Redirect to home if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      console.log('User is authenticated, redirecting to:', from);
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate, from]);
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +64,7 @@ export default function Signup() {
         title: "Account created successfully!",
         description: "Please check your email to verify your account, then sign in.",
       });
-      navigate('/login');
+      navigate('/login', { replace: true });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -75,19 +87,20 @@ export default function Signup() {
       />
       
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-6">
-        <h1 className="text-red-600 text-3xl font-bold tracking-wide">MYTHOSSTREAM</h1>
+      <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6">
+        <h1 className="text-red-600 text-3xl font-bold tracking-wide">SAANSE</h1>
         <div className="flex items-center space-x-4">
           <select className="bg-transparent border border-gray-500 text-white px-3 py-1 rounded text-sm">
             <option value="en">English</option>
             <option value="hi">हिंदी</option>
           </select>
-          <Button
+          <button
             onClick={() => navigate('/login')}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm rounded"
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm rounded cursor-pointer transition-colors duration-200"
+            type="button"
           >
             Sign In
-          </Button>
+          </button>
         </div>
       </div>
       
@@ -138,7 +151,7 @@ export default function Signup() {
                   Just a few more steps and you're finished!
                 </p>
                 <p className="text-gray-400 text-sm mb-6">
-                  MythosStream is personalized for you.
+                  SAANSE is personalized for you.
                 </p>
                 
                 <form onSubmit={handleSignUp} className="space-y-4">
@@ -254,20 +267,52 @@ export default function Signup() {
               <h2 className="text-white text-2xl font-semibold mb-8">Frequently Asked Questions</h2>
               <div className="space-y-4">
                 {[
-                  "What is MythosStream?",
-                  "How much does MythosStream cost?",
-                  "Where can I watch?",
-                  "How do I cancel?",
-                  "What can I watch on MythosStream?",
-                  "Is MythosStream good for kids?"
-                ].map((question, index) => (
-                  <div key={index} className="bg-gray-800 p-6 rounded">
-                    <div className="flex justify-between items-center">
-                      <span className="text-white text-lg">{question}</span>
-                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  {
+                    question: "What is SAANSE?",
+                    answer: "SAANSE is a devotional video platform specializing in Hindu mythology and spiritual content. We offer short-form videos covering stories from epics like Ramayana and Mahabharata, Krishna leelas, bhajans, and educational spiritual content to inspire and enlighten viewers."
+                  },
+                  {
+                    question: "How much does SAANSE cost?",
+                    answer: "SAANSE starts at ₹149 per month. We offer flexible subscription plans with no long-term commitments. You can cancel anytime and still enjoy access until the end of your billing period."
+                  },
+                  {
+                    question: "Where can I watch?",
+                    answer: "You can watch SAANSE on any device with an internet connection - smartphones, tablets, computers, smart TVs, PlayStation, Xbox, Chromecast, Apple TV, and more. Your account works across all supported devices."
+                  },
+                  {
+                    question: "How do I cancel?",
+                    answer: "You can cancel your SAANSE subscription anytime with just a few clicks in your account settings. There are no cancellation fees, and you'll continue to have access until the end of your current billing period."
+                  },
+                  {
+                    question: "What can I watch on SAANSE?",
+                    answer: "SAANSE offers a vast library of devotional content including stories from Hindu epics, Krishna leelas, spiritual teachings, bhajans, festival celebrations, and educational content about Hindu mythology and philosophy."
+                  },
+                  {
+                    question: "Is SAANSE good for kids?",
+                    answer: "Absolutely! SAANSE offers family-friendly spiritual content that's perfect for kids. You can create separate profiles for children and enjoy stories that teach moral values, cultural heritage, and spiritual wisdom in an engaging way."
+                  }
+                ].map((faq, index) => (
+                  <div key={index} className="bg-gray-800 rounded overflow-hidden">
+                    <div 
+                      className="flex justify-between items-center p-6 cursor-pointer hover:bg-gray-750 transition-colors"
+                      onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
+                    >
+                      <span className="text-white text-lg">{faq.question}</span>
+                      <svg 
+                        className={`w-6 h-6 text-white transition-transform duration-200 ${
+                          expandedFAQ === index ? 'rotate-45' : ''
+                        }`} 
+                        fill="currentColor" 
+                        viewBox="0 0 20 20"
+                      >
                         <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                       </svg>
                     </div>
+                    {expandedFAQ === index && (
+                      <div className="px-6 pb-6 pt-0">
+                        <p className="text-gray-300 text-base leading-relaxed">{faq.answer}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

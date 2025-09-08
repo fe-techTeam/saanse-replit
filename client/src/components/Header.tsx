@@ -31,14 +31,6 @@ export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
           </button>
           
           {/* Profile icon */}
-          {/* CMS Admin Access */}
-          <button 
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-            onClick={() => window.location.href = '/cms'}
-            title="Content Management"
-          >
-            <Settings className="w-5 h-5 text-gray-400" />
-          </button>
           
           {/* Profile icon */}
           <button 

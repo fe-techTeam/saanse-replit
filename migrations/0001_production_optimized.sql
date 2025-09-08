@@ -1,4 +1,4 @@
--- MythosStream Production Migration
+-- SAANSE Production Migration
 -- Optimized for Supabase with RLS, indexes, and constraints
 -- Generated for production use
 

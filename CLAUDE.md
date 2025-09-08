@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**MythosStream (SAANSE)** is a Netflix-style devotional video platform specializing in Hindu mythology and spiritual content. It features short-form videos (2-3 minutes) covering stories from epics like Ramayana and Mahabharata, Krishna leelas, bhajans, and educational spiritual content.
+**SAANSE (SAANSE)** is a Netflix-style devotional video platform specializing in Hindu mythology and spiritual content. It features short-form videos (2-3 minutes) covering stories from epics like Ramayana and Mahabharata, Krishna leelas, bhajans, and educational spiritual content.
 
 ## Common Commands
 

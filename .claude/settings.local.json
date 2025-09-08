@@ -1,18 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node:*)",
-      "Bash(npm:*)",
-      "Bash(set NODE_ENV=development)",
-      "Bash(tsx:*)",
-      "Bash(npx tsx:*)",
-      "Bash(npx:*)",
-      "Bash(taskkill:*)",
-      "Bash(git add:*)",
-      "Bash(grep:*)",
-      "Bash(pkill:*)",
-      "Bash(true)",
-      "Bash(find:*)"
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
