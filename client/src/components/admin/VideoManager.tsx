@@ -558,7 +558,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
             updateVideoMutation.mutate({ 
               ...selectedVideo,
               ...data,
-              tags: data.tags ? data.tags.split(',').map(t => t.trim()) : selectedVideo.tags
+              tags: Array.isArray(data.tags) ? data.tags : selectedVideo.tags
             });
           } else {
             createVideoMutation.mutate(data as any);

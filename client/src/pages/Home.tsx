@@ -71,13 +71,13 @@ export default function Home() {
 
   const enhancedVideos = typedVideos.map((video: any, index: number) => ({
     ...video,
-    thumbnail_url: getUniqueThumbnail(index),
-    thumbnailUrl: getUniqueThumbnail(index),
+    thumbnail_url: video.thumbnail_url || getUniqueThumbnail(index),
+    thumbnailUrl: video.thumbnail_url || getUniqueThumbnail(index),
     rating: (4.1 + Math.random() * 0.8).toFixed(1),
     shortDescription: video.description ? video.description.slice(0, 80) + "..." : "Experience this divine story of faith and devotion.",
-    duration: 180 + Math.floor(Math.random() * 120),
-    views: 1000 + Math.floor(Math.random() * 50000),
-    likes: 100 + Math.floor(Math.random() * 5000)
+    duration: video.duration || (180 + Math.floor(Math.random() * 120)),
+    views: video.views || (1000 + Math.floor(Math.random() * 50000)),
+    likes: video.likes || (100 + Math.floor(Math.random() * 5000))
   }));
 
   // Auto-change hero every 6 seconds
