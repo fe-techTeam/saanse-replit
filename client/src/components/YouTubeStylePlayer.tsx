@@ -36,16 +36,12 @@ export function YouTubeStylePlayer({
   onNext, 
   onPrevious 
 }: YouTubeStylePlayerProps) {
-  // Test video URLs - will try in order if one fails
-  const testVideoUrls = [
-    "https://res.cloudinary.com/demo/video/upload/samples/cld-sample-video.mp4",
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    "https://file-examples.com/wp-content/uploads/2017/10/file_example_MP4_640_3MG.mp4",
-    "https://www.w3schools.com/html/mov_bbb.mp4"
-  ];
-  
-  const [currentVideoUrlIndex, setCurrentVideoUrlIndex] = useState(0);
-  const getCurrentVideoUrl = () => testVideoUrls[currentVideoUrlIndex] || testVideoUrls[0];
+  const getVideoUrl = () => {
+    if (!video?.video_url) {
+      return "https://res.cloudinary.com/demo/video/upload/samples/cld-sample-video.mp4";
+    }
+    return video.video_url;
+  };
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -103,14 +99,36 @@ export function YouTubeStylePlayer({
     }
   }, [isOpen, video, user]);
 
-  // Force video reload when URL changes
+  // Auto-play when player opens
   useEffect(() => {
-    const videoEl = videoRef.current;
-    if (videoEl && isOpen) {
-      console.log('Video URL changed to:', getCurrentVideoUrl());
-      videoEl.load(); // Force reload
+    if (isOpen && video) {
+      const videoEl = videoRef.current;
+      if (videoEl) {
+        console.log('Player opened, attempting autoplay for:', getVideoUrl());
+        videoEl.load(); // Force reload with new video
+        
+        // Set up autoplay once video is ready
+        const handleCanPlay = () => {
+          console.log('Video ready for autoplay');
+          videoEl.play()
+            .then(() => {
+              console.log('Autoplay successful');
+              setIsPlaying(true);
+            })
+            .catch((error) => {
+              console.log('Autoplay blocked:', error.message);
+              // Autoplay was blocked, user will need to click play
+            });
+        };
+        
+        videoEl.addEventListener('canplay', handleCanPlay, { once: true });
+        
+        return () => {
+          videoEl.removeEventListener('canplay', handleCanPlay);
+        };
+      }
     }
-  }, [currentVideoUrlIndex, isOpen]);
+  }, [isOpen, video?.id]);
 
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -405,9 +423,9 @@ export function YouTubeStylePlayer({
       <div className="relative flex-1 flex items-center justify-center">
         <video
           ref={videoRef}
-          src={getCurrentVideoUrl()}
+          src={getVideoUrl()}
           className="w-full h-full object-contain"
-          poster="https://res.cloudinary.com/demo/image/upload/samples/cld-sample-video.jpg"
+          poster={video?.thumbnail_url || "https://res.cloudinary.com/demo/image/upload/samples/cld-sample-video.jpg"}
           playsInline
           preload="metadata"
           controls={false}
@@ -415,14 +433,7 @@ export function YouTubeStylePlayer({
           onError={(e) => {
             console.error('Video loading error:', e);
             console.log('Current src:', e.currentTarget.src);
-            console.log('Trying next video URL...');
-            
-            // Try next video URL if available
-            if (currentVideoUrlIndex < testVideoUrls.length - 1) {
-              setCurrentVideoUrlIndex(prev => prev + 1);
-            } else {
-              console.error('All video URLs failed');
-            }
+            console.error('Failed to load video URL:', getVideoUrl());
           }}
           onLoadStart={() => console.log('Video loading started')}
           onCanPlay={() => {
@@ -440,7 +451,7 @@ export function YouTubeStylePlayer({
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
               <p className="text-white">Loading video...</p>
-              <p className="text-gray-400 text-sm mt-2">URL: {getCurrentVideoUrl()}</p>
+              <p className="text-gray-400 text-sm mt-2">URL: {getVideoUrl()}</p>
             </div>
           </div>
         )}

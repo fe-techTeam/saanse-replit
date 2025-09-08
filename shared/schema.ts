@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -17,7 +17,7 @@ export const videos = pgTable("videos", {
   title: text("title").notNull(),
   description: text("description"),
   category: text("category").notNull(),
-  duration: integer("duration").notNull(), // in seconds
+  duration: numeric("duration", { precision: 10, scale: 6 }).notNull(), // in seconds with decimals
   thumbnailUrl: text("thumbnail_url").notNull(),
   videoUrl: text("video_url").notNull(),
   likes: integer("likes").default(0).notNull(),
@@ -27,6 +27,8 @@ export const videos = pgTable("videos", {
   contentType: text("content_type").notNull().default('standalone'), // 'standalone' or 'series'
   seriesId: text("series_id"), // null for standalone content, references series.id for series content
   episodeNumber: integer("episode_number"), // null for standalone, episode number for series
+  cloudinaryPublicId: text("cloudinary_public_id"), // Cloudinary public ID for the video
+  streamingUrls: jsonb("streaming_urls"), // JSON object containing different format URLs
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -56,7 +58,7 @@ export const viewHistory = pgTable("view_history", {
   userId: text("user_id").notNull(),
   videoId: text("video_id").notNull(),
   watchedAt: timestamp("watched_at").defaultNow().notNull(),
-  progress: integer("progress").default(0).notNull(), // in seconds
+  progress: numeric("progress", { precision: 10, scale: 6 }).default(0).notNull(), // in seconds with decimals
 });
 
 export const adminUsers = pgTable("admin_users", {

@@ -9,9 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, Eye, MoreHorizontal, Filter, Download } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, MoreHorizontal, Filter, Download, Upload } from "lucide-react";
 import type { VideoType } from "@/types/video";
 import VideoFormDialog from "./VideoFormDialog";
+import VideoUploadDialog from "./VideoUploadDialog";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 const categories = [
@@ -30,6 +31,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
   
   const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     category: "all",
@@ -334,19 +336,19 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
             placeholder="Search videos..."
             value={filters.search}
             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            className="w-full sm:w-64"
+            className="w-full sm:w-64 bg-white text-black border-gray-300 placeholder:text-gray-500"
           />
           
           <Select value={filters.category} onValueChange={(value) => 
             setFilters(prev => ({ ...prev, category: value }))
           }>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="All Categories" />
+            <SelectTrigger className="w-full sm:w-48 bg-white text-black border-gray-300">
+              <SelectValue placeholder="All Categories" className="text-black" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
+            <SelectContent className="bg-white border-gray-300">
+              <SelectItem value="all" className="text-black hover:bg-gray-100">All Categories</SelectItem>
               {categories.map(category => (
-                <SelectItem key={category} value={category}>
+                <SelectItem key={category} value={category} className="text-black hover:bg-gray-100">
                   {category}
                 </SelectItem>
               ))}
@@ -356,13 +358,13 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
           <Select value={filters.status} onValueChange={(value) => 
             setFilters(prev => ({ ...prev, status: value }))
           }>
-            <SelectTrigger className="w-full sm:w-32">
-              <SelectValue />
+            <SelectTrigger className="w-full sm:w-32 bg-white text-black border-gray-300">
+              <SelectValue className="text-black" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectContent className="bg-white border-gray-300">
+              <SelectItem value="all" className="text-black hover:bg-gray-100">All</SelectItem>
+              <SelectItem value="active" className="text-black hover:bg-gray-100">Active</SelectItem>
+              <SelectItem value="inactive" className="text-black hover:bg-gray-100">Inactive</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -371,31 +373,45 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
           {selectedVideos.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  Bulk Actions ({selectedVideos.length})
+                <Button variant="outline" className="bg-white text-black border-gray-300 hover:bg-gray-50">
+                  <span className="text-black">Bulk Actions ({selectedVideos.length})</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleBulkAction("activate")}>
+              <DropdownMenuContent className="bg-white border-gray-300">
+                <DropdownMenuItem onClick={() => handleBulkAction("activate")} className="text-black hover:bg-gray-100">
                   Activate Selected
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkAction("deactivate")}>
+                <DropdownMenuItem onClick={() => handleBulkAction("deactivate")} className="text-black hover:bg-gray-100">
                   Deactivate Selected
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleBulkAction("delete")}>
+                <DropdownMenuItem onClick={() => handleBulkAction("delete")} className="text-black hover:bg-gray-100">
                   Delete Selected
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
           
-          <Button onClick={() => {
-            setSelectedVideo(null);
-            setIsDialogOpen(true);
-          }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Video
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setIsUploadDialogOpen(true)}
+              className="text-black border-gray-300 hover:bg-gray-50"
+            >
+              <Upload className="w-4 h-4 mr-2 text-black" />
+              <span className="text-black">Upload Video</span>
+            </Button>
+            
+            <Button 
+              onClick={() => {
+                setSelectedVideo(null);
+                setIsDialogOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2 text-white" />
+              <span className="text-white">Add Video</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -404,15 +420,15 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
         <Select value={filters.sortBy} onValueChange={(value) => 
           setFilters(prev => ({ ...prev, sortBy: value }))
         }>
-          <SelectTrigger className="w-40">
-            <SelectValue />
+          <SelectTrigger className="w-40 bg-white text-black border-gray-300">
+            <SelectValue className="text-black" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="createdAt">Date Created</SelectItem>
-            <SelectItem value="title">Title</SelectItem>
-            <SelectItem value="views">Views</SelectItem>
-            <SelectItem value="likes">Likes</SelectItem>
-            <SelectItem value="duration">Duration</SelectItem>
+          <SelectContent className="bg-white border-gray-300">
+            <SelectItem value="createdAt" className="text-black hover:bg-gray-100">Date Created</SelectItem>
+            <SelectItem value="title" className="text-black hover:bg-gray-100">Title</SelectItem>
+            <SelectItem value="views" className="text-black hover:bg-gray-100">Views</SelectItem>
+            <SelectItem value="likes" className="text-black hover:bg-gray-100">Likes</SelectItem>
+            <SelectItem value="duration" className="text-black hover:bg-gray-100">Duration</SelectItem>
           </SelectContent>
         </Select>
         
@@ -423,8 +439,9 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
             ...prev, 
             sortOrder: prev.sortOrder === "asc" ? "desc" : "asc" 
           }))}
+          className="bg-white text-black border-gray-300 hover:bg-gray-50"
         >
-          {filters.sortOrder === "asc" ? "↑" : "↓"}
+          <span className="text-black">{filters.sortOrder === "asc" ? "↑" : "↓"}</span>
         </Button>
       </div>
 
@@ -538,12 +555,29 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
         video={selectedVideo}
         onSubmit={(data) => {
           if (selectedVideo) {
-            updateVideoMutation.mutate({ ...data, id: selectedVideo.id } as VideoType);
+            updateVideoMutation.mutate({ 
+              ...selectedVideo,
+              ...data,
+              tags: data.tags ? data.tags.split(',').map(t => t.trim()) : selectedVideo.tags
+            });
           } else {
             createVideoMutation.mutate(data as any);
           }
         }}
         isLoading={createVideoMutation.isPending || updateVideoMutation.isPending}
+      />
+
+      {/* Video Upload Dialog */}
+      <VideoUploadDialog
+        open={isUploadDialogOpen}
+        onOpenChange={setIsUploadDialogOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
+          toast({
+            title: "Success",
+            description: "Video uploaded successfully!",
+          });
+        }}
       />
     </div>
   );

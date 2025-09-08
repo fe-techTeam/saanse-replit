@@ -2,6 +2,7 @@ import { Express } from "express";
 import { storage } from "../storage";
 import { AdminAuthService } from "./admin-auth";
 import { z } from "zod";
+import { upload, uploadVideoToCloudinary, getVideoStreamingUrls, deleteVideoFromCloudinary } from "../cloudinary";
 
 // Admin authentication middleware
 const adminAuthMiddleware = async (req: any, res: any, next: any) => {
@@ -193,6 +194,89 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Video upload endpoint with Cloudinary integration
+  app.post("/api/admin/videos/upload", adminAuthMiddleware, upload.single('video'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No video file provided" });
+      }
+
+      const {
+        title,
+        description,
+        category,
+        tags,
+        series_id,
+        episode_number,
+        content_type = 'standalone',
+        is_active = true,
+        format_options = 'all' // 'hls', 'mp4', 'webm', 'all'
+      } = req.body;
+
+      // Validation
+      if (!title || !category) {
+        return res.status(400).json({ error: "Title and category are required" });
+      }
+
+      // Minimal Cloudinary upload configuration - no transformations at all
+      const uploadOptions: any = {
+        folder: 'mythosstream-videos',
+        resource_type: 'video',
+      };
+
+      // Upload to Cloudinary
+      const cloudinaryResult = await uploadVideoToCloudinary(req.file, uploadOptions);
+
+      console.log('Cloudinary upload successful:', cloudinaryResult.public_id);
+
+      // Generate streaming URLs
+      const streamingUrls = getVideoStreamingUrls(cloudinaryResult.public_id);
+
+      // Prepare video data for database
+      const videoData = {
+        title,
+        description: description || '',
+        category,
+        duration: cloudinaryResult.duration ? cloudinaryResult.duration.toString() : '0', // Convert to string for numeric field
+        thumbnail_url: streamingUrls.thumbnail,
+        video_url: cloudinaryResult.secure_url,
+        tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : [],
+        is_active: is_active === true || is_active === 'true',
+        content_type: content_type || 'standalone',
+        series_id: series_id || null,
+        episode_number: episode_number ? parseInt(episode_number) : null,
+        // Store Cloudinary metadata
+        cloudinary_public_id: cloudinaryResult.public_id,
+        streaming_urls: streamingUrls,
+      };
+
+      // Create video in database
+      const video = await storage.createVideo(videoData);
+
+      res.status(201).json({
+        success: true,
+        video,
+        cloudinary: {
+          public_id: cloudinaryResult.public_id,
+          duration: cloudinaryResult.duration,
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height,
+          format: cloudinaryResult.format,
+          bytes: cloudinaryResult.bytes,
+        },
+        streaming_urls: streamingUrls,
+        message: 'Video uploaded successfully'
+      });
+
+    } catch (error) {
+      console.error("Video upload error:", error);
+      res.status(500).json({ 
+        error: "Failed to upload video", 
+        details: error.message 
+      });
+    }
+  });
+
   app.post("/api/admin/videos", adminAuthMiddleware, async (req, res) => {
     try {
       const videoData = req.body;
@@ -237,12 +321,35 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
   app.delete("/api/admin/videos/:id", adminAuthMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Get video info first to check if it has Cloudinary public_id
+      const videos = await storage.getVideos();
+      const video = videos.find(v => v.id === id);
+      
+      if (!video) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+
+      // Delete from Cloudinary if it has a public_id
+      if (video.cloudinary_public_id) {
+        try {
+          await deleteVideoFromCloudinary(video.cloudinary_public_id);
+          console.log(`Deleted video from Cloudinary: ${video.cloudinary_public_id}`);
+        } catch (cloudinaryError) {
+          console.warn(`Failed to delete from Cloudinary: ${cloudinaryError.message}`);
+          // Continue with database deletion even if Cloudinary deletion fails
+        }
+      }
+
+      // Delete from database
       const success = await storage.deleteVideo(id);
       if (!success) {
         return res.status(404).json({ error: "Video not found" });
       }
+      
       res.status(204).send();
     } catch (error) {
+      console.error("Video deletion error:", error);
       res.status(500).json({ error: "Failed to delete video" });
     }
   });
