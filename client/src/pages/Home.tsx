@@ -1,11 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings } from "lucide-react";
+import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings, Plus, ThumbsUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
+import { NetflixHero } from "@/components/NetflixHero";
+import { NetflixRow } from "@/components/NetflixRow";
+import { Header } from "@/components/Header";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -24,6 +29,8 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
   const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
 
   // Handle logout
   const handleLogout = async () => {
@@ -65,8 +72,12 @@ export default function Home() {
   const enhancedVideos = typedVideos.map((video: any, index: number) => ({
     ...video,
     thumbnail_url: getUniqueThumbnail(index),
+    thumbnailUrl: getUniqueThumbnail(index),
     rating: (4.1 + Math.random() * 0.8).toFixed(1),
-    shortDescription: video.description ? video.description.slice(0, 80) + "..." : "Experience this divine story of faith and devotion."
+    shortDescription: video.description ? video.description.slice(0, 80) + "..." : "Experience this divine story of faith and devotion.",
+    duration: 180 + Math.floor(Math.random() * 120),
+    views: 1000 + Math.floor(Math.random() * 50000),
+    likes: 100 + Math.floor(Math.random() * 5000)
   }));
 
   // Auto-change hero every 6 seconds
@@ -115,375 +126,158 @@ export default function Home() {
 
   const featuredVideo = enhancedVideos[currentHeroIndex] || enhancedVideos[0];
 
+  // Organize videos into sections
+  const trendingVideos = enhancedVideos.slice(0, 10);
+  const newReleases = enhancedVideos.slice(10, 20);
+  const ramayanaSeries = enhancedVideos.filter(v => v.category === 'Ramayana').slice(0, 10);
+  const krishnaStories = enhancedVideos.filter(v => v.category === 'Krishna').slice(0, 10);
+  const mahabharataEpic = enhancedVideos.filter(v => v.category === 'Mahabharata').slice(0, 10);
+  const devotionalContent = enhancedVideos.filter(v => v.category === 'Bhajans').slice(0, 10);
+  const popularPicks = enhancedVideos.slice(20, 30);
+  const watchAgain = enhancedVideos.slice(30, 40);
+  const becauseYouWatched = enhancedVideos.slice(40, 50);
+
+  const handleVideoClick = (video: any) => {
+    setSelectedVideo(video);
+  };
+
+  const handlePlayVideo = (video: any) => {
+    handleVideoPlay(video);
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
-      
-      {/* Version Indicator */}
-      <div className="fixed top-0 left-0 z-[100] bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-br">v3.0 MOBILE</div>
-      
-      {/* Netflix-Style Header */}
-      <header className="fixed top-0 w-full bg-black/95 backdrop-blur-md z-50 border-b border-gray-800">
-        <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center space-x-4 md:space-x-10">
-            <h1 className="text-2xl md:text-3xl font-bold text-red-600 tracking-wide">SAANSE</h1>
-            
-            <nav className="hidden md:flex items-center space-x-8 text-sm">
-              <a href="#" className="text-white font-medium border-b-2 border-red-600 pb-1">Home</a>
-              <a href="#" className="text-gray-300 hover:text-gray-200 transition-colors">Stories</a>
-              <a href="#" className="text-gray-300 hover:text-gray-200 transition-colors">Devotional</a>
-              <a href="#" className="text-gray-300 hover:text-gray-200 transition-colors">My List</a>
-            </nav>
-          </div>
+      {/* Header */}
+      <Header 
+        onSearchClick={() => setShowSearchModal(true)}
+        onProfileClick={() => navigate('/profile')}
+      />
 
-          <div className="flex items-center space-x-3 md:space-x-6">
-            <Search className="w-5 h-5 md:w-6 md:h-6 text-white cursor-pointer hover:text-gray-300" />
-            
-            {/* Profile Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-7 h-7 md:w-8 md:h-8 bg-red-600 rounded flex items-center justify-center cursor-pointer hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black">
-                  {isAuthenticated && user?.avatar ? (
-                    <Avatar className="w-7 h-7 md:w-8 md:h-8">
-                      <AvatarImage src={user.avatar} />
-                      <AvatarFallback className="bg-red-600 text-white text-xs">
-                        {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-black/95 border-gray-700 text-white">
-                <div className="px-3 py-2">
-                  <p className="text-sm font-medium text-white">
-                    {user?.name || 'User'}
-                  </p>
-                  <p className="text-xs text-gray-300">
-                    {user?.email}
-                  </p>
-                </div>
-                <DropdownMenuSeparator className="bg-gray-700" />
-                <DropdownMenuItem 
-                  onClick={() => navigate('/profile')}
-                  className="text-white hover:bg-gray-800 cursor-pointer"
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => navigate('/library')}
-                  className="text-white hover:bg-gray-800 cursor-pointer"
-                >
-                  <Heart className="mr-2 h-4 w-4" />
-                  My Library
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => navigate('/cms')}
-                  className="text-white hover:bg-gray-800 cursor-pointer"
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-gray-700" />
-                <DropdownMenuItem 
-                  onClick={handleLogout}
-                  className="text-red-400 hover:bg-gray-800 cursor-pointer"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
-            </button>
-          </div>
-        </div>
-        
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-black/95 border-t border-gray-800">
-            <nav className="flex flex-col px-4 py-2">
-              <a href="#" className="text-white font-medium py-3 border-b border-gray-800">Home</a>
-              <a href="#" className="text-gray-300 py-3 border-b border-gray-800">Stories</a>
-              <a href="#" className="text-gray-300 py-3 border-b border-gray-800">Devotional</a>
-              <a href="#" className="text-gray-300 py-3">My List</a>
-            </nav>
-          </div>
-        )}
-      </header>
-
-      {/* Hero Section - Netflix Style */}
+      {/* Hero Section */}
       {featuredVideo && (
-        <section className="relative h-[50vh] xs:h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[90vh] xl:h-screen pt-12 md:pt-16">
-          <div className="absolute inset-0">
-            <img 
-              src={featuredVideo.thumbnail_url} 
-              alt={featuredVideo.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 sm:via-black/70 md:via-black/60 lg:via-black/50 to-transparent"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 sm:via-black/50 md:via-black/40 lg:via-transparent to-transparent"></div>
-          </div>
-          
-          <div className="relative z-10 flex items-end h-full px-3 xs:px-4 sm:px-5 md:px-6 lg:px-8 pb-8 xs:pb-12 sm:pb-16 md:pb-24 lg:pb-32 max-w-7xl mx-auto">
-            <div className="max-w-full xs:max-w-[90%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
-              
-              <div className="h-auto flex items-end mb-2 xs:mb-3 sm:mb-4 md:mb-6">
-                <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-white line-clamp-2">
-                  {featuredVideo.title}
-                </h1>
-              </div>
-              
-              <div className="h-auto mb-2 xs:mb-3 sm:mb-4 md:mb-6">
-                <p className="text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 leading-relaxed max-w-xl line-clamp-2 sm:line-clamp-3">
-                  {featuredVideo.description}
-                </p>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg mb-2 xs:mb-3 sm:mb-4 md:mb-6">
-                <span className="flex items-center text-green-400">
-                  <Star className="w-2.5 xs:w-3 sm:w-4 md:w-5 h-2.5 xs:h-3 sm:h-4 md:h-5 mr-0.5 xs:mr-1 md:mr-2 fill-current" />
-                  {featuredVideo.rating}
-                </span>
-                <span className="text-gray-300">2024</span>
-                <span className="text-gray-300">3m</span>
-                <span className="px-1 xs:px-1.5 sm:px-2 py-0.5 md:py-1 border border-gray-500 text-[10px] xs:text-xs sm:text-sm text-gray-300">HD</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <button 
-                  className="bg-white text-black font-bold text-xs rounded shadow-lg hover:bg-gray-200"
-                  onClick={() => setSelectedVideo(featuredVideo)}
-                  style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px' }}
-                >
-                  <Play className="w-3 h-3 mr-1 fill-current" />
-                  Play
-                </button>
-                
-                <button 
-                  className="bg-gray-600/90 text-white font-bold text-xs rounded shadow-lg hover:bg-gray-500"
-                  onClick={() => setSelectedVideo(featuredVideo)}
-                  style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px' }}
-                >
-                  <Info className="w-3 h-3 mr-1" />
-                  Info
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <NetflixHero
+          title={featuredVideo.title}
+          description={featuredVideo.description || featuredVideo.shortDescription}
+          backgroundImage={featuredVideo.thumbnail_url}
+          onPlay={() => handlePlayVideo(featuredVideo)}
+          onAddToList={() => toggleFavorite(featuredVideo.id)}
+          onMoreInfo={() => setSelectedVideo(featuredVideo)}
+        />
       )}
 
-      {/* Content Sections */}
-      <div className="relative mt-4 sm:mt-0 sm:-mt-8 md:-mt-16 space-y-6 sm:space-y-8 md:space-y-16 px-4 md:px-6 pb-16 max-w-7xl mx-auto">
-        
+      {/* Content Sections - Netflix Style Grid */}
+      <div className="bg-black pb-20">
         {/* Trending Now */}
-        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
-          <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-            <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-            <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">Trending Now</h2>
-            <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">HOT</div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
-              <div 
-                key={video.id}
-                className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
-                onClick={() => setSelectedVideo(video)}
-                style={{ width: '140px', minWidth: '140px' }}
-              >
-                <div className="relative">
-                  <img 
-                    src={video.thumbnail_url} 
-                    alt={video.title}
-                    className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
-                  
-                  <div className="absolute top-1 left-1 md:top-2 md:left-2 bg-red-600 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm font-bold">
-                    #{index + 1}
-                  </div>
-                  
-                  <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-black/70 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm">
-                    3m
-                  </div>
+        {trendingVideos.length > 0 && (
+          <NetflixRow
+            title="Trending Now"
+            videos={trendingVideos}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-12 md:w-16 h-12 md:h-16 bg-white/90 rounded-full flex items-center justify-center">
-                      <Play className="w-4 md:w-6 h-4 md:h-6 text-black fill-current ml-0.5 md:ml-1" />
-                    </div>
-                  </div>
+        {/* New Releases */}
+        {newReleases.length > 0 && (
+          <NetflixRow
+            title="New Releases"
+            videos={newReleases}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
-                  <button
-                    onClick={(e) => toggleFavorite(video.id, e)}
-                    className="hidden md:block absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                  </button>
-                </div>
-                
-                <div className="mt-2 space-y-1 md:space-y-2">
-                  <h3 className="font-semibold text-white text-xs md:text-base md:group-hover:text-gray-300 transition-colors line-clamp-1">
-                    {video.title}
-                  </h3>
-                  <p className="hidden sm:block text-xs md:text-sm text-gray-400 line-clamp-2 leading-relaxed">
-                    {video.shortDescription}
-                  </p>
-                  <div className="flex items-center text-xs md:text-sm text-gray-400 space-x-2 md:space-x-3">
-                    <span className="flex items-center">
-                      <Star className="w-2.5 md:w-3 h-2.5 md:h-3 mr-0.5 md:mr-1 text-green-400" />
-                      {video.rating}
-                    </span>
-                    <span className="hidden sm:block">{video.category}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Continue Watching */}
+        {watchAgain.length > 0 && (
+          <NetflixRow
+            title="Continue Watching"
+            videos={watchAgain}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {/* Ramayana Epic Series */}
+        {ramayanaSeries.length > 0 && (
+          <NetflixRow
+            title="Ramayana: Divine Epic"
+            videos={ramayanaSeries}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {/* Krishna Leela Stories */}
+        {krishnaStories.length > 0 && (
+          <NetflixRow
+            title="Krishna: Divine Stories"
+            videos={krishnaStories}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
         {/* Popular on SAANSE */}
-        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
-          <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-            <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-            <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">Popular</h2>
-            <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-[10px] sm:text-xs md:text-sm font-bold rounded-full">TOP</div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
-              <div 
-                key={video.id}
-                className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
-                onClick={() => setSelectedVideo(video)}
-                style={{ width: '140px', minWidth: '140px' }}
-              >
-                <div className="relative">
-                  <img 
-                    src={video.thumbnail_url} 
-                    alt={video.title}
-                    className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
-                  
-                  <div className="absolute top-1 left-1 md:top-2 md:left-2 bg-yellow-600 text-black px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm font-bold">
-                    TOP {index + 1}
-                  </div>
-                  
-                  <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-black/70 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm">
-                    3m
-                  </div>
+        {popularPicks.length > 0 && (
+          <NetflixRow
+            title="Popular on SAANSE"
+            videos={popularPicks}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-12 md:w-16 h-12 md:h-16 bg-white/90 rounded-full flex items-center justify-center">
-                      <Play className="w-4 md:w-6 h-4 md:h-6 text-black fill-current ml-0.5 md:ml-1" />
-                    </div>
-                  </div>
+        {/* Mahabharata Epic */}
+        {mahabharataEpic.length > 0 && (
+          <NetflixRow
+            title="Mahabharata: The Great Epic"
+            videos={mahabharataEpic}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
-                  <button
-                    onClick={(e) => toggleFavorite(video.id, e)}
-                    className="hidden md:block absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                  </button>
-                </div>
-                
-                <div className="mt-2 space-y-1 md:space-y-2">
-                  <h3 className="font-semibold text-white text-xs md:text-base md:group-hover:text-gray-300 transition-colors line-clamp-1">
-                    {video.title}
-                  </h3>
-                  <p className="hidden sm:block text-xs md:text-sm text-gray-400 line-clamp-2 leading-relaxed">
-                    {video.shortDescription}
-                  </p>
-                  <div className="flex items-center text-xs md:text-sm text-gray-400 space-x-2 md:space-x-3">
-                    <span className="flex items-center">
-                      <Star className="w-2.5 md:w-3 h-2.5 md:h-3 mr-0.5 md:mr-1 text-green-400" />
-                      {video.rating}
-                    </span>
-                    <span className="hidden sm:block">{video.category}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Devotional Content */}
+        {devotionalContent.length > 0 && (
+          <NetflixRow
+            title="Devotional Bhajans"
+            videos={devotionalContent}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
-        {/* Categories */}
-        {['Ramayana', 'Krishna', 'Mahabharata', 'Shiva'].map(category => {
-          const categoryVideos = enhancedVideos.filter((video: any) => video.category === category);
-          if (categoryVideos.length === 0) return null;
-          
-          return (
-            <section key={category} className="bg-gradient-to-r from-black/80 to-black/40 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
-              <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-                <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-                <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">{category}</h2>
-                <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">EPIC</div>
-              </div>
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-                {categoryVideos.slice(0, 10).map((video: any) => (
-                  <div 
-                    key={video.id}
-                    className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
-                    onClick={() => setSelectedVideo(video)}
-                    style={{ width: '140px', minWidth: '140px' }}
-                  >
-                    <div className="relative">
-                      <img 
-                        src={video.thumbnail_url} 
-                        alt={video.title}
-                        className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
-                      />
-                      
-                      <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
-                      
-                      <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-black/70 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm">
-                        3m
-                      </div>
+        {/* Because You Watched */}
+        {becauseYouWatched.length > 0 && (
+          <NetflixRow
+            title="Because You Watched Krishna Stories"
+            videos={becauseYouWatched}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="w-12 md:w-16 h-12 md:h-16 bg-white/90 rounded-full flex items-center justify-center">
-                          <Play className="w-4 md:w-6 h-4 md:h-6 text-black fill-current ml-0.5 md:ml-1" />
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={(e) => toggleFavorite(video.id, e)}
-                        className="hidden md:block absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                      </button>
-                    </div>
-                    
-                    <div className="mt-2 space-y-1 md:space-y-2">
-                      <h3 className="font-semibold text-white text-xs md:text-base md:group-hover:text-gray-300 transition-colors line-clamp-1">
-                        {video.title}
-                      </h3>
-                      <p className="hidden sm:block text-xs md:text-sm text-gray-400 line-clamp-2 leading-relaxed">
-                        {video.shortDescription}
-                      </p>
-                      <div className="flex items-center text-xs md:text-sm text-gray-400 space-x-2 md:space-x-3">
-                        <span className="flex items-center">
-                          <Star className="w-2.5 md:w-3 h-2.5 md:h-3 mr-0.5 md:mr-1 text-green-400" />
-                          {video.rating}
-                        </span>
-                        <span className="hidden sm:block">{video.category}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {/* More Netflix-style rows */}
+        <NetflixRow
+          title="Top 10 in India Today"
+          videos={enhancedVideos.slice(0, 10)}
+          onVideoClick={handleVideoClick}
+        />
 
+        <NetflixRow
+          title="Spiritual Documentaries"
+          videos={enhancedVideos.slice(15, 25)}
+          onVideoClick={handleVideoClick}
+        />
+
+        <NetflixRow
+          title="Festival Celebrations"
+          videos={enhancedVideos.slice(25, 35)}
+          onVideoClick={handleVideoClick}
+        />
+
+        <NetflixRow
+          title="Mythological Tales"
+          videos={enhancedVideos.slice(35, 45)}
+          onVideoClick={handleVideoClick}
+        />
+
+        <NetflixRow
+          title="Sacred Mantras & Chants"
+          videos={enhancedVideos.slice(45, 55)}
+          onVideoClick={handleVideoClick}
+        />
       </div>
 
       {/* Video Modal */}

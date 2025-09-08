@@ -244,7 +244,7 @@ export function VideoPlayer({ video, isOpen, onClose, onNext }: VideoPlayerProps
             onClick={handleProgressClick}
           >
             <div 
-              className="bg-dharma-gold h-1 rounded-full transition-all duration-200"
+              className="bg-dharma-red h-1 rounded-full transition-all duration-200"
               style={{ width: `${progressPercent}%` }}
             />
           </div>

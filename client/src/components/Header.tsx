@@ -10,14 +10,14 @@ export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-gradient-to-b from-dharma-dark to-transparent z-50 px-4 py-4">
+    <header className="fixed top-0 left-0 right-0 bg-gradient-to-b from-dharma-black to-transparent z-50 px-4 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           {/* Sacred Om symbol */}
-          <div className="w-8 h-8 bg-dharma-gold rounded-full flex items-center justify-center">
-            <span className="text-dharma-dark font-bold text-lg">ॐ</span>
+          <div className="w-8 h-8 bg-dharma-red rounded-full flex items-center justify-center">
+            <span className="text-dharma-white font-bold text-lg">ॐ</span>
           </div>
-          <h1 className="text-2xl font-bold text-dharma-gold tracking-wide">SAANSE</h1>
+          <h1 className="text-2xl font-bold text-dharma-red tracking-wide">SAANSE</h1>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -42,7 +42,7 @@ export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
           
           {/* Profile icon */}
           <button 
-            className="w-8 h-8 bg-dharma-gold rounded-full flex items-center justify-center"
+            className="w-8 h-8 bg-dharma-red rounded-full flex items-center justify-center"
             onClick={onProfileClick}
           >
             {isAuthenticated && user?.photoURL ? (
@@ -52,7 +52,7 @@ export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
                 className="w-full h-full rounded-full object-cover"
               />
             ) : (
-              <User className="w-5 h-5 text-dharma-dark" />
+              <User className="w-5 h-5 text-dharma-white" />
             )}
           </button>
         </div>

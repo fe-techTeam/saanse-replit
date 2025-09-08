@@ -22,7 +22,7 @@ export function NetflixHero({ title, description, backgroundImage, onPlay, onAdd
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-dharma-dark via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-dharma-black via-transparent to-transparent" />
       </div>
 
       {/* Content */}
@@ -42,17 +42,17 @@ export function NetflixHero({ title, description, backgroundImage, onPlay, onAdd
           <div className="flex flex-wrap gap-4">
             <Button 
               size="lg" 
-              className="bg-white text-black hover:bg-gray-200 font-semibold px-8 py-3 text-lg transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="bg-dharma-red text-dharma-white hover:bg-dharma-red-dark font-semibold px-8 py-3 text-lg transition-all duration-200 shadow-lg hover:shadow-xl"
               onClick={onPlay}
             >
-              <Play className="w-6 h-6 mr-2 fill-black" />
+              <Play className="w-6 h-6 mr-2 fill-white" />
               Play
             </Button>
             
             <Button 
               size="lg" 
               variant="secondary"
-              className="bg-gray-600/70 text-white hover:bg-gray-600 font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="bg-dharma-gray/70 text-dharma-white hover:bg-dharma-gray font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
               onClick={onMoreInfo}
             >
               <Info className="w-6 h-6 mr-2" />
@@ -62,7 +62,7 @@ export function NetflixHero({ title, description, backgroundImage, onPlay, onAdd
             <Button 
               size="lg" 
               variant="outline"
-              className="border-2 border-white/70 text-white hover:bg-white hover:text-black font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="border-2 border-dharma-white/70 text-dharma-white hover:bg-dharma-white hover:text-dharma-black font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
               onClick={onAddToList}
             >
               <Plus className="w-6 h-6 mr-2" />
