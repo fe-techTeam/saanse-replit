@@ -52,6 +52,7 @@ export function YouTubeStylePlayer({
   const [isLiked, setIsLiked] = useState(false);
   const [showInfo, setShowInfo] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [isSeekBarHovered, setIsSeekBarHovered] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,24 +100,30 @@ export function YouTubeStylePlayer({
     }
   }, [isOpen, video, user]);
 
+  // Reset states when video changes
+  useEffect(() => {
+    if (video?.id) {
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(false);
+      setIsSeekBarHovered(false);
+    }
+  }, [video?.id]);
+
   // Auto-play when player opens
   useEffect(() => {
     if (isOpen && video) {
       const videoEl = videoRef.current;
       if (videoEl) {
-        console.log('Player opened, attempting autoplay for:', getVideoUrl());
         videoEl.load(); // Force reload with new video
         
         // Set up autoplay once video is ready
         const handleCanPlay = () => {
-          console.log('Video ready for autoplay');
           videoEl.play()
             .then(() => {
-              console.log('Autoplay successful');
               setIsPlaying(true);
             })
-            .catch((error) => {
-              console.log('Autoplay blocked:', error.message);
+            .catch(() => {
               // Autoplay was blocked, user will need to click play
             });
         };
@@ -134,8 +141,16 @@ export function YouTubeStylePlayer({
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
-    const updateTime = () => setCurrentTime(videoEl.currentTime);
-    const updateDuration = () => setDuration(videoEl.duration);
+    const updateTime = () => {
+      if (videoEl && !isNaN(videoEl.currentTime)) {
+        setCurrentTime(videoEl.currentTime);
+      }
+    };
+    const updateDuration = () => {
+      if (videoEl && !isNaN(videoEl.duration) && videoEl.duration > 0) {
+        setDuration(videoEl.duration);
+      }
+    };
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
@@ -149,6 +164,7 @@ export function YouTubeStylePlayer({
 
     videoEl.addEventListener('timeupdate', updateTime);
     videoEl.addEventListener('loadedmetadata', updateDuration);
+    videoEl.addEventListener('durationchange', updateDuration);
     videoEl.addEventListener('play', handlePlay);
     videoEl.addEventListener('pause', handlePause);
     videoEl.addEventListener('ended', handleEnded);
@@ -157,6 +173,7 @@ export function YouTubeStylePlayer({
     return () => {
       videoEl.removeEventListener('timeupdate', updateTime);
       videoEl.removeEventListener('loadedmetadata', updateDuration);
+      videoEl.removeEventListener('durationchange', updateDuration);
       videoEl.removeEventListener('play', handlePlay);
       videoEl.removeEventListener('pause', handlePause);
       videoEl.removeEventListener('ended', handleEnded);
@@ -258,58 +275,34 @@ export function YouTubeStylePlayer({
 
   const togglePlay = async () => {
     const videoEl = videoRef.current;
-    if (!videoEl) {
-      console.log('Video element not found');
-      return;
-    }
-
-    console.log('Toggle play called, current playing state:', isPlaying);
-    console.log('Video readyState:', videoEl.readyState);
-    console.log('Video src:', videoEl.src);
-    console.log('Video paused:', videoEl.paused);
-    console.log('Video current time:', videoEl.currentTime);
+    if (!videoEl || isVideoLoading) return;
 
     try {
       if (isPlaying) {
-        console.log('Pausing video');
         videoEl.pause();
-        setIsPlaying(false);
       } else {
-        console.log('Attempting to play video');
-        
         // Make sure video is loaded enough to play
-        if (videoEl.readyState < 2) {
-          console.log('Video not ready, waiting for loadeddata...');
-          return;
-        }
-        
-        const playPromise = videoEl.play();
-        
-        if (playPromise !== undefined) {
-          await playPromise;
-          console.log('Video play successful');
-          setIsPlaying(true);
+        if (videoEl.readyState >= 2) {
+          await videoEl.play();
         }
       }
     } catch (error) {
-      console.error('Error playing video:', error);
-      console.log('Error name:', error.name);
-      console.log('Error message:', error.message);
-      
-      // Handle common autoplay errors
-      if (error.name === 'NotAllowedError') {
-        console.log('Autoplay was blocked by browser. User interaction required.');
-      } else if (error.name === 'NotSupportedError') {
-        console.log('Video format not supported');
-      }
+      console.warn('Playback error:', error);
+      setIsPlaying(false);
     }
   };
 
   const skipTime = (seconds: number) => {
     const videoEl = videoRef.current;
-    if (!videoEl) return;
+    if (!videoEl || !duration || isNaN(duration)) return;
 
-    videoEl.currentTime = Math.max(0, Math.min(duration, videoEl.currentTime + seconds));
+    const newTime = Math.max(0, Math.min(duration, videoEl.currentTime + seconds));
+    try {
+      videoEl.currentTime = newTime;
+      setCurrentTime(newTime);
+    } catch (error) {
+      console.warn('Skip time error:', error);
+    }
   };
 
   const adjustVolume = (change: number) => {
@@ -318,8 +311,13 @@ export function YouTubeStylePlayer({
 
     const newVolume = Math.max(0, Math.min(1, volume + change));
     videoEl.volume = newVolume;
+    setVolume(newVolume);
+    
     if (newVolume > 0) {
       videoEl.muted = false;
+      setIsMuted(false);
+    } else {
+      setIsMuted(true);
     }
   };
 
@@ -327,7 +325,9 @@ export function YouTubeStylePlayer({
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
-    videoEl.muted = !isMuted;
+    const newMuted = !isMuted;
+    videoEl.muted = newMuted;
+    setIsMuted(newMuted);
   };
 
   const toggleFullscreen = () => {
@@ -345,14 +345,21 @@ export function YouTubeStylePlayer({
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const videoEl = videoRef.current;
-    if (!videoEl) return;
+    if (!videoEl || !duration || isNaN(duration) || duration <= 0) return;
 
+    e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const width = rect.width;
-    const newTime = (clickX / width) * duration;
+    const percentage = Math.max(0, Math.min(1, clickX / width));
+    const newTime = percentage * duration;
     
-    videoEl.currentTime = newTime;
+    try {
+      videoEl.currentTime = newTime;
+      setCurrentTime(newTime);
+    } catch (error) {
+      console.warn('Failed to seek video:', error);
+    }
   };
 
   const handleVolumeClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -365,8 +372,13 @@ export function YouTubeStylePlayer({
     const newVolume = Math.max(0, Math.min(1, clickX / width));
     
     videoEl.volume = newVolume;
+    setVolume(newVolume);
+    
     if (newVolume > 0) {
       videoEl.muted = false;
+      setIsMuted(false);
+    } else {
+      setIsMuted(true);
     }
   };
 
@@ -397,6 +409,10 @@ export function YouTubeStylePlayer({
   };
 
   const formatTime = (time: number) => {
+    if (!time || isNaN(time) || time < 0) {
+      return '0:00';
+    }
+    
     const hours = Math.floor(time / 3600);
     const minutes = Math.floor((time % 3600) / 60);
     const seconds = Math.floor(time % 60);
@@ -407,12 +423,34 @@ export function YouTubeStylePlayer({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Cleanup when closing player
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(false);
+      setIsSeekBarHovered(false);
+      setVolume(1);
+      setIsMuted(false);
+      setIsFullscreen(false);
+      setShowControls(true);
+      setIsLiked(false);
+      setShowInfo(true);
+    }
+  }, [isOpen]);
+
   if (!isOpen || !video) {
     return null;
   }
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // Safe calculation for progress percentage
+  const progressPercent = (duration && duration > 0 && !isNaN(duration) && !isNaN(currentTime)) 
+    ? Math.max(0, Math.min(100, (currentTime / duration) * 100))
+    : 0;
   const volumePercent = volume * 100;
+  
+  // Determine if video is loading (no duration or not ready)
+  const isVideoLoading = !duration || duration === 0 || isNaN(duration);
 
   return (
     <div 
@@ -430,56 +468,17 @@ export function YouTubeStylePlayer({
           preload="metadata"
           controls={false}
           onClick={togglePlay}
-          onError={(e) => {
-            console.error('Video loading error:', e);
-            console.log('Current src:', e.currentTarget.src);
-            console.error('Failed to load video URL:', getVideoUrl());
-          }}
-          onLoadStart={() => console.log('Video loading started')}
-          onCanPlay={() => {
-            console.log('Video can play - ready for user interaction');
-          }}
-          onLoadedData={() => console.log('Video loaded data')}
-          onLoadedMetadata={() => {
-            console.log('Video metadata loaded, duration:', videoRef.current?.duration);
-          }}
         />
         
-        {/* Loading Overlay */}
-        {!duration && (
+        {/* Loading Indicator */}
+        {isVideoLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-white">Loading video...</p>
-              <p className="text-gray-400 text-sm mt-2">URL: {getVideoUrl()}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Debug Info Overlay - Temporary */}
-        {duration > 0 && !isPlaying && (
-          <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white p-2 rounded text-xs">
-            <div>Duration: {formatTime(duration)}</div>
-            <div>Ready State: {videoRef.current?.readyState}</div>
-            <div>Can Play: {videoRef.current?.readyState >= 3 ? 'Yes' : 'No'}</div>
-            <Button
-              size="sm"
-              className="mt-2 bg-green-600 hover:bg-green-700"
-              onClick={() => {
-                const videoEl = videoRef.current;
-                if (videoEl) {
-                  console.log('Direct play test');
-                  videoEl.play().catch(e => console.error('Direct play failed:', e));
-                }
-              }}
-            >
-              Test Direct Play
-            </Button>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
         )}
 
         {/* Play/Pause Overlay */}
-        {!isPlaying && duration > 0 && (
+        {!isPlaying && !isVideoLoading && duration > 0 && (
           <div 
             className="absolute inset-0 flex items-center justify-center cursor-pointer group"
             onClick={togglePlay}
@@ -528,14 +527,25 @@ export function YouTubeStylePlayer({
             <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-auto">
               {/* Progress Bar */}
               <div 
-                className="w-full bg-gray-600 bg-opacity-50 rounded-full h-1 mb-4 cursor-pointer hover:h-2 transition-all"
+                className={`w-full bg-gray-600 bg-opacity-50 rounded-full mb-4 cursor-pointer transition-all group ${
+                  isSeekBarHovered ? 'h-2' : 'h-1'
+                }`}
                 onClick={handleProgressClick}
+                onMouseEnter={() => setIsSeekBarHovered(true)}
+                onMouseLeave={() => setIsSeekBarHovered(false)}
               >
                 <div 
                   className="bg-red-500 h-full rounded-full transition-all relative"
-                  style={{ width: `${progressPercent}%` }}
+                  style={{ 
+                    width: `${Math.max(0, Math.min(100, progressPercent))}%`,
+                    minWidth: progressPercent > 0 ? '2px' : '0px'
+                  }}
                 >
-                  <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full opacity-0 hover:opacity-100 transition-opacity" />
+                  {progressPercent > 0 && (
+                    <div className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full transition-opacity ${
+                      isSeekBarHovered ? 'opacity-100' : 'opacity-0'
+                    }`} />
+                  )}
                 </div>
               </div>
 
@@ -602,7 +612,7 @@ export function YouTubeStylePlayer({
                     </div>
                   </div>
                   
-                  <span className="text-white text-sm">
+                  <span className="text-white text-sm whitespace-nowrap">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
                 </div>
