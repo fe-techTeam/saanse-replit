@@ -275,16 +275,15 @@ export function YouTubeStylePlayer({
 
   const togglePlay = async () => {
     const videoEl = videoRef.current;
-    if (!videoEl || isVideoLoading) return;
+    if (!videoEl) return;
 
     try {
       if (isPlaying) {
         videoEl.pause();
+        setIsPlaying(false);
       } else {
-        // Make sure video is loaded enough to play
-        if (videoEl.readyState >= 2) {
-          await videoEl.play();
-        }
+        await videoEl.play();
+        setIsPlaying(true);
       }
     } catch (error) {
       console.warn('Playback error:', error);
@@ -294,15 +293,10 @@ export function YouTubeStylePlayer({
 
   const skipTime = (seconds: number) => {
     const videoEl = videoRef.current;
-    if (!videoEl || !duration || isNaN(duration)) return;
+    if (!videoEl) return;
 
-    const newTime = Math.max(0, Math.min(duration, videoEl.currentTime + seconds));
-    try {
-      videoEl.currentTime = newTime;
-      setCurrentTime(newTime);
-    } catch (error) {
-      console.warn('Skip time error:', error);
-    }
+    const newTime = Math.max(0, Math.min(duration || videoEl.duration || 0, videoEl.currentTime + seconds));
+    videoEl.currentTime = newTime;
   };
 
   const adjustVolume = (change: number) => {
@@ -352,20 +346,18 @@ export function YouTubeStylePlayer({
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const videoEl = videoRef.current;
-    if (!videoEl || !duration || isNaN(duration) || duration <= 0) return;
+    if (!videoEl) return;
 
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const width = rect.width;
     const percentage = Math.max(0, Math.min(1, clickX / width));
-    const newTime = percentage * duration;
+    const videoDuration = duration || videoEl.duration || 0;
     
-    try {
+    if (videoDuration > 0) {
+      const newTime = percentage * videoDuration;
       videoEl.currentTime = newTime;
-      setCurrentTime(newTime);
-    } catch (error) {
-      console.warn('Failed to seek video:', error);
     }
   };
 
@@ -455,9 +447,6 @@ export function YouTubeStylePlayer({
     ? Math.max(0, Math.min(100, (currentTime / duration) * 100))
     : 0;
   const volumePercent = volume * 100;
-  
-  // Determine if video is loading (no duration or not ready)
-  const isVideoLoading = !duration || duration === 0 || isNaN(duration);
 
   return (
     <div 
@@ -477,15 +466,9 @@ export function YouTubeStylePlayer({
           onClick={togglePlay}
         />
         
-        {/* Loading Indicator */}
-        {isVideoLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-          </div>
-        )}
 
         {/* Play/Pause Overlay */}
-        {!isPlaying && !isVideoLoading && duration > 0 && (
+        {!isPlaying && (
           <div 
             className="absolute inset-0 flex items-center justify-center cursor-pointer group"
             onClick={togglePlay}
