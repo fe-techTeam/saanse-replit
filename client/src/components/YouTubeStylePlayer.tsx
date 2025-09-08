@@ -330,15 +330,22 @@ export function YouTubeStylePlayer({
     setIsMuted(newMuted);
   };
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
     const container = containerRef.current;
     if (!container) return;
 
-    if (!isFullscreen) {
-      container.requestFullscreen?.();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.();
+    try {
+      if (!isFullscreen) {
+        await container.requestFullscreen?.();
+        setIsFullscreen(true);
+      } else {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.warn('Fullscreen error:', error);
       setIsFullscreen(false);
     }
   };
