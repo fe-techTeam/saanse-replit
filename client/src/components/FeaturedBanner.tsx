@@ -21,7 +21,7 @@ export function FeaturedBanner({ onPlayClick, onAddToListClick }: FeaturedBanner
       
       <div className="relative h-full flex items-end p-6">
         <div className="max-w-lg animate-fade-in-up">
-          <span className="inline-block px-3 py-1 bg-dharma-gold text-dharma-dark text-sm font-medium rounded-full mb-2">
+          <span className="inline-block px-3 py-1 bg-dharma-red text-dharma-white text-sm font-medium rounded-full mb-2">
             Trending
           </span>
           <h2 className="text-2xl md:text-3xl font-devanagari font-bold mb-2">
@@ -52,7 +52,7 @@ export function FeaturedBanner({ onPlayClick, onAddToListClick }: FeaturedBanner
       
       {/* Carousel indicators */}
       <div className="absolute bottom-4 right-6 flex space-x-2">
-        <div className="w-2 h-2 bg-dharma-gold rounded-full" />
+        <div className="w-2 h-2 bg-dharma-red rounded-full" />
         <div className="w-2 h-2 bg-gray-500 rounded-full" />
         <div className="w-2 h-2 bg-gray-500 rounded-full" />
       </div>

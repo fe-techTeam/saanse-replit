@@ -14,10 +14,10 @@ export function Header({ onSearchClick, onProfileClick }: HeaderProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           {/* Sacred Om symbol */}
-          <div className="w-8 h-8 bg-dharma-red rounded-full flex items-center justify-center">
-            <span className="text-dharma-white font-bold text-lg">ॐ</span>
+          <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+            <span className="text-white font-bold text-lg">ॐ</span>
           </div>
-          <h1 className="text-2xl font-bold text-dharma-red tracking-wide">SAANSE</h1>
+          <h1 className="text-2xl font-bold text-red-600 tracking-wide">SAANSE</h1>
         </div>
         
         <div className="flex items-center space-x-4">

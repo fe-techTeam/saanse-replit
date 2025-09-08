@@ -54,7 +54,7 @@ export function NetflixRow({ title, videos, onVideoClick }: NetflixRowProps) {
   return (
     <div className="relative group mb-8">
       {/* Section Title */}
-      <h2 className="text-2xl font-semibold text-dharma-gold mb-4 px-4 md:px-12 lg:px-16">
+      <h2 className="text-2xl font-semibold text-dharma-red mb-4 px-4 md:px-12 lg:px-16">
         {title}
       </h2>
       
