@@ -12,6 +12,7 @@ import AuthCallback from "@/pages/auth-callback";
 import NotFound from "@/pages/not-found";
 import AdminApp from "@/pages/admin/AdminApp";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <BrowserRouter>
           <div className="min-h-screen bg-black text-white">
             <Toaster />
+            <PWAInstallPrompt />
             <Routes>
               {/* Public routes */}
               <Route path="/login" element={<Login />} />

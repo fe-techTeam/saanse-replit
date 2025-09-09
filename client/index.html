@@ -2,18 +2,72 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     <meta name="description" content="SAANSE - Premium mythological OTT streaming platform with devotional content. Watch Ramayana, Mahabharata, Krishna stories, and more." />
-    <meta name="theme-color" content="#D4AF37" />
+    
+    <!-- Primary Meta Tags -->
     <title>SAANSE - Divine Stories</title>
+    <meta name="title" content="SAANSE - Divine Stories" />
+    <meta name="description" content="Premium mythological OTT streaming platform with devotional content. Watch Ramayana, Mahabharata, Krishna stories, and more." />
+    <meta name="keywords" content="SAANSE, devotional videos, Hindu mythology, Ramayana, Mahabharata, Krishna, spiritual content, divine stories, OTT platform" />
+    <meta name="author" content="SAANSE Team" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- PWA Theme and Color -->
+    <meta name="theme-color" content="#D4AF37" />
+    <meta name="msapplication-TileColor" content="#D4AF37" />
+    <meta name="msapplication-navbutton-color" content="#D4AF37" />
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
     
-    <!-- Apple PWA support -->
+    <!-- Apple PWA Support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SAANSE" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMzIiIGZpbGw9IiNENEFGMzciLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDkwIDkwIiBmaWxsPSJub25lIj4KPHRleHQgeD0iNDUiIHk9IjU2IiBmaWxsPSIjMEEwQTBBIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjQ1IiBmb250LXdlaWdodD0iYm9sZCI+U0E8L3RleHQ+Cjwvc3ZnPgo8L3N2Zz4K" />
+    <link rel="apple-touch-icon" sizes="152x152" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUyIiBoZWlnaHQ9IjE1MiIgdmlld0JveD0iMCAwIDE1MiAxNTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMjgiIGZpbGw9IiNENEFGMzciLz4KPHN2ZyB4PSIzOCIgeT0iMzgiIHdpZHRoPSI3NiIgaGVpZ2h0PSI3NiIgdmlld0JveD0iMCAwIDc2IDc2IiBmaWxsPSJub25lIj4KPHRleHQgeD0iMzgiIHk9IjQ3IiBmaWxsPSIjMEEwQTBBIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjM4IiBmb250LXdlaWdodD0iYm9sZCI+U0E8L3RleHQ+Cjwvc3ZnPgo8L3N2Zz4K" />
+    <link rel="apple-touch-icon" sizes="167x167" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTY3IiBoZWlnaHQ9IjE2NyIgdmlld0JveD0iMCAwIDE2NyAxNjciIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNjciIGhlaWdodD0iMTY3IiByeD0iMzAiIGZpbGw9IiNENEFGMzciLz4KPHN2ZyB4PSI0MiIgeT0iNDIiIHdpZHRoPSI4MyIgaGVpZ2h0PSI4MyIgdmlld0JveD0iMCAwIDgzIDgzIiBmaWxsPSJub25lIj4KPHRleHQgeD0iNDEuNSIgeT0iNTEiIGZpbGw9IiMwQTBBMEEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iNDEiIGZvbnQtd2VpZ2h0PSJib2xkIj5TQTwvdGV4dD4KPC9zdmc+Cjwvc3ZnPgo=" />
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMzIiIGZpbGw9IiNENEFGMzciLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDkwIDkwIiBmaWxsPSJub25lIj4KPHRleHQgeD0iNDUiIHk9IjU2IiBmaWxsPSIjMEEwQTBBIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjQ1IiBmb250LXdlaWdodD0iYm9sZCI+U0E8L3RleHQ+Cjwvc3ZnPgo8L3N2Zz4K" />
+    
+    <!-- Safari Pinned Tab -->
+    <link rel="mask-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iNCIgZmlsbD0iIzAwMDAwMCIvPgo8dGV4dCB4PSI4IiB5PSIxMiIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI4IiBmb250LXdlaWdodD0iYm9sZCI+U0E8L3RleHQ+Cjwvc3ZnPgo=" color="#D4AF37" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileImage" content="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ0IiBoZWlnaHQ9IjE0NCIgdmlld0JveD0iMCAwIDE0NCAxNDQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNDQiIGhlaWdodD0iMTQ0IiByeD0iMjQiIGZpbGw9IiNENEFGMzciLz4KPHN2ZyB4PSIzNiIgeT0iMzYiIHdpZHRoPSI3MiIgaGVpZ2h0PSI3MiIgdmlld0JveD0iMCAwIDcyIDcyIiBmaWxsPSJub25lIj4KPHRleHQgeD0iMzYiIHk9IjQ0IiBmaWxsPSIjMEEwQTBBIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjM2IiBmb250LXdlaWdodD0iYm9sZCI+U0E8L3RleHQ+Cjwvc3ZnPgo8L3N2Zz4K" />
+    <meta name="msapplication-square70x70logo" content="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzAiIGhlaWdodD0iNzAiIHZpZXdCb3g9IjAgMCA3MCA3MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjcwIiBoZWlnaHQ9IjcwIiByeD0iMTIiIGZpbGw9IiNENEFGMzciLz4KPHN2ZyB4PSIxNy41IiB5PSIxNy41IiB3aWR0aD0iMzUiIGhlaWdodD0iMzUiIHZpZXdCb3g9IjAgMCAzNSAzNSIgZmlsbD0ibm9uZSI+Cjx0ZXh0IHg9IjE3LjUiIHk9IjIxIiBmaWxsPSIjMEEwQTBBIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE3IiBmb250LXdlaWdodD0iYm9sZCI+U0E8L3RleHQ+Cjwvc3ZnPgo8L3N2Zz4K" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iI0Q0QUYzNyIvPgo8dGV4dCB4PSIxNiIgeT0iMjAiIGZpbGw9IiMwQTBBMEEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZvbnQtd2VpZ2h0PSJib2xkIj5TQTwvdGV4dD4KPC9zdmc+" />
+    <link rel="shortcut icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iI0Q0QUYzNyIvPgo8dGV4dCB4PSIxNiIgeT0iMjAiIGZpbGw9IiMwQTBBMEEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZvbnQtd2VpZ2h0PSJib2xkIj5TQTwvdGV4dD4KPC9zdmc+" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://saanse.com/" />
+    <meta property="og:title" content="SAANSE - Divine Stories" />
+    <meta property="og:description" content="Premium mythological OTT streaming platform with devotional content. Watch Ramayana, Mahabharata, Krishna stories, and more." />
+    <meta property="og:image" content="https://saanse.com/og-image.jpg" />
+    <meta property="og:site_name" content="SAANSE" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://saanse.com/" />
+    <meta property="twitter:title" content="SAANSE - Divine Stories" />
+    <meta property="twitter:description" content="Premium mythological OTT streaming platform with devotional content. Watch Ramayana, Mahabharata, Krishna stories, and more." />
+    <meta property="twitter:image" content="https://saanse.com/twitter-image.jpg" />
+    
+    <!-- Additional PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="SAANSE" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="full-screen" content="yes" />
+    <meta name="x5-fullscreen" content="true" />
+    <meta name="360-fullscreen" content="true" />
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
