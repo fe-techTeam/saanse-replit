@@ -62,10 +62,10 @@ export function NetflixHero({ title, description, backgroundImage, onPlay, onAdd
             <Button 
               size="lg" 
               variant="outline"
-              className="border-2 border-dharma-white/70 text-dharma-white hover:bg-dharma-white hover:text-dharma-black font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="border-2 border-dharma-white/70 text-dharma-black hover:bg-dharma-white hover:text-dharma-black font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
               onClick={onAddToList}
             >
-              <Plus className="w-6 h-6 mr-2 text-gray-300 hover:text-dharma-black" />
+              <Plus className="w-6 h-6 mr-2 text-gray-800 hover:text-dharma-black" />
               My List
             </Button>
           </div>

@@ -106,11 +106,11 @@ export function NetflixRow({ title, videos, onVideoClick }: NetflixRowProps) {
                       <Button size="sm" className="bg-white text-black hover:bg-gray-200">
                         <Play className="w-4 h-4 fill-black" />
                       </Button>
-                      <Button size="sm" variant="outline" className="border-white text-white hover:bg-white hover:text-black">
-                        <Plus className="w-4 h-4" />
+                      <Button size="sm" variant="outline" className="border-white text-black hover:bg-white hover:text-black">
+                        <Plus className="w-4 h-4 fill-black" />
                       </Button>
-                      <Button size="sm" variant="outline" className="border-white text-white hover:bg-white hover:text-black">
-                        <ThumbsUp className="w-4 h-4" />
+                      <Button size="sm" variant="outline" className="border-white text-black hover:bg-white hover:text-black">
+                        <ThumbsUp className="w-4 h-4 fill-black" />
                       </Button>
                     </div>
                   </div>

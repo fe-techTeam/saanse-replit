@@ -154,7 +154,7 @@ export default function Home() {
       {/* Header with Plans and Logout */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-sm">
         <div className="flex items-center justify-between p-4">
-          <h1 className="text-red-600 text-2xl font-bold tracking-wide">SAANSE</h1>
+          <h1 className="texzt-red-600 text-2xl font-bold tracking-wide">SAANSE</h1>
           
           <div className="flex items-center space-x-4">
             {/* Plans Dropdown */}
@@ -206,7 +206,7 @@ export default function Home() {
               onClick={handleLogout}
               variant="ghost" 
               size="sm" 
-              className="text-white hover:bg-red-600/20"
+              className="text-white hover:bg-dharma-red-dark hover:text-dharma-white"
             >
               <LogOut className="w-4 h-4 mr-1" />
               Logout
