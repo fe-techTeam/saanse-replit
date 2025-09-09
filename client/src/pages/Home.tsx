@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings, Plus, ThumbsUp, Crown } from "lucide-react";
+import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings, Plus, ThumbsUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,11 +7,11 @@ import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { NetflixHero } from "@/components/NetflixHero";
 import { NetflixRow } from "@/components/NetflixRow";
 import { Header } from "@/components/Header";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { VIDEO_CATEGORIES } from "@/types/video";
+import { CircularButton } from "@/components/ui/circular-button";
 
 export default function Home() {
   const { data: videos = [], isLoading } = useQuery({
@@ -31,6 +31,7 @@ export default function Home() {
   const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("Home");
 
   // Handle logout
   const handleLogout = async () => {
@@ -130,16 +131,44 @@ export default function Home() {
 
   const featuredVideo = enhancedVideos[currentHeroIndex] || enhancedVideos[0];
 
-  // Organize videos into sections
-  const trendingVideos = enhancedVideos.slice(0, 10);
-  const newReleases = enhancedVideos.slice(10, 20);
-  const ramayanaSeries = enhancedVideos.filter(v => v.category === 'Ramayana').slice(0, 10);
-  const krishnaStories = enhancedVideos.filter(v => v.category === 'Krishna').slice(0, 10);
-  const mahabharataEpic = enhancedVideos.filter(v => v.category === 'Mahabharata').slice(0, 10);
-  const devotionalContent = enhancedVideos.filter(v => v.category === 'Bhajans').slice(0, 10);
-  const popularPicks = enhancedVideos.slice(20, 30);
-  const watchAgain = enhancedVideos.slice(30, 40);
-  const becauseYouWatched = enhancedVideos.slice(40, 50);
+  // Filter videos based on selected category
+  const getFilteredVideos = () => {
+    if (selectedCategory === "Home") {
+      return enhancedVideos; // Show all videos for home
+    }
+    return enhancedVideos.filter(v => v.category === selectedCategory);
+  };
+
+  const filteredVideos = getFilteredVideos();
+
+  // Organize videos into sections based on selected category
+  const getCategorySections = () => {
+    if (selectedCategory === "Home") {
+      // Original home page sections
+      return {
+        trendingVideos: enhancedVideos.slice(0, 10),
+        newReleases: enhancedVideos.slice(10, 20),
+        ramayanaSeries: enhancedVideos.filter(v => v.category === 'Ramayana').slice(0, 10),
+        krishnaStories: enhancedVideos.filter(v => v.category === 'Krishna').slice(0, 10),
+        mahabharataEpic: enhancedVideos.filter(v => v.category === 'Mahabharata').slice(0, 10),
+        devotionalContent: enhancedVideos.filter(v => v.category === 'Bhajans').slice(0, 10),
+        popularPicks: enhancedVideos.slice(20, 30),
+        watchAgain: enhancedVideos.slice(30, 40),
+        becauseYouWatched: enhancedVideos.slice(40, 50)
+      };
+    } else {
+      // Category-specific sections
+      const categoryVideos = filteredVideos;
+      return {
+        allCategoryContent: categoryVideos,
+        trendingInCategory: categoryVideos.slice(0, 10),
+        popularInCategory: categoryVideos.slice(10, 20),
+        recentInCategory: categoryVideos.slice(20, 30)
+      };
+    }
+  };
+
+  const sections = getCategorySections();
 
   const handleVideoClick = (video: any) => {
     setSelectedVideo(video);
@@ -151,73 +180,99 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header with Plans and Logout */}
+      {/* Enhanced Header with Categories and Search */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-sm">
+        {/* Top Row - Logo, Category Tabs, Search, Logout */}
         <div className="flex items-center justify-between p-4">
-          <h1 className="texzt-red-600 text-2xl font-bold tracking-wide">SAANSE</h1>
+          <div className="flex items-center space-x-6">
+            <h1 className="text-red-600 text-2xl font-bold tracking-wide">SAANSE</h1>
+            
+            {/* Category Navigation Tabs */}
+            <div className="hidden md:flex space-x-1 overflow-x-auto scrollbar-hide">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                  selectedCategory === "Home"
+                    ? "bg-red-600 text-white"
+                    : "text-gray-300 hover:bg-red-600/20 hover:text-red-400"
+                }`}
+                onClick={() => setSelectedCategory("Home")}
+              >
+                Home
+              </Button>
+              {VIDEO_CATEGORIES.map((category) => (
+                <Button
+                  key={category}
+                  variant="ghost"
+                  size="sm"
+                  className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                    selectedCategory === category
+                      ? "bg-red-600 text-white"
+                      : "text-gray-300 hover:bg-red-600/20 hover:text-red-400"
+                  }`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+          </div>
           
           <div className="flex items-center space-x-4">
-            {/* Plans Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-500">
-                  <Crown className="w-4 h-4 mr-1" />
-                  Plans
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuLabel>Choose Your Plan</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem className="p-3">
-                  <div className="w-full">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium">Basic</span>
-                      <span className="text-blue-500 font-bold">₹149/mo</span>
-                    </div>
-                    <p className="text-xs text-gray-500">HD streaming, 1 device</p>
-                  </div>
-                </DropdownMenuItem>
-                
-                <DropdownMenuItem className="p-3">
-                  <div className="w-full">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium">Premium</span>
-                      <span className="text-yellow-500 font-bold">₹299/mo</span>
-                    </div>
-                    <p className="text-xs text-gray-500">4K streaming, 4 devices</p>
-                  </div>
-                </DropdownMenuItem>
-                
-                <DropdownMenuItem className="p-3">
-                  <div className="w-full">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium">Pro</span>
-                      <span className="text-purple-500 font-bold">₹499/mo</span>
-                    </div>
-                    <p className="text-xs text-gray-500">All features + exclusive content</p>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Search Button */}
+            <CircularButton 
+              onClick={() => navigate('/search')}
+            >
+              <Search className="w-5 h-5" />
+            </CircularButton>
             
             {/* Logout Button */}
-            <Button 
+            <CircularButton 
               onClick={handleLogout}
-              variant="ghost" 
-              size="sm" 
-              className="text-white hover:bg-dharma-red-dark hover:text-dharma-white"
             >
-              <LogOut className="w-4 h-4 mr-1" />
-              Logout
+              <LogOut className="w-5 h-5" />
+            </CircularButton>
+          </div>
+        </div>
+
+        {/* Mobile Category Navigation Tabs */}
+        <div className="md:hidden px-4 pb-2">
+          <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                selectedCategory === "Home" 
+                  ? 'bg-red-600 text-white' 
+                  : 'text-gray-300 hover:bg-red-600/20 hover:text-red-400'
+              }`}
+              onClick={() => setSelectedCategory("Home")}
+            >
+              Home
             </Button>
+            {VIDEO_CATEGORIES.map((category) => (
+              <Button
+                key={category}
+                variant="ghost"
+                size="sm"
+                className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                  selectedCategory === category 
+                    ? 'bg-red-600 text-white' 
+                    : 'text-gray-300 hover:bg-red-600/20 hover:text-red-400'
+                }`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Hero Section */}
-      <div className="pt-16">
-        {featuredVideo && (
+      {/* Hero Section - Only show on Home */}
+      <div className={selectedCategory === "Home" ? "pt-24" : "pt-20"}>
+        {selectedCategory === "Home" && featuredVideo && (
           <NetflixHero
             title={featuredVideo.title}
             description={featuredVideo.description || featuredVideo.shortDescription}
@@ -231,117 +286,156 @@ export default function Home() {
 
       {/* Content Sections - Netflix Style Grid */}
       <div className="bg-black pb-20">
-        {/* Trending Now */}
-        {trendingVideos.length > 0 && (
-          <NetflixRow
-            title="Trending Now"
-            videos={trendingVideos}
-            onVideoClick={handleVideoClick}
-          />
+        {selectedCategory === "Home" ? (
+          <>
+            {/* Home Page Sections */}
+            {sections.trendingVideos.length > 0 && (
+              <NetflixRow
+                title="Trending Now"
+                videos={sections.trendingVideos}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.newReleases.length > 0 && (
+              <NetflixRow
+                title="New Releases"
+                videos={sections.newReleases}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.watchAgain.length > 0 && (
+              <NetflixRow
+                title="Continue Watching"
+                videos={sections.watchAgain}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.ramayanaSeries.length > 0 && (
+              <NetflixRow
+                title="Ramayana: Divine Epic"
+                videos={sections.ramayanaSeries}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.krishnaStories.length > 0 && (
+              <NetflixRow
+                title="Krishna: Divine Stories"
+                videos={sections.krishnaStories}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.popularPicks.length > 0 && (
+              <NetflixRow
+                title="Popular on SAANSE"
+                videos={sections.popularPicks}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.mahabharataEpic.length > 0 && (
+              <NetflixRow
+                title="Mahabharata: The Great Epic"
+                videos={sections.mahabharataEpic}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.devotionalContent.length > 0 && (
+              <NetflixRow
+                title="Devotional Bhajans"
+                videos={sections.devotionalContent}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.becauseYouWatched.length > 0 && (
+              <NetflixRow
+                title="Because You Watched Krishna Stories"
+                videos={sections.becauseYouWatched}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {/* Category Page Sections */}
+            {sections.allCategoryContent && sections.allCategoryContent.length > 0 && (
+              <NetflixRow
+                title={`All ${selectedCategory} Content`}
+                videos={sections.allCategoryContent}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.trendingInCategory && sections.trendingInCategory.length > 0 && (
+              <NetflixRow
+                title={`Trending in ${selectedCategory}`}
+                videos={sections.trendingInCategory}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.popularInCategory && sections.popularInCategory.length > 0 && (
+              <NetflixRow
+                title={`Popular ${selectedCategory} Stories`}
+                videos={sections.popularInCategory}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.recentInCategory && sections.recentInCategory.length > 0 && (
+              <NetflixRow
+                title={`Recently Added to ${selectedCategory}`}
+                videos={sections.recentInCategory}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+          </>
         )}
 
-        {/* New Releases */}
-        {newReleases.length > 0 && (
-          <NetflixRow
-            title="New Releases"
-            videos={newReleases}
-            onVideoClick={handleVideoClick}
-          />
+        {/* Additional Netflix-style rows - only show on Home */}
+        {selectedCategory === "Home" && (
+          <>
+            <NetflixRow
+              title="Top 10 in India Today"
+              videos={enhancedVideos.slice(0, 10)}
+              onVideoClick={handleVideoClick}
+            />
+
+            <NetflixRow
+              title="Spiritual Documentaries"
+              videos={enhancedVideos.slice(15, 25)}
+              onVideoClick={handleVideoClick}
+            />
+
+            <NetflixRow
+              title="Festival Celebrations"
+              videos={enhancedVideos.slice(25, 35)}
+              onVideoClick={handleVideoClick}
+            />
+          </>
         )}
 
-        {/* Continue Watching */}
-        {watchAgain.length > 0 && (
-          <NetflixRow
-            title="Continue Watching"
-            videos={watchAgain}
-            onVideoClick={handleVideoClick}
-          />
+        {selectedCategory === "Home" && (
+          <>
+            <NetflixRow
+              title="Mythological Tales"
+              videos={enhancedVideos.slice(35, 45)}
+              onVideoClick={handleVideoClick}
+            />
+
+            <NetflixRow
+              title="Sacred Mantras & Chants"
+              videos={enhancedVideos.slice(45, 55)}
+              onVideoClick={handleVideoClick}
+            />
+          </>
         )}
-
-        {/* Ramayana Epic Series */}
-        {ramayanaSeries.length > 0 && (
-          <NetflixRow
-            title="Ramayana: Divine Epic"
-            videos={ramayanaSeries}
-            onVideoClick={handleVideoClick}
-          />
-        )}
-
-        {/* Krishna Leela Stories */}
-        {krishnaStories.length > 0 && (
-          <NetflixRow
-            title="Krishna: Divine Stories"
-            videos={krishnaStories}
-            onVideoClick={handleVideoClick}
-          />
-        )}
-
-        {/* Popular on SAANSE */}
-        {popularPicks.length > 0 && (
-          <NetflixRow
-            title="Popular on SAANSE"
-            videos={popularPicks}
-            onVideoClick={handleVideoClick}
-          />
-        )}
-
-        {/* Mahabharata Epic */}
-        {mahabharataEpic.length > 0 && (
-          <NetflixRow
-            title="Mahabharata: The Great Epic"
-            videos={mahabharataEpic}
-            onVideoClick={handleVideoClick}
-          />
-        )}
-
-        {/* Devotional Content */}
-        {devotionalContent.length > 0 && (
-          <NetflixRow
-            title="Devotional Bhajans"
-            videos={devotionalContent}
-            onVideoClick={handleVideoClick}
-          />
-        )}
-
-        {/* Because You Watched */}
-        {becauseYouWatched.length > 0 && (
-          <NetflixRow
-            title="Because You Watched Krishna Stories"
-            videos={becauseYouWatched}
-            onVideoClick={handleVideoClick}
-          />
-        )}
-
-        {/* More Netflix-style rows */}
-        <NetflixRow
-          title="Top 10 in India Today"
-          videos={enhancedVideos.slice(0, 10)}
-          onVideoClick={handleVideoClick}
-        />
-
-        <NetflixRow
-          title="Spiritual Documentaries"
-          videos={enhancedVideos.slice(15, 25)}
-          onVideoClick={handleVideoClick}
-        />
-
-        <NetflixRow
-          title="Festival Celebrations"
-          videos={enhancedVideos.slice(25, 35)}
-          onVideoClick={handleVideoClick}
-        />
-
-        <NetflixRow
-          title="Mythological Tales"
-          videos={enhancedVideos.slice(35, 45)}
-          onVideoClick={handleVideoClick}
-        />
-
-        <NetflixRow
-          title="Sacred Mantras & Chants"
-          videos={enhancedVideos.slice(45, 55)}
-          onVideoClick={handleVideoClick}
-        />
       </div>
 
       {/* Netflix-Style Video Modal */}

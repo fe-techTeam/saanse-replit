@@ -102,15 +102,58 @@ export class SupabaseStorage implements IStorage {
   }
 
   async searchVideos(query: string): Promise<Video[]> {
+    if (!query.trim()) return [];
+    
+    const searchQuery = query.trim().toLowerCase();
+    
+    // Enhanced search that includes title, description, category, and tags
+    // For tags, we use jsonb_array_elements_text to search within the JSON array
     const { data, error } = await supabase
       .from('videos')
       .select('*')
       .eq('is_active', true)
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+      .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    // Post-process results to also search in tags and rank by relevance
+    let results = data || [];
+    
+    // Filter and rank results for better relevance
+    const rankedResults = results.map(video => {
+      let relevanceScore = 0;
+      const titleMatch = video.title.toLowerCase().includes(searchQuery);
+      const descMatch = video.description?.toLowerCase().includes(searchQuery);
+      const categoryMatch = video.category.toLowerCase().includes(searchQuery);
+      const tagsMatch = video.tags?.some((tag: string) => 
+        tag.toLowerCase().includes(searchQuery)
+      );
+      
+      // Give different weights to different types of matches
+      if (titleMatch) relevanceScore += 10;
+      if (categoryMatch) relevanceScore += 8;
+      if (tagsMatch) relevanceScore += 6;
+      if (descMatch) relevanceScore += 4;
+      
+      // Exact matches get higher scores
+      if (video.title.toLowerCase() === searchQuery) relevanceScore += 20;
+      if (video.category.toLowerCase() === searchQuery) relevanceScore += 15;
+      if (video.tags?.some((tag: string) => tag.toLowerCase() === searchQuery)) relevanceScore += 12;
+      
+      return { ...video, relevanceScore };
+    });
+    
+    // Filter out videos with no relevance and sort by relevance score
+    return rankedResults
+      .filter(video => 
+        video.relevanceScore > 0 || 
+        video.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(searchQuery)
+        )
+      )
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .map(({ relevanceScore, ...video }) => video); // Remove relevanceScore from final result
   }
 
   // Helper function to transform camelCase to snake_case for database fields

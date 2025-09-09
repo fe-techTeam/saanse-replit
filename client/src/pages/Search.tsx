@@ -1,37 +1,42 @@
-import { useState } from "react";
-import { Header } from "@/components/Header";
-import { BottomNavigation } from "@/components/BottomNavigation";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
-import { Input } from "@/components/ui/input";
-import { Search as SearchIcon } from "lucide-react";
+import { NetflixRow } from "@/components/NetflixRow";
+import { Button } from "@/components/ui/button";
+import { Search as SearchIcon, ArrowLeft, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { VIDEO_CATEGORIES } from "@/types/video";
 import type { VideoType } from "@/types/video";
-import { useLocation } from "wouter";
 
 export default function Search() {
-  const [, setLocation] = useLocation();
-  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const initialQuery = searchParams.get('q') || '';
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   const { data: searchResults = [], isLoading } = useQuery<VideoType[]>({
     queryKey: ["/api/videos/search", searchQuery],
     enabled: !!searchQuery.trim(),
   });
 
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  // Update search query when URL params change
+  useEffect(() => {
+    const queryFromUrl = searchParams.get('q') || '';
+    setSearchQuery(queryFromUrl);
+  }, [searchParams]);
 
   const filteredResults = searchResults.filter((video: VideoType) => 
     selectedCategory === "All" || video.category === selectedCategory
   );
 
-  const handleVideoClick = (video: VideoType) => {
+  const handleVideoClick = (video: any) => {
     setSelectedVideo(video);
     setIsVideoPlayerOpen(true);
   };
@@ -41,39 +46,162 @@ export default function Search() {
     setSelectedVideo(null);
   };
 
-  const handleProfileClick = () => {
-    setLocation("/profile");
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      setSearchParams({ q: query.trim() });
+      setSearchQuery(query.trim());
+    } else {
+      setSearchParams({});
+      setSearchQuery('');
+    }
+    setShowSuggestions(false);
   };
 
-  return (
-    <div className="min-h-screen bg-dharma-dark">
-      <Header 
-        onSearchClick={() => {}}
-        onProfileClick={handleProfileClick}
-      />
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch(searchQuery);
+      inputRef.current?.blur();
+    } else if (e.key === 'Escape') {
+      inputRef.current?.blur();
+      setShowSuggestions(false);
+    }
+  };
 
-      <main className="pt-20 pb-20">
+  const handleClear = () => {
+    setSearchQuery('');
+    setSearchParams({});
+    inputRef.current?.focus();
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchQuery(suggestion);
+    handleSearch(suggestion);
+    setShowSuggestions(false);
+    inputRef.current?.blur();
+  };
+
+  // Helper function to convert VideoType to format expected by NetflixRow
+  const convertVideoForNetflixRow = (videos: VideoType[]) => {
+    return videos.map(video => ({
+      ...video,
+      thumbnailUrl: video.thumbnail_url,
+      videoUrl: video.video_url,
+      createdAt: video.created_at,
+      isActive: video.is_active,
+      contentType: video.content_type,
+      seriesId: video.series_id,
+      episodeNumber: video.episode_number
+    }));
+  };
+
+  // Popular search suggestions
+  const searchSuggestions = [
+    'Krishna Leela',
+    'Hanuman Chalisa', 
+    'Ramayana Episodes',
+    'Bhagavad Gita',
+    'Devi Stotram',
+    'Ganesha Stories',
+    'Shiva Tandav',
+    'Mahabharata',
+    'Bhajans',
+    'Festivals',
+    'Aarti',
+    'Mantras'
+  ];
+
+  const filteredSuggestions = searchSuggestions.filter(suggestion =>
+    suggestion.toLowerCase().includes(searchQuery.toLowerCase()) && suggestion !== searchQuery
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black text-white overflow-y-auto">
+      {/* Custom Search Header */}
+      <div className="sticky top-0 bg-black/95 backdrop-blur-md border-b border-gray-800/30">
         <div className="p-4">
-          {/* Search Input */}
-          <div className="relative mb-6">
-            <Input
-              type="text"
-              placeholder="Search for devotional content..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-dharma-dark-light text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-dharma-gold border-none pl-12"
-            />
-            <SearchIcon className="absolute left-3 top-3 w-6 h-6 text-gray-400" />
+          {/* Custom Full-Width Search Bar */}
+          <div className="relative w-full">
+            <div className="flex items-center w-full">
+              {/* Back Button */}
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center justify-center w-12 h-12 text-gray-400 hover:text-white transition-colors mr-4 hover:bg-gray-800/50 rounded-full"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              
+              {/* Search Input Container */}
+              <div className="relative flex-1">
+                <div className={`flex items-center w-full bg-gray-900/60 rounded-2xl border-2 transition-all duration-200 ${
+                  isFocused ? 'border-red-500/50 bg-gray-900/80' : 'border-gray-700/50 hover:border-gray-600/50'
+                }`}>
+                  {/* Search Icon */}
+                  <div className="flex items-center justify-center w-12 h-14 text-gray-400">
+                    <SearchIcon className="w-5 h-5" />
+                  </div>
+                  
+                  {/* Input Field */}
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => {
+                      setIsFocused(true);
+                      if (filteredSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setIsFocused(false);
+                      setTimeout(() => setShowSuggestions(false), 150);
+                    }}
+                    placeholder="Search devotional content, stories, bhajans..."
+                    className="flex-1 bg-transparent text-white placeholder-gray-400 py-4 px-4 text-lg leading-6 outline-none"
+                    autoFocus
+                  />
+                  
+                  {/* Clear Button */}
+                  {searchQuery && (
+                    <button
+                      onClick={handleClear}
+                      className="flex items-center justify-center w-12 h-14 text-gray-400 hover:text-white transition-colors mr-2"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Suggestions Dropdown */}
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-2xl shadow-2xl max-h-64 overflow-hidden">
+                    {filteredSuggestions.slice(0, 6).map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="w-full flex items-center px-6 py-4 text-left text-gray-300 hover:text-white hover:bg-gray-800/50 transition-colors duration-150 border-b border-gray-800/30 last:border-b-0 first:rounded-t-2xl last:rounded-b-2xl"
+                      >
+                        <SearchIcon className="w-4 h-4 text-gray-500 mr-4 flex-shrink-0" />
+                        <span className="truncate text-base">{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          
-          {/* Search filters */}
-          <div className="flex space-x-2 mb-6 overflow-x-auto scrollbar-hide">
+        </div>
+
+        {/* Category Filter Chips */}
+        <div className="px-4 pb-4">
+          <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setSelectedCategory("All")}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                 selectedCategory === "All"
-                  ? "bg-dharma-gold text-dharma-dark"
-                  : "bg-dharma-dark-light text-gray-300"
+                  ? "bg-red-600 text-white shadow-lg shadow-red-600/20"
+                  : "bg-gray-800/80 text-gray-300 hover:bg-gray-700/80 border border-gray-700/50"
               }`}
             >
               All
@@ -82,86 +210,213 @@ export default function Search() {
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                   selectedCategory === category
-                    ? "bg-dharma-gold text-dharma-dark"
-                    : "bg-dharma-dark-light text-gray-300"
+                    ? "bg-red-600 text-white shadow-lg shadow-red-600/20"
+                    : "bg-gray-800/80 text-gray-300 hover:bg-gray-700/80 border border-gray-700/50"
                 }`}
               >
                 {category}
               </button>
             ))}
           </div>
-          
-          {/* Search results */}
-          <div className="space-y-4">
-            {!searchQuery.trim() && (
-              <div className="text-center py-12">
-                <SearchIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">Start typing to search devotional content</p>
-              </div>
-            )}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="p-6">
+        {/* Search Suggestions - Material 3 Style */}
+        {!searchQuery.trim() && (
+          <div className="mb-8">
+            <h3 className="text-xl font-medium text-white mb-6">Popular Searches</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {searchSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => handleSearch(suggestion)}
+                  className="group p-4 bg-gray-900/60 hover:bg-gray-800/80 rounded-2xl text-left text-gray-300 hover:text-white transition-all duration-200 border border-gray-800/50 hover:border-gray-700/50 hover:shadow-lg"
+                >
+                  <div className="flex items-center">
+                    <SearchIcon className="w-4 h-4 text-gray-500 mr-3 group-hover:text-red-400 transition-colors" />
+                    <span className="text-sm font-medium">{suggestion}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Default State - Material 3 Style */}
+        {!searchQuery.trim() && (
+          <div className="text-center py-16">
+            <div className="bg-gray-900/40 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <SearchIcon className="w-12 h-12 text-gray-500" />
+            </div>
+            <h3 className="text-2xl font-medium text-white mb-3">Search SAANSE</h3>
+            <p className="text-gray-400 mb-8 max-w-md mx-auto">Discover divine stories, bhajans, and spiritual content from our extensive library</p>
             
-            {searchQuery.trim() && isLoading && (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex space-x-3 p-3 bg-dharma-dark-light rounded-lg animate-pulse">
-                    <div className="w-20 h-16 bg-gray-600 rounded" />
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-600 rounded mb-2" />
-                      <div className="h-3 bg-gray-600 rounded w-1/2" />
+            {/* Quick Category Access */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mx-auto">
+              {VIDEO_CATEGORIES.slice(0, 4).map((category) => (
+                <button
+                  key={category}
+                  onClick={() => navigate(`/category/${category.toLowerCase()}`)}
+                  className="group p-4 bg-gray-900/40 hover:bg-red-600/20 rounded-2xl border border-gray-800/50 hover:border-red-500/50 text-gray-300 hover:text-red-400 transition-all duration-200 hover:shadow-lg"
+                >
+                  <div className="text-sm font-medium">{category}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Loading State - Material 3 Style */}
+        {searchQuery.trim() && isLoading && (
+          <div className="space-y-8">
+            <div className="text-center py-8">
+              <div className="inline-flex items-center space-x-3 px-6 py-3 bg-gray-900/60 rounded-full border border-gray-800/50">
+                <div className="animate-spin w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full"></div>
+                <span className="text-gray-300">Searching for "{searchQuery}"...</span>
+              </div>
+            </div>
+            
+            {/* Material 3 Loading Skeleton */}
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-gray-800/60 rounded-full w-64 mx-auto"></div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                  <div key={i} className="bg-gray-900/60 rounded-2xl overflow-hidden border border-gray-800/50">
+                    <div className="w-full h-48 bg-gray-800/60"></div>
+                    <div className="p-4 space-y-3">
+                      <div className="h-4 bg-gray-800/60 rounded-full w-3/4"></div>
+                      <div className="h-3 bg-gray-800/60 rounded-full w-1/2"></div>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-            
-            {searchQuery.trim() && !isLoading && filteredResults.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-400">No videos found for "{searchQuery}"</p>
-              </div>
-            )}
-            
-            {filteredResults.map((video: VideoType) => (
-              <div
-                key={video.id}
-                className="flex space-x-3 p-3 bg-dharma-dark-light rounded-lg cursor-pointer hover:bg-gray-700 transition-colors"
-                onClick={() => handleVideoClick(video)}
-              >
-                <img
-                  src={video.thumbnail_url}
-                  alt={video.title}
-                  className="w-20 h-16 object-cover rounded"
-                  loading="lazy"
-                />
-                <div className="flex-1">
-                  <h4 className="text-white font-medium mb-1 line-clamp-2">
-                    {video.title}
-                  </h4>
-                  <p className="text-gray-400 text-sm mb-1 line-clamp-1">
-                    {video.description}
-                  </p>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <span>{video.category}</span>
-                    <span>•</span>
-                    <span>{formatDuration(video.duration)}</span>
-                    <span>•</span>
-                    <span>{video.views} views</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+            </div>
           </div>
-        </div>
+        )}
+        
+        {/* No Results - Material 3 Style */}
+        {searchQuery.trim() && !isLoading && filteredResults.length === 0 && (
+          <div className="text-center py-16">
+            <div className="bg-gray-900/40 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+              <SearchIcon className="w-10 h-10 text-gray-600" />
+            </div>
+            <h3 className="text-xl font-medium text-white mb-3">No results found</h3>
+            <p className="text-gray-400 mb-8 max-w-md mx-auto">We couldn't find any videos matching "{searchQuery}". Try a different search term or browse by category.</p>
+            
+            <div className="space-y-6">
+              <p className="text-gray-500 font-medium">Try searching for:</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 max-w-3xl mx-auto">
+                {VIDEO_CATEGORIES.slice(0, 6).map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => handleSearch(category)}
+                    className="px-4 py-2 bg-gray-900/60 hover:bg-gray-800/80 rounded-full text-sm text-gray-300 hover:text-white transition-all duration-200 border border-gray-800/50 hover:border-gray-700/50"
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Search Results using NetflixRow */}
+        {searchQuery.trim() && !isLoading && filteredResults.length > 0 && (
+          <div className="space-y-8">
+            <NetflixRow
+              title={`Search Results for "${searchQuery}" ${selectedCategory !== "All" ? `in ${selectedCategory}` : ''} (${filteredResults.length} ${filteredResults.length === 1 ? 'result' : 'results'})`}
+              videos={convertVideoForNetflixRow(filteredResults)}
+              onVideoClick={handleVideoClick}
+            />
+            
+            {/* Additional rows based on categories if we have enough results */}
+            {filteredResults.length > 10 && (
+              <>
+                {VIDEO_CATEGORIES.map((category) => {
+                  const categoryResults = filteredResults.filter(video => video.category === category);
+                  if (categoryResults.length > 0 && (selectedCategory === "All" || selectedCategory === category)) {
+                    return (
+                      <NetflixRow
+                        key={category}
+                        title={`${category} Results`}
+                        videos={convertVideoForNetflixRow(categoryResults)}
+                        onVideoClick={handleVideoClick}
+                      />
+                    );
+                  }
+                  return null;
+                })}
+              </>
+            )}
+          </div>
+        )}
       </main>
 
-      <BottomNavigation />
       
       <YouTubeStylePlayer
         video={selectedVideo}
         isOpen={isVideoPlayerOpen}
         onClose={handleCloseVideoPlayer}
       />
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          
+          .line-clamp-1 {
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+          
+          .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+
+          @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes zoom-in-95 {
+            from { 
+              opacity: 0;
+              transform: scale(0.95);
+            }
+            to { 
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          
+          .animate-in {
+            animation-fill-mode: both;
+          }
+          
+          .fade-in {
+            animation: fade-in 0.3s ease-out;
+          }
+          
+          .zoom-in-95 {
+            animation: zoom-in-95 0.3s ease-out;
+          }
+        `
+      }} />
     </div>
   );
 }

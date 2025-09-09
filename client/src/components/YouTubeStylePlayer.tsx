@@ -13,7 +13,9 @@ import {
   Share2,
   Download,
   Settings,
-  MoreVertical
+  MoreVertical,
+  Repeat,
+  Shuffle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +29,7 @@ interface YouTubeStylePlayerProps {
   onClose: () => void;
   onNext?: () => void;
   onPrevious?: () => void;
+  allVideos?: VideoType[];
 }
 
 export function YouTubeStylePlayer({ 
@@ -34,7 +37,8 @@ export function YouTubeStylePlayer({
   isOpen, 
   onClose, 
   onNext, 
-  onPrevious 
+  onPrevious,
+  allVideos = []
 }: YouTubeStylePlayerProps) {
   const getVideoUrl = () => {
     if (!video?.video_url) {
@@ -53,12 +57,26 @@ export function YouTubeStylePlayer({
   const [showInfo, setShowInfo] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isSeekBarHovered, setIsSeekBarHovered] = useState(false);
+  const [isLoop, setIsLoop] = useState(false);
+  const [isRandom, setIsRandom] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Check for mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Increment view count
   const viewMutation = useMutation({
@@ -295,8 +313,11 @@ export function YouTubeStylePlayer({
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
-    const newTime = Math.max(0, Math.min(duration || videoEl.duration || 0, videoEl.currentTime + seconds));
-    videoEl.currentTime = newTime;
+    // Only allow backward seeking (negative seconds) or staying at current time
+    if (seconds <= 0) {
+      const newTime = Math.max(0, videoEl.currentTime + seconds);
+      videoEl.currentTime = newTime;
+    }
   };
 
   const adjustVolume = (change: number) => {
@@ -357,7 +378,10 @@ export function YouTubeStylePlayer({
     
     if (videoDuration > 0) {
       const newTime = percentage * videoDuration;
-      videoEl.currentTime = newTime;
+      // Only allow seeking backwards or to current position
+      if (newTime <= currentTime) {
+        videoEl.currentTime = newTime;
+      }
     }
   };
 
@@ -407,6 +431,39 @@ export function YouTubeStylePlayer({
     }
   };
 
+  const toggleLoop = () => {
+    setIsLoop(!isLoop);
+  };
+
+  const toggleRandom = () => {
+    setIsRandom(!isRandom);
+  };
+
+  // Get related videos based on tags and category
+  const getRelatedVideos = () => {
+    if (!video || !allVideos.length) return [];
+    
+    return allVideos
+      .filter(v => v.id !== video.id) // Exclude current video
+      .sort((a, b) => {
+        let scoreA = 0;
+        let scoreB = 0;
+        
+        // Same category gets higher score
+        if (a.category === video.category) scoreA += 3;
+        if (b.category === video.category) scoreB += 3;
+        
+        // Shared tags get points
+        const sharedTagsA = a.tags.filter(tag => video.tags.includes(tag)).length;
+        const sharedTagsB = b.tags.filter(tag => video.tags.includes(tag)).length;
+        scoreA += sharedTagsA;
+        scoreB += sharedTagsB;
+        
+        return scoreB - scoreA;
+      })
+      .slice(0, 10); // Limit to 10 related videos
+  };
+
   const formatTime = (time: number) => {
     if (!time || isNaN(time) || time < 0) {
       return '0:00';
@@ -448,13 +505,15 @@ export function YouTubeStylePlayer({
     : 0;
   const volumePercent = volume * 100;
 
+  const relatedVideos = getRelatedVideos();
+
   return (
     <div 
       ref={containerRef}
-      className={`fixed inset-0 bg-black z-50 flex ${isFullscreen ? '' : 'p-4'}`}
+      className={`fixed inset-0 bg-black z-50 ${isFullscreen ? '' : isMobile ? 'flex flex-col' : 'flex p-4'}`}
     >
       {/* Video Container */}
-      <div className="relative flex-1 flex items-center justify-center">
+      <div className={`relative flex items-center justify-center ${isMobile && !isFullscreen ? 'h-[40vh]' : 'flex-1'}`}>
         <video
           ref={videoRef}
           src={getVideoUrl()}
@@ -577,6 +636,28 @@ export function YouTubeStylePlayer({
                     </Button>
                   )}
                   
+                  {/* Loop Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`text-white hover:bg-white hover:bg-opacity-20 ${isLoop ? 'text-red-500' : ''}`}
+                    onClick={toggleLoop}
+                    title="Loop"
+                  >
+                    <Repeat className="w-5 h-5" />
+                  </Button>
+                  
+                  {/* Random Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`text-white hover:bg-white hover:bg-opacity-20 ${isRandom ? 'text-red-500' : ''}`}
+                    onClick={toggleRandom}
+                    title="Random"
+                  >
+                    <Shuffle className="w-5 h-5" />
+                  </Button>
+                  
                   <div className="flex items-center space-x-2">
                     <Button
                       variant="ghost"
@@ -627,9 +708,13 @@ export function YouTubeStylePlayer({
         )}
       </div>
 
-      {/* Side Panel (only in non-fullscreen mode) */}
+      {/* Side Panel (desktop) or Bottom Panel (mobile) - only in non-fullscreen mode */}
       {!isFullscreen && (
-        <div className="w-96 bg-dharma-dark border-l border-gray-700 flex flex-col">
+        <div className={`bg-gray-900 flex flex-col ${
+          isMobile 
+            ? 'flex-1 border-t border-gray-700' 
+            : 'w-96 border-l border-gray-700'
+        }`}>
           {/* Video Info */}
           <div className="p-4 border-b border-gray-700">
             <h2 className="text-white text-lg font-semibold mb-2 line-clamp-2">
@@ -712,11 +797,64 @@ export function YouTubeStylePlayer({
             )}
           </div>
           
-          {/* Related Videos or Comments section could go here */}
-          <div className="flex-1 p-4">
+          {/* Related Videos */}
+          <div className="flex-1 p-4 overflow-y-auto">
             <h3 className="text-white font-medium mb-4">Related Videos</h3>
-            <div className="text-gray-400 text-sm">
-              More videos from this category coming soon...
+            <div className="space-y-3">
+              {relatedVideos.length > 0 ? (
+                relatedVideos.map((relatedVideo) => (
+                  <div
+                    key={relatedVideo.id}
+                    className="flex space-x-3 p-2 rounded-lg hover:bg-gray-800/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      // TODO: Handle video change - functionality will be added later
+                      console.log('Change video to:', relatedVideo.title);
+                    }}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={relatedVideo.thumbnail_url}
+                        alt={relatedVideo.title}
+                        className={`rounded object-cover ${isMobile ? 'w-24 h-16' : 'w-32 h-20'}`}
+                      />
+                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
+                        {formatTime(relatedVideo.duration)}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-white text-sm font-medium line-clamp-2 mb-1">
+                        {relatedVideo.title}
+                      </h4>
+                      <p className="text-gray-400 text-xs mb-1">
+                        {relatedVideo.category}
+                      </p>
+                      <div className="text-gray-500 text-xs">
+                        <span>{relatedVideo.views} views</span>
+                      </div>
+                      {/* Show common tags */}
+                      {relatedVideo.tags.filter(tag => video.tags.includes(tag)).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {relatedVideo.tags
+                            .filter(tag => video.tags.includes(tag))
+                            .slice(0, 2)
+                            .map(tag => (
+                              <span
+                                key={tag}
+                                className="bg-red-900/30 text-red-300 text-xs px-1 py-0.5 rounded"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-gray-400 text-sm">
+                  No related videos found
+                </div>
+              )}
             </div>
           </div>
         </div>

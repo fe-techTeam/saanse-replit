@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import Search from "@/pages/Search";
+import CategoryPage from "@/pages/CategoryPage";
 import Library from "@/pages/Library";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -31,6 +32,7 @@ function App() {
               {/* Protected routes */}
               <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
               <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+              <Route path="/category/:category" element={<ProtectedRoute><CategoryPage /></ProtectedRoute>} />
               <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
               
               {/* Admin routes (separate authentication) */}
