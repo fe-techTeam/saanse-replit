@@ -18,7 +18,7 @@ import {
   Shuffle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { VideoType } from "@/types/video";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +30,7 @@ interface YouTubeStylePlayerProps {
   onNext?: () => void;
   onPrevious?: () => void;
   allVideos?: VideoType[];
+  onVideoChange?: (video: VideoType) => void;
 }
 
 export function YouTubeStylePlayer({ 
@@ -38,7 +39,8 @@ export function YouTubeStylePlayer({
   onClose, 
   onNext, 
   onPrevious,
-  allVideos = []
+  allVideos = [],
+  onVideoChange
 }: YouTubeStylePlayerProps) {
   const getVideoUrl = () => {
     if (!video?.video_url) {
@@ -66,6 +68,86 @@ export function YouTubeStylePlayer({
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Debug the video object structure first
+  useEffect(() => {
+    if (video) {
+      console.log('=== VIDEO OBJECT DEBUG ===');
+      console.log('Full video object:', video);
+      console.log('Video properties:');
+      console.log('- ID:', video.id);
+      console.log('- Title:', video.title);
+      console.log('- Category:', video.category);
+      console.log('- Tags:', video.tags, 'Type:', typeof video.tags, 'Is Array:', Array.isArray(video.tags));
+      console.log('- Views:', video.views);
+      console.log('- Likes:', video.likes);
+      console.log('- Thumbnail URL:', video.thumbnail_url);
+      console.log('========================');
+    }
+  }, [video]);
+
+  // Fetch related videos from Supabase
+  const { data: relatedVideos = [], isLoading: isLoadingRelated, error: relatedError, refetch: refetchRelated } = useQuery<VideoType[]>({
+    queryKey: ["/api/videos/related", video?.id, video?.category, JSON.stringify(video?.tags)],
+    queryFn: async () => {
+      if (!video) {
+        console.log('No video provided to fetch related videos');
+        return [];
+      }
+      
+      console.log('=== FETCHING RELATED VIDEOS ===');
+      console.log('Video ID:', video.id);
+      console.log('Video Category:', video.category);
+      console.log('Video Tags:', video.tags);
+      
+      // Ensure tags is an array
+      const tagsArray = Array.isArray(video.tags) ? video.tags : [];
+      
+      // Create a search query that looks for videos with same category or matching tags
+      const searchParams = new URLSearchParams();
+      searchParams.set('category', video.category || 'Unknown');
+      if (tagsArray.length > 0) {
+        searchParams.set('tags', tagsArray.join(','));
+      }
+      searchParams.set('exclude', video.id);
+      searchParams.set('limit', '20');
+      
+      const apiUrl = `/api/videos/related?${searchParams.toString()}`;
+      console.log('Making API call to:', apiUrl);
+      
+      try {
+        const response = await apiRequest("GET", apiUrl);
+        const result = await response.json();
+        console.log('✅ Related videos API success. Count:', result?.length || 0);
+        console.log('First few results:', Array.isArray(result) ? result.slice(0, 3) : result);
+        console.log('✅ Returning from queryFn:', Array.isArray(result) ? result : []);
+        return Array.isArray(result) ? result : [];
+      } catch (error) {
+        console.error('❌ Related videos API error:', error);
+        throw error;
+      }
+    },
+    enabled: !!video && isOpen,
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  // Log related videos results
+  useEffect(() => {
+    console.log('=== RELATED VIDEOS STATE ===');
+    console.log('Loading:', isLoadingRelated);
+    console.log('Error:', relatedError);
+    console.log('Data type:', typeof relatedVideos);
+    console.log('Is Array:', Array.isArray(relatedVideos));
+    console.log('Count:', relatedVideos?.length || 'undefined');
+    console.log('Raw data:', relatedVideos);
+    console.log('Videos sample:', Array.isArray(relatedVideos) ? relatedVideos.slice(0, 3) : relatedVideos);
+    console.log('Query enabled:', !!video && isOpen);
+    console.log('Video exists:', !!video);
+    console.log('Player open:', isOpen);
+    console.log('==============================');
+  }, [relatedVideos, isLoadingRelated, relatedError, video, isOpen]);
 
   // Check for mobile device
   useEffect(() => {
@@ -439,30 +521,12 @@ export function YouTubeStylePlayer({
     setIsRandom(!isRandom);
   };
 
-  // Get related videos based on tags and category
-  const getRelatedVideos = () => {
-    if (!video || !allVideos.length) return [];
-    
-    return allVideos
-      .filter(v => v.id !== video.id) // Exclude current video
-      .sort((a, b) => {
-        let scoreA = 0;
-        let scoreB = 0;
-        
-        // Same category gets higher score
-        if (a.category === video.category) scoreA += 3;
-        if (b.category === video.category) scoreB += 3;
-        
-        // Shared tags get points
-        const sharedTagsA = a.tags.filter(tag => video.tags.includes(tag)).length;
-        const sharedTagsB = b.tags.filter(tag => video.tags.includes(tag)).length;
-        scoreA += sharedTagsA;
-        scoreB += sharedTagsB;
-        
-        return scoreB - scoreA;
-      })
-      .slice(0, 10); // Limit to 10 related videos
+  const handleRelatedVideoClick = (relatedVideo: VideoType) => {
+    if (onVideoChange) {
+      onVideoChange(relatedVideo);
+    }
   };
+
 
   const formatTime = (time: number) => {
     if (!time || isNaN(time) || time < 0) {
@@ -504,8 +568,6 @@ export function YouTubeStylePlayer({
     ? Math.max(0, Math.min(100, (currentTime / duration) * 100))
     : 0;
   const volumePercent = volume * 100;
-
-  const relatedVideos = getRelatedVideos();
 
   return (
     <div 
@@ -798,49 +860,101 @@ export function YouTubeStylePlayer({
           </div>
           
           {/* Related Videos */}
-          <div className="flex-1 p-4 overflow-y-auto">
+          <div className="flex-1 p-4 overflow-y-auto scrollbar-hide">
             <h3 className="text-white font-medium mb-4">Related Videos</h3>
-            <div className="space-y-3">
-              {relatedVideos.length > 0 ? (
-                relatedVideos.map((relatedVideo) => (
+            
+            {isLoadingRelated ? (
+              <div className="space-y-4">
+                <div className="text-gray-400 text-sm mb-2">Loading related videos...</div>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="aspect-video bg-gray-800 rounded-lg mb-2"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-800 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-800 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : relatedError ? (
+              <div className="text-center py-8">
+                <div className="text-red-400 text-sm mb-2">Error loading related videos</div>
+                <p className="text-gray-500 text-xs">{relatedError.message}</p>
+                <div className="text-gray-600 text-xs mt-2">
+                  Video ID: {video?.id}<br/>
+                  Category: {video?.category}<br/>
+                  Tags: {JSON.stringify(video?.tags)}
+                </div>
+              </div>
+            ) : relatedVideos.length > 0 ? (
+              <div className="space-y-4">
+                <div className="text-gray-400 text-xs mb-4">
+                  Found {relatedVideos.length} related videos (Category: {video?.category}, Tags: {Array.isArray(video?.tags) ? video.tags.join(', ') : 'None'})
+                </div>
+                {relatedVideos.map((relatedVideo) => {
+                  const isCurrentlyPlaying = relatedVideo.id === video?.id;
+                  return (
                   <div
                     key={relatedVideo.id}
-                    className="flex space-x-3 p-2 rounded-lg hover:bg-gray-800/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      // TODO: Handle video change - functionality will be added later
-                      console.log('Change video to:', relatedVideo.title);
-                    }}
+                    className={`group cursor-pointer transition-all duration-200 hover:scale-[1.02] rounded-lg p-2 ${
+                      isCurrentlyPlaying 
+                        ? 'bg-dharma-gold bg-opacity-20 border border-dharma-gold border-opacity-50' 
+                        : 'hover:bg-gray-800 hover:bg-opacity-50'
+                    }`}
+                    onClick={() => handleRelatedVideoClick(relatedVideo)}
                   >
-                    <div className="relative flex-shrink-0">
+                    {/* 16:9 Aspect Ratio Thumbnail Card */}
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-900 mb-3">
                       <img
                         src={relatedVideo.thumbnail_url}
                         alt={relatedVideo.title}
-                        className={`rounded object-cover ${isMobile ? 'w-24 h-16' : 'w-32 h-20'}`}
+                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        loading="lazy"
                       />
-                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 rounded">
+                      
+                      {/* Duration Badge */}
+                      <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded font-medium">
                         {formatTime(relatedVideo.duration)}
                       </div>
+                      
+                      {/* Play Icon Overlay */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                        <div className="bg-red-600 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 transform group-hover:scale-110">
+                          <Play className="w-4 h-4 text-white fill-current" />
+                        </div>
+                      </div>
+                      
+                      {/* View Count Badge */}
+                      <div className="absolute top-2 left-2 bg-black/80 text-white text-xs px-2 py-1 rounded font-medium">
+                        {relatedVideo.views} views
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-white text-sm font-medium line-clamp-2 mb-1">
+                    
+                    {/* Video Info */}
+                    <div className="space-y-2">
+                      <h4 className="text-white text-sm font-medium line-clamp-2 leading-5 group-hover:text-red-400 transition-colors">
                         {relatedVideo.title}
                       </h4>
-                      <p className="text-gray-400 text-xs mb-1">
-                        {relatedVideo.category}
-                      </p>
-                      <div className="text-gray-500 text-xs">
-                        <span>{relatedVideo.views} views</span>
+                      
+                      <div className="flex items-center justify-between">
+                        <p className="text-gray-400 text-xs font-medium">
+                          {relatedVideo.category}
+                        </p>
+                        <div className="text-gray-500 text-xs">
+                          {relatedVideo.likes} likes
+                        </div>
                       </div>
-                      {/* Show common tags */}
+                      
+                      {/* Common Tags */}
                       {relatedVideo.tags.filter(tag => video.tags.includes(tag)).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap gap-1">
                           {relatedVideo.tags
                             .filter(tag => video.tags.includes(tag))
-                            .slice(0, 2)
+                            .slice(0, 3)
                             .map(tag => (
                               <span
                                 key={tag}
-                                className="bg-red-900/30 text-red-300 text-xs px-1 py-0.5 rounded"
+                                className="bg-red-900/30 text-red-300 text-xs px-2 py-0.5 rounded-full font-medium"
                               >
                                 {tag}
                               </span>
@@ -849,13 +963,24 @@ export function YouTubeStylePlayer({
                       )}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-gray-400 text-sm">
-                  No related videos found
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-400 text-sm mb-2">
+                  No related videos found in "{video?.category}" category
                 </div>
-              )}
-            </div>
+                <p className="text-gray-500 text-xs mb-4">
+                  {video?.tags && video.tags.length > 0 
+                    ? `We're looking for videos similar to: ${video.tags.join(', ')}` 
+                    : 'Be the first to discover content in this category!'}
+                </p>
+                <div className="text-dharma-gold text-xs">
+                  More {video?.category} videos will appear here as content grows
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
