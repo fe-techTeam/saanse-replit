@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAdminAuth } from "@/pages/admin/AdminAuthProvider";
 import { Edit, Trash2, MoreHorizontal, User, Mail, Calendar, Shield } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +40,7 @@ type UserFormData = z.infer<typeof userFormSchema>;
 export default function UserManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { getAuthHeaders } = useAdminAuth();
   
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -48,9 +50,18 @@ export default function UserManager() {
     status: "all"
   });
 
-  // Fetch users
+  // Fetch users with admin authentication
   const { data: users = [], isLoading, error } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/users", {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
     retry: false, // Don't retry on auth errors
     staleTime: 30000, // Cache for 30 seconds
   });
@@ -84,7 +95,7 @@ export default function UserManager() {
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: ({ id, ...data }: User & UserFormData) => 
-      apiRequest(`/api/admin/users/${id}`, "PATCH", data),
+      apiRequest("PATCH", `/api/admin/users/${id}`, data, getAuthHeaders()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
@@ -104,7 +115,7 @@ export default function UserManager() {
 
   // Delete user mutation
   const deleteUserMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/admin/users/${id}`, "DELETE"),
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/users/${id}`, undefined, getAuthHeaders()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
@@ -140,7 +151,7 @@ export default function UserManager() {
 
   const handleSubmit = (data: UserFormData) => {
     if (selectedUser) {
-      updateUserMutation.mutate({ ...data, id: selectedUser.id });
+      updateUserMutation.mutate({ ...selectedUser, ...data });
     }
   };
 

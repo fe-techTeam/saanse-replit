@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getAuthHeaders } from "./jwt";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -17,6 +18,11 @@ export async function apiRequest(
   
   if (data) {
     headers["Content-Type"] = "application/json";
+  }
+  
+  // Add JWT auth headers for user requests
+  if (!adminHeaders) {
+    Object.assign(headers, getAuthHeaders());
   }
   
   if (adminHeaders) {
@@ -40,8 +46,10 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const headers = getAuthHeaders();
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

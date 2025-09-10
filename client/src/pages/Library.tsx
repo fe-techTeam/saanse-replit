@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { VideoPlayer } from "@/components/VideoPlayer";
+import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Clock, BookOpen } from "lucide-react";
@@ -163,7 +163,7 @@ export default function Library() {
 
       <BottomNavigation />
       
-      <VideoPlayer
+      <YouTubeStylePlayer
         video={selectedVideo}
         isOpen={isVideoPlayerOpen}
         onClose={handleCloseVideoPlayer}

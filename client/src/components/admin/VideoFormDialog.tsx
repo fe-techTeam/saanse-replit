@@ -21,10 +21,13 @@ const videoFormSchema = z.object({
   description: z.string().optional(),
   category: z.enum(categories as [string, ...string[]]),
   duration: z.number().min(1, "Duration must be at least 1 second"),
-  thumbnailUrl: z.string().url("Must be a valid URL"),
-  videoUrl: z.string().url("Must be a valid URL"),
+  thumbnail_url: z.string().url("Must be a valid URL"),
+  video_url: z.string().url("Must be a valid URL"),
   tags: z.string().optional(),
-  isActive: z.boolean().default(true),
+  is_active: z.boolean().default(true),
+  content_type: z.enum(['standalone', 'series']).default('standalone'),
+  series_id: z.string().optional(),
+  episode_number: z.number().optional(),
 });
 
 type VideoFormData = z.infer<typeof videoFormSchema>;
@@ -51,10 +54,13 @@ export default function VideoFormDialog({
       description: "",
       category: "Ramayana",
       duration: 0,
-      thumbnailUrl: "",
-      videoUrl: "",
+      thumbnail_url: "",
+      video_url: "",
       tags: "",
-      isActive: true,
+      is_active: true,
+      content_type: 'standalone' as const,
+      series_id: "",
+      episode_number: undefined,
     },
   });
 
@@ -66,10 +72,13 @@ export default function VideoFormDialog({
         description: video.description || "",
         category: video.category,
         duration: video.duration,
-        thumbnailUrl: video.thumbnailUrl,
-        videoUrl: video.videoUrl,
+        thumbnail_url: video.thumbnail_url,
+        video_url: video.video_url,
         tags: video.tags?.join(", ") || "",
-        isActive: video.isActive ?? true,
+        is_active: video.is_active ?? true,
+        content_type: video.content_type || 'standalone',
+        series_id: video.series_id || "",
+        episode_number: video.episode_number,
       });
     } else {
       form.reset({
@@ -77,20 +86,24 @@ export default function VideoFormDialog({
         description: "",
         category: "Ramayana",
         duration: 0,
-        thumbnailUrl: "",
-        videoUrl: "",
+        thumbnail_url: "",
+        video_url: "",
         tags: "",
-        isActive: true,
+        is_active: true,
+        content_type: 'standalone' as const,
+        series_id: "",
+        episode_number: undefined,
       });
     }
   }, [video, form]);
 
   const handleSubmit = (data: VideoFormData) => {
-    onSubmit({
+    const formattedData = {
       ...data,
       tags: data.tags ? data.tags.split(",").map(tag => tag.trim()).filter(Boolean) : [],
       duration: Number(data.duration),
-    });
+    };
+    onSubmit(formattedData as any);
   };
 
   return (
@@ -168,7 +181,7 @@ export default function VideoFormDialog({
               
               <FormField
                 control={form.control}
-                name="thumbnailUrl"
+                name="thumbnail_url"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Thumbnail URL</FormLabel>
@@ -182,7 +195,7 @@ export default function VideoFormDialog({
               
               <FormField
                 control={form.control}
-                name="videoUrl"
+                name="video_url"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel>Video URL</FormLabel>
@@ -231,9 +244,53 @@ export default function VideoFormDialog({
               
               <FormField
                 control={form.control}
-                name="isActive"
+                name="content_type"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <FormItem>
+                    <FormLabel>Content Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="standalone">Standalone</SelectItem>
+                        <SelectItem value="series">Part of Series</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="episode_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Episode Number (if series)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="1" 
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Only required for series content
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="is_active"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 md:col-span-2">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Active Status</FormLabel>
                       <FormDescription>

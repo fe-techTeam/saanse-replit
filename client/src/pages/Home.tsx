@@ -1,17 +1,59 @@
 import { useQuery } from "@tanstack/react-query";
-import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X } from "lucide-react";
+import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings, Plus, ThumbsUp } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
+import { NetflixHero } from "@/components/NetflixHero";
+import { NetflixRow } from "@/components/NetflixRow";
+import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { VIDEO_CATEGORIES } from "@/types/video";
+import { CircularButton } from "@/components/ui/circular-button";
 
 export default function Home() {
   const { data: videos = [], isLoading } = useQuery({
     queryKey: ["/api/videos"]
   });
 
+  const { user, signOut, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const typedVideos = videos as any[];
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
+  const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("Home");
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out of SAANSE.",
+      });
+      navigate('/signup', { replace: true });
+      setTimeout(() => {
+        window.location.href = '/signup';
+      }, 100);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Logout failed",
+        description: "An error occurred while logging out.",
+      });
+      navigate('/signup', { replace: true });
+    }
+  };
 
   // High quality thumbnails
   const getUniqueThumbnail = (index: number) => {
@@ -34,9 +76,13 @@ export default function Home() {
 
   const enhancedVideos = typedVideos.map((video: any, index: number) => ({
     ...video,
-    thumbnailUrl: getUniqueThumbnail(index),
+    thumbnail_url: video.thumbnail_url || getUniqueThumbnail(index),
+    thumbnailUrl: video.thumbnail_url || getUniqueThumbnail(index),
     rating: (4.1 + Math.random() * 0.8).toFixed(1),
-    shortDescription: video.description ? video.description.slice(0, 80) + "..." : "Experience this divine story of faith and devotion."
+    shortDescription: video.description ? video.description.slice(0, 80) + "..." : "Experience this divine story of faith and devotion.",
+    duration: video.duration || (180 + Math.floor(Math.random() * 120)),
+    views: video.views || (1000 + Math.floor(Math.random() * 50000)),
+    likes: video.likes || (100 + Math.floor(Math.random() * 5000))
   }));
 
   // Auto-change hero every 6 seconds
@@ -58,6 +104,17 @@ export default function Home() {
     );
   };
 
+  const handleVideoPlay = (video: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setVideoForPlayer(video);
+    setIsVideoPlayerOpen(true);
+  };
+
+  const handleCloseVideoPlayer = () => {
+    setIsVideoPlayerOpen(false);
+    setVideoForPlayer(null);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -74,369 +131,415 @@ export default function Home() {
 
   const featuredVideo = enhancedVideos[currentHeroIndex] || enhancedVideos[0];
 
+  // Filter videos based on selected category
+  const getFilteredVideos = () => {
+    if (selectedCategory === "Home") {
+      return enhancedVideos; // Show all videos for home
+    }
+    return enhancedVideos.filter(v => v.category === selectedCategory);
+  };
+
+  const filteredVideos = getFilteredVideos();
+
+  // Organize videos into sections based on selected category
+  const getCategorySections = () => {
+    if (selectedCategory === "Home") {
+      // Original home page sections
+      return {
+        trendingVideos: enhancedVideos.slice(0, 10),
+        newReleases: enhancedVideos.slice(10, 20),
+        ramayanaSeries: enhancedVideos.filter(v => v.category === 'Ramayana').slice(0, 10),
+        krishnaStories: enhancedVideos.filter(v => v.category === 'Krishna').slice(0, 10),
+        mahabharataEpic: enhancedVideos.filter(v => v.category === 'Mahabharata').slice(0, 10),
+        devotionalContent: enhancedVideos.filter(v => v.category === 'Bhajans').slice(0, 10),
+        popularPicks: enhancedVideos.slice(20, 30),
+        watchAgain: enhancedVideos.slice(30, 40),
+        becauseYouWatched: enhancedVideos.slice(40, 50)
+      };
+    } else {
+      // Category-specific sections
+      const categoryVideos = filteredVideos;
+      return {
+        allCategoryContent: categoryVideos,
+        trendingInCategory: categoryVideos.slice(0, 10),
+        popularInCategory: categoryVideos.slice(10, 20),
+        recentInCategory: categoryVideos.slice(20, 30)
+      };
+    }
+  };
+
+  const sections = getCategorySections();
+
+  const handleVideoClick = (video: any) => {
+    setSelectedVideo(video);
+  };
+
+  const handlePlayVideo = (video: any) => {
+    handleVideoPlay(video);
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
-      
-      {/* Version Indicator */}
-      <div className="fixed top-0 left-0 z-[100] bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-br">v3.0 MOBILE</div>
-      
-      {/* Netflix-Style Header */}
-      <header className="fixed top-0 w-full bg-black/95 backdrop-blur-md z-50 border-b border-gray-800">
-        <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center space-x-4 md:space-x-10">
-            <h1 className="text-2xl md:text-3xl font-bold text-red-600 tracking-wide">SAANSE</h1>
+      {/* Enhanced Header with Categories and Search */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-sm">
+        {/* Top Row - Logo, Category Tabs, Search, Logout */}
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-6">
+            <h1 className="text-red-600 text-2xl font-bold tracking-wide">SAANSE</h1>
             
-            <nav className="hidden md:flex items-center space-x-8 text-sm">
-              <a href="#" className="text-white font-medium border-b-2 border-red-600 pb-1">Home</a>
-              <a href="#" className="text-gray-300 hover:text-gray-200 transition-colors">Stories</a>
-              <a href="#" className="text-gray-300 hover:text-gray-200 transition-colors">Devotional</a>
-              <a href="#" className="text-gray-300 hover:text-gray-200 transition-colors">My List</a>
-            </nav>
-          </div>
-
-          <div className="flex items-center space-x-3 md:space-x-6">
-            <Search className="w-5 h-5 md:w-6 md:h-6 text-white cursor-pointer hover:text-gray-300" />
-            <div className="w-7 h-7 md:w-8 md:h-8 bg-red-600 rounded flex items-center justify-center cursor-pointer">
-              <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            {/* Category Navigation Tabs */}
+            <div className="hidden md:flex space-x-1 overflow-x-auto scrollbar-hide">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                  selectedCategory === "Home"
+                    ? "bg-red-600 text-white"
+                    : "text-gray-300 hover:bg-red-600/20 hover:text-red-400"
+                }`}
+                onClick={() => setSelectedCategory("Home")}
+              >
+                Home
+              </Button>
+              {VIDEO_CATEGORIES.map((category) => (
+                <Button
+                  key={category}
+                  variant="ghost"
+                  size="sm"
+                  className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                    selectedCategory === category
+                      ? "bg-red-600 text-white"
+                      : "text-gray-300 hover:bg-red-600/20 hover:text-red-400"
+                  }`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </Button>
+              ))}
             </div>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
-            </button>
-          </div>
-        </div>
-        
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-black/95 border-t border-gray-800">
-            <nav className="flex flex-col px-4 py-2">
-              <a href="#" className="text-white font-medium py-3 border-b border-gray-800">Home</a>
-              <a href="#" className="text-gray-300 py-3 border-b border-gray-800">Stories</a>
-              <a href="#" className="text-gray-300 py-3 border-b border-gray-800">Devotional</a>
-              <a href="#" className="text-gray-300 py-3">My List</a>
-            </nav>
-          </div>
-        )}
-      </header>
-
-      {/* Hero Section - Netflix Style */}
-      {featuredVideo && (
-        <section className="relative h-[50vh] xs:h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-[90vh] xl:h-screen pt-12 md:pt-16">
-          <div className="absolute inset-0">
-            <img 
-              src={featuredVideo.thumbnailUrl} 
-              alt={featuredVideo.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 sm:via-black/70 md:via-black/60 lg:via-black/50 to-transparent"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 sm:via-black/50 md:via-black/40 lg:via-transparent to-transparent"></div>
           </div>
           
-          <div className="relative z-10 flex items-end h-full px-3 xs:px-4 sm:px-5 md:px-6 lg:px-8 pb-8 xs:pb-12 sm:pb-16 md:pb-24 lg:pb-32 max-w-7xl mx-auto">
-            <div className="max-w-full xs:max-w-[90%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
+          <div className="flex items-center space-x-4">
+            {/* Search Button */}
+            <CircularButton 
+              onClick={() => navigate('/search')}
+            >
+              <Search className="w-5 h-5" />
+            </CircularButton>
+            
+            {/* Logout Button */}
+            <CircularButton 
+              onClick={handleLogout}
+            >
+              <LogOut className="w-5 h-5" />
+            </CircularButton>
+          </div>
+        </div>
+
+        {/* Mobile Category Navigation Tabs */}
+        <div className="md:hidden px-4 pb-2">
+          <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                selectedCategory === "Home" 
+                  ? 'bg-red-600 text-white' 
+                  : 'text-gray-300 hover:bg-red-600/20 hover:text-red-400'
+              }`}
+              onClick={() => setSelectedCategory("Home")}
+            >
+              Home
+            </Button>
+            {VIDEO_CATEGORIES.map((category) => (
+              <Button
+                key={category}
+                variant="ghost"
+                size="sm"
+                className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
+                  selectedCategory === category 
+                    ? 'bg-red-600 text-white' 
+                    : 'text-gray-300 hover:bg-red-600/20 hover:text-red-400'
+                }`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Hero Section - Only show on Home */}
+      <div className={selectedCategory === "Home" ? "pt-24" : "pt-20"}>
+        {selectedCategory === "Home" && featuredVideo && (
+          <NetflixHero
+            title={featuredVideo.title}
+            description={featuredVideo.description || featuredVideo.shortDescription}
+            backgroundImage={featuredVideo.thumbnail_url}
+            onPlay={() => handlePlayVideo(featuredVideo)}
+            onAddToList={() => toggleFavorite(featuredVideo.id)}
+            onMoreInfo={() => setSelectedVideo(featuredVideo)}
+          />
+        )}
+      </div>
+
+      {/* Content Sections - Netflix Style Grid */}
+      <div className="bg-black pb-20">
+        {selectedCategory === "Home" ? (
+          <>
+            {/* Home Page Sections */}
+            {sections.trendingVideos.length > 0 && (
+              <NetflixRow
+                title="Trending Now"
+                videos={sections.trendingVideos}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.newReleases.length > 0 && (
+              <NetflixRow
+                title="New Releases"
+                videos={sections.newReleases}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.watchAgain.length > 0 && (
+              <NetflixRow
+                title="Continue Watching"
+                videos={sections.watchAgain}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.ramayanaSeries.length > 0 && (
+              <NetflixRow
+                title="Ramayana: Divine Epic"
+                videos={sections.ramayanaSeries}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.krishnaStories.length > 0 && (
+              <NetflixRow
+                title="Krishna: Divine Stories"
+                videos={sections.krishnaStories}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.popularPicks.length > 0 && (
+              <NetflixRow
+                title="Popular on SAANSE"
+                videos={sections.popularPicks}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.mahabharataEpic.length > 0 && (
+              <NetflixRow
+                title="Mahabharata: The Great Epic"
+                videos={sections.mahabharataEpic}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.devotionalContent.length > 0 && (
+              <NetflixRow
+                title="Devotional Bhajans"
+                videos={sections.devotionalContent}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.becauseYouWatched.length > 0 && (
+              <NetflixRow
+                title="Because You Watched Krishna Stories"
+                videos={sections.becauseYouWatched}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {/* Category Page Sections */}
+            {sections.allCategoryContent && sections.allCategoryContent.length > 0 && (
+              <NetflixRow
+                title={`All ${selectedCategory} Content`}
+                videos={sections.allCategoryContent}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.trendingInCategory && sections.trendingInCategory.length > 0 && (
+              <NetflixRow
+                title={`Trending in ${selectedCategory}`}
+                videos={sections.trendingInCategory}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.popularInCategory && sections.popularInCategory.length > 0 && (
+              <NetflixRow
+                title={`Popular ${selectedCategory} Stories`}
+                videos={sections.popularInCategory}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
+            {sections.recentInCategory && sections.recentInCategory.length > 0 && (
+              <NetflixRow
+                title={`Recently Added to ${selectedCategory}`}
+                videos={sections.recentInCategory}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+          </>
+        )}
+
+        {/* Additional Netflix-style rows - only show on Home */}
+        {selectedCategory === "Home" && (
+          <>
+            <NetflixRow
+              title="Top 10 in India Today"
+              videos={enhancedVideos.slice(0, 10)}
+              onVideoClick={handleVideoClick}
+            />
+
+            <NetflixRow
+              title="Spiritual Documentaries"
+              videos={enhancedVideos.slice(15, 25)}
+              onVideoClick={handleVideoClick}
+            />
+
+            <NetflixRow
+              title="Festival Celebrations"
+              videos={enhancedVideos.slice(25, 35)}
+              onVideoClick={handleVideoClick}
+            />
+          </>
+        )}
+
+        {selectedCategory === "Home" && (
+          <>
+            <NetflixRow
+              title="Mythological Tales"
+              videos={enhancedVideos.slice(35, 45)}
+              onVideoClick={handleVideoClick}
+            />
+
+            <NetflixRow
+              title="Sacred Mantras & Chants"
+              videos={enhancedVideos.slice(45, 55)}
+              onVideoClick={handleVideoClick}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Netflix-Style Video Modal */}
+      {selectedVideo && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-300"
+          onClick={() => setSelectedVideo(null)}
+        >
+          <div 
+            className="bg-zinc-900 rounded-xl max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-2xl transform animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Hero Section with Video Thumbnail */}
+            <div className="relative h-[50vh] overflow-hidden">
+              <img 
+                src={selectedVideo.thumbnail_url} 
+                alt={selectedVideo.title}
+                className="w-full h-full object-cover"
+              />
               
-              <div className="h-auto flex items-end mb-2 xs:mb-3 sm:mb-4 md:mb-6">
-                <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-white line-clamp-2">
-                  {featuredVideo.title}
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
+              
+              {/* Close Button */}
+              <button 
+                className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110"
+                onClick={() => setSelectedVideo(null)}
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              {/* Action Buttons */}
+              <div className="absolute bottom-6 left-6 flex items-center space-x-3">
+                <button 
+                  className="bg-white hover:bg-gray-200 text-black px-8 py-3 rounded-md font-semibold text-lg flex items-center transition-all duration-200 shadow-lg hover:shadow-xl"
+                  onClick={(e) => handleVideoPlay(selectedVideo, e)}
+                >
+                  <Play className="w-6 h-6 mr-2 fill-current" />
+                  Play
+                </button>
+                
+                <button 
+                  onClick={(e) => toggleFavorite(selectedVideo.id, e)}
+                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                >
+                  <Plus className="w-6 h-6 text-white" />
+                </button>
+                
+                <button 
+                  onClick={(e) => toggleFavorite(selectedVideo.id, e)}
+                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                >
+                  <Heart className={`w-6 h-6 ${favorites.includes(selectedVideo.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Content Section */}
+            <div className="p-6 space-y-6">
+              {/* Title and Meta Info */}
+              <div className="space-y-4">
+                <h1 className="text-3xl font-bold text-white leading-tight">
+                  {selectedVideo.title}
                 </h1>
+                
+                <div className="flex items-center space-x-4 text-sm">
+                  <span className="flex items-center text-green-400 font-medium">
+                    <Star className="w-4 h-4 mr-1 fill-current" />
+                    {selectedVideo.rating}
+                  </span>
+                  <span className="text-gray-400">2024</span>
+                  <span className="px-2 py-1 bg-zinc-700 text-white text-xs rounded">HD</span>
+                  <span className="text-gray-400">{Math.floor(selectedVideo.duration / 60)}m</span>
+                </div>
               </div>
               
-              <div className="h-auto mb-2 xs:mb-3 sm:mb-4 md:mb-6">
-                <p className="text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 leading-relaxed max-w-xl line-clamp-2 sm:line-clamp-3">
-                  {featuredVideo.description}
+              {/* Description */}
+              <div className="space-y-4">
+                <p className="text-gray-300 text-lg leading-relaxed">
+                  {selectedVideo.description || selectedVideo.shortDescription}
                 </p>
               </div>
               
-              <div className="flex flex-wrap items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg mb-2 xs:mb-3 sm:mb-4 md:mb-6">
-                <span className="flex items-center text-green-400">
-                  <Star className="w-2.5 xs:w-3 sm:w-4 md:w-5 h-2.5 xs:h-3 sm:h-4 md:h-5 mr-0.5 xs:mr-1 md:mr-2 fill-current" />
-                  {featuredVideo.rating}
-                </span>
-                <span className="text-gray-300">2024</span>
-                <span className="text-gray-300">3m</span>
-                <span className="px-1 xs:px-1.5 sm:px-2 py-0.5 md:py-1 border border-gray-500 text-[10px] xs:text-xs sm:text-sm text-gray-300">HD</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <button 
-                  className="bg-white text-black font-bold text-xs rounded shadow-lg hover:bg-gray-200"
-                  onClick={() => setSelectedVideo(featuredVideo)}
-                  style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px' }}
-                >
-                  <Play className="w-3 h-3 mr-1 fill-current" />
-                  Play
-                </button>
-                
-                <button 
-                  className="bg-gray-600/90 text-white font-bold text-xs rounded shadow-lg hover:bg-gray-500"
-                  onClick={() => setSelectedVideo(featuredVideo)}
-                  style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '80px' }}
-                >
-                  <Info className="w-3 h-3 mr-1" />
-                  Info
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Content Sections */}
-      <div className="relative mt-4 sm:mt-0 sm:-mt-8 md:-mt-16 space-y-6 sm:space-y-8 md:space-y-16 px-4 md:px-6 pb-16 max-w-7xl mx-auto">
-        
-        {/* Trending Now */}
-        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
-          <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-            <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-            <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">Trending Now</h2>
-            <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">HOT</div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {enhancedVideos.slice(0, 12).map((video: any, index: number) => (
-              <div 
-                key={video.id}
-                className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
-                onClick={() => setSelectedVideo(video)}
-                style={{ width: '140px', minWidth: '140px' }}
-              >
-                <div className="relative">
-                  <img 
-                    src={video.thumbnailUrl} 
-                    alt={video.title}
-                    className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
-                  
-                  <div className="absolute top-1 left-1 md:top-2 md:left-2 bg-red-600 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm font-bold">
-                    #{index + 1}
-                  </div>
-                  
-                  <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-black/70 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm">
-                    3m
-                  </div>
-
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-12 md:w-16 h-12 md:h-16 bg-white/90 rounded-full flex items-center justify-center">
-                      <Play className="w-4 md:w-6 h-4 md:h-6 text-black fill-current ml-0.5 md:ml-1" />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={(e) => toggleFavorite(video.id, e)}
-                    className="hidden md:block absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                  </button>
+              {/* Additional Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-700">
+                <div>
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Category</h3>
+                  <span className="text-white">{selectedVideo.category}</span>
                 </div>
-                
-                <div className="mt-2 space-y-1 md:space-y-2">
-                  <h3 className="font-semibold text-white text-xs md:text-base md:group-hover:text-gray-300 transition-colors line-clamp-1">
-                    {video.title}
-                  </h3>
-                  <p className="hidden sm:block text-xs md:text-sm text-gray-400 line-clamp-2 leading-relaxed">
-                    {video.shortDescription}
-                  </p>
-                  <div className="flex items-center text-xs md:text-sm text-gray-400 space-x-2 md:space-x-3">
-                    <span className="flex items-center">
-                      <Star className="w-2.5 md:w-3 h-2.5 md:h-3 mr-0.5 md:mr-1 text-green-400" />
-                      {video.rating}
-                    </span>
-                    <span className="hidden sm:block">{video.category}</span>
-                  </div>
+                <div>
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Views</h3>
+                  <span className="text-white">{selectedVideo.views?.toLocaleString()} views</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Popular on SAANSE */}
-        <section className="bg-black/60 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
-          <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-            <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-            <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">Popular</h2>
-            <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-yellow-600 text-black text-[10px] sm:text-xs md:text-sm font-bold rounded-full">TOP</div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {enhancedVideos.slice(12, 24).map((video: any, index: number) => (
-              <div 
-                key={video.id}
-                className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
-                onClick={() => setSelectedVideo(video)}
-                style={{ width: '140px', minWidth: '140px' }}
-              >
-                <div className="relative">
-                  <img 
-                    src={video.thumbnailUrl} 
-                    alt={video.title}
-                    className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
-                  
-                  <div className="absolute top-1 left-1 md:top-2 md:left-2 bg-yellow-600 text-black px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm font-bold">
-                    TOP {index + 1}
-                  </div>
-                  
-                  <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-black/70 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm">
-                    3m
-                  </div>
-
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-12 md:w-16 h-12 md:h-16 bg-white/90 rounded-full flex items-center justify-center">
-                      <Play className="w-4 md:w-6 h-4 md:h-6 text-black fill-current ml-0.5 md:ml-1" />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={(e) => toggleFavorite(video.id, e)}
-                    className="hidden md:block absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                  </button>
-                </div>
-                
-                <div className="mt-2 space-y-1 md:space-y-2">
-                  <h3 className="font-semibold text-white text-xs md:text-base md:group-hover:text-gray-300 transition-colors line-clamp-1">
-                    {video.title}
-                  </h3>
-                  <p className="hidden sm:block text-xs md:text-sm text-gray-400 line-clamp-2 leading-relaxed">
-                    {video.shortDescription}
-                  </p>
-                  <div className="flex items-center text-xs md:text-sm text-gray-400 space-x-2 md:space-x-3">
-                    <span className="flex items-center">
-                      <Star className="w-2.5 md:w-3 h-2.5 md:h-3 mr-0.5 md:mr-1 text-green-400" />
-                      {video.rating}
-                    </span>
-                    <span className="hidden sm:block">{video.category}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Categories */}
-        {['Ramayana', 'Krishna', 'Mahabharata', 'Shiva'].map(category => {
-          const categoryVideos = enhancedVideos.filter((video: any) => video.category === category);
-          if (categoryVideos.length === 0) return null;
-          
-          return (
-            <section key={category} className="bg-gradient-to-r from-black/80 to-black/40 backdrop-blur-sm rounded-xl p-3 sm:p-4 md:p-6 border border-gray-800">
-              <div className="flex items-center mb-3 sm:mb-4 md:mb-6">
-                <div className="w-1 h-5 sm:h-6 md:h-8 bg-red-600 mr-2 sm:mr-3 md:mr-4"></div>
-                <h2 className="text-base sm:text-xl md:text-3xl font-bold text-white">{category}</h2>
-                <div className="ml-2 sm:ml-3 md:ml-4 px-2 sm:px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] sm:text-xs md:text-sm font-bold rounded-full">EPIC</div>
-              </div>
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-                {categoryVideos.slice(0, 10).map((video: any) => (
-                  <div 
-                    key={video.id}
-                    className="flex-shrink-0 cursor-pointer sm:w-44 md:w-52 lg:w-64 xl:w-72 2xl:w-80"
-                    onClick={() => setSelectedVideo(video)}
-                    style={{ width: '140px', minWidth: '140px' }}
-                  >
-                    <div className="relative">
-                      <img 
-                        src={video.thumbnailUrl} 
-                        alt={video.title}
-                        className="w-full aspect-video object-cover rounded-md md:group-hover:scale-105 transition-transform duration-300"
-                      />
-                      
-                      <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/40 transition-colors duration-300 rounded-md"></div>
-                      
-                      <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-black/70 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm">
-                        3m
-                      </div>
-
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="w-12 md:w-16 h-12 md:h-16 bg-white/90 rounded-full flex items-center justify-center">
-                          <Play className="w-4 md:w-6 h-4 md:h-6 text-black fill-current ml-0.5 md:ml-1" />
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={(e) => toggleFavorite(video.id, e)}
-                        className="hidden md:block absolute bottom-2 right-2 p-2 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Heart className={`w-4 h-4 ${favorites.includes(video.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                      </button>
-                    </div>
-                    
-                    <div className="mt-2 space-y-1 md:space-y-2">
-                      <h3 className="font-semibold text-white text-xs md:text-base md:group-hover:text-gray-300 transition-colors line-clamp-1">
-                        {video.title}
-                      </h3>
-                      <p className="hidden sm:block text-xs md:text-sm text-gray-400 line-clamp-2 leading-relaxed">
-                        {video.shortDescription}
-                      </p>
-                      <div className="flex items-center text-xs md:text-sm text-gray-400 space-x-2 md:space-x-3">
-                        <span className="flex items-center">
-                          <Star className="w-2.5 md:w-3 h-2.5 md:h-3 mr-0.5 md:mr-1 text-green-400" />
-                          {video.rating}
-                        </span>
-                        <span className="hidden sm:block">{video.category}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          );
-        })}
-
-      </div>
-
-      {/* Video Modal */}
-      {selectedVideo && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-lg max-w-full md:max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="relative">
-              <img 
-                src={selectedVideo.thumbnailUrl} 
-                alt={selectedVideo.title}
-                className="w-full h-48 md:h-64 object-cover rounded-t-lg"
-              />
-              
-              <button 
-                className="absolute top-2 right-2 md:top-4 md:right-4 p-1.5 md:p-2 bg-black/70 rounded-full text-white text-lg md:text-base"
-                onClick={() => setSelectedVideo(null)}
-              >
-                ✕
-              </button>
-              
-              <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 flex space-x-2 md:space-x-3">
-                <button className="bg-white text-black px-4 md:px-6 py-1.5 md:py-2 rounded font-bold text-sm md:text-base flex items-center">
-                  <Play className="w-4 md:w-5 h-4 md:h-5 mr-1.5 md:mr-2 fill-current" />
-                  Play
-                </button>
-                <button 
-                  onClick={(e) => toggleFavorite(selectedVideo.id, e)}
-                  className="p-2 bg-gray-700 rounded-full"
-                >
-                  <Heart className={`w-5 h-5 ${favorites.includes(selectedVideo.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-4 md:p-6 space-y-3 md:space-y-4">
-              <h2 className="text-lg md:text-2xl font-bold text-white">{selectedVideo.title}</h2>
-              <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-400">
-                <span className="flex items-center text-green-400">
-                  <Star className="w-3 md:w-4 h-3 md:h-4 mr-1" />
-                  {selectedVideo.rating}
-                </span>
-                <span>2024</span>
-                <span>3 minutes</span>
-                <span>HD</span>
-              </div>
-              <p className="text-sm md:text-base text-gray-300">{selectedVideo.description}</p>
             </div>
           </div>
         </div>
       )}
+
+      <YouTubeStylePlayer
+        video={videoForPlayer}
+        isOpen={isVideoPlayerOpen}
+        onClose={handleCloseVideoPlayer}
+      />
 
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -468,6 +571,34 @@ export default function Home() {
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
+          }
+          
+          @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes zoom-in-95 {
+            from { 
+              opacity: 0;
+              transform: scale(0.95);
+            }
+            to { 
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          
+          .animate-in {
+            animation-fill-mode: both;
+          }
+          
+          .fade-in {
+            animation: fade-in 0.3s ease-out;
+          }
+          
+          .zoom-in-95 {
+            animation: zoom-in-95 0.3s ease-out;
           }
         `
       }} />

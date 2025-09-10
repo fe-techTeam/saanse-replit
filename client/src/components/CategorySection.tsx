@@ -30,7 +30,7 @@ export function CategorySection({
     return (
       <section className="mb-8">
         <div className="flex items-center justify-between px-4 mb-4">
-          <h3 className="text-xl font-devanagari font-semibold text-dharma-gold">
+          <h3 className="text-xl font-devanagari font-semibold text-dharma-red">
             {devanagariTitle}
           </h3>
         </div>
@@ -55,7 +55,7 @@ export function CategorySection({
     return (
       <section className="mb-8">
         <div className="flex items-center justify-between px-4 mb-4">
-          <h3 className="text-xl font-devanagari font-semibold text-dharma-gold">
+          <h3 className="text-xl font-devanagari font-semibold text-dharma-red">
             {devanagariTitle}
           </h3>
         </div>
@@ -69,7 +69,7 @@ export function CategorySection({
   return (
     <section className="mb-8">
       <div className="flex items-center justify-between px-4 mb-4">
-        <h3 className="text-xl font-devanagari font-semibold text-dharma-gold">
+        <h3 className="text-xl font-devanagari font-semibold text-dharma-red">
           {devanagariTitle}
         </h3>
         <button 

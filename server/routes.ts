@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema } from "@shared/schema";
 import { z } from "zod";
 import { registerAdminRoutes } from "./admin/admin-routes";
+import { authenticateJWT, optionalAuth, AuthenticatedRequest } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<void> {
   // Videos
@@ -30,6 +31,66 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get("/api/videos/search/:query", async (req, res) => {
+    try {
+      const { query } = req.params;
+      const videos = await storage.searchVideos(query);
+      res.json(videos);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search videos" });
+    }
+  });
+
+  app.get("/api/videos/related", async (req, res) => {
+    try {
+      const { category, tags, exclude, limit } = req.query;
+      
+      console.log('Related videos API called with params:', { category, tags, exclude, limit });
+      
+      if (!category) {
+        return res.status(400).json({ error: "Category parameter is required" });
+      }
+      
+      const tagsArray = tags ? (tags as string).split(',').map(t => t.trim()).filter(t => t) : [];
+      const excludeId = exclude as string;
+      const limitNum = parseInt(limit as string) || 20;
+      
+      try {
+        const relatedVideos = await storage.getRelatedVideos({
+          category: category as string,
+          tags: tagsArray,
+          excludeId,
+          limit: limitNum
+        });
+        
+        console.log('Returning related videos:', relatedVideos.length);
+        res.json(relatedVideos);
+      } catch (relatedError) {
+        console.error("Error in getRelatedVideos, falling back to all videos:", relatedError);
+        
+        // Fallback: just get any videos excluding the current one
+        try {
+          const allVideos = await storage.getVideos();
+          const filteredVideos = allVideos
+            .filter(video => video.id !== excludeId)
+            .slice(0, limitNum);
+          
+          console.log('Fallback: returning', filteredVideos.length, 'videos');
+          res.json(filteredVideos);
+        } catch (fallbackError) {
+          console.error("Fallback also failed:", fallbackError);
+          res.json([]); // Return empty array as last resort
+        }
+      }
+    } catch (error) {
+      console.error("Error in related videos endpoint:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch related videos",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.get("/api/videos/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -43,19 +104,25 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.get("/api/videos/search/:query", async (req, res) => {
-    try {
-      const { query } = req.params;
-      const videos = await storage.searchVideos(query);
-      res.json(videos);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to search videos" });
-    }
-  });
+  // Helper to normalize field names to camelCase for validation
+  function normalizeVideoFields(data: any) {
+    return {
+      ...data,
+      // Convert snake_case to camelCase for validation
+      thumbnailUrl: data.thumbnailUrl || data.thumbnail_url,
+      videoUrl: data.videoUrl || data.video_url,
+      contentType: data.contentType || data.content_type,
+      seriesId: data.seriesId || data.series_id,
+      episodeNumber: data.episodeNumber || data.episode_number,
+      isActive: data.isActive !== undefined ? data.isActive : data.is_active
+    };
+  }
 
   app.post("/api/videos", async (req, res) => {
     try {
-      const videoData = insertVideoSchema.parse(req.body);
+      // Normalize field names before validation
+      const normalizedData = normalizeVideoFields(req.body);
+      const videoData = insertVideoSchema.parse(normalizedData);
       const video = await storage.createVideo(videoData);
       res.status(201).json(video);
     } catch (error) {
@@ -203,6 +270,15 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Users
+  app.get("/api/users", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const users = await storage.getUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
   app.post("/api/users", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
@@ -235,10 +311,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
-      res.status(500).json({ error: "Failed to create user" });
+      console.error("Error creating user:", error);
+      res.status(500).json({ 
+        error: "Failed to create user",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
+  // Public endpoint for checking if user exists (used during auth flow)
   app.get("/api/users/supabase/:supabaseUid", async (req, res) => {
     try {
       const { supabaseUid } = req.params;
@@ -252,10 +333,30 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Protected endpoint for getting user profile (requires auth)
+  app.get("/api/users/profile", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = await storage.getUserBySupabaseUid(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
   // Playlists
-  app.get("/api/users/:userId/playlists", async (req, res) => {
+  app.get("/api/users/:userId/playlists", authenticateJWT, async (req: AuthenticatedRequest, res) => {
     try {
       const { userId } = req.params;
+      
+      // Get user by database ID to check against authenticated user
+      const requestedUser = await storage.getUserById(userId);
+      if (!requestedUser || requestedUser.supabaseUid !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const playlists = await storage.getPlaylistsByUserId(userId);
       res.json(playlists);
     } catch (error) {
@@ -320,9 +421,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // View History
-  app.get("/api/users/:userId/history", async (req, res) => {
+  app.get("/api/users/:userId/history", authenticateJWT, async (req: AuthenticatedRequest, res) => {
     try {
       const { userId } = req.params;
+      
+      // Get user by database ID to check against authenticated user
+      const requestedUser = await storage.getUserById(userId);
+      if (!requestedUser || requestedUser.supabaseUid !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const history = await storage.getViewHistoryByUserId(userId);
       res.json(history);
     } catch (error) {

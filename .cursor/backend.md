@@ -1,5 +1,5 @@
 # Backend Development Rules
-# MythosStream - Express.js + TypeScript API Guidelines
+# SAANSE - Express.js + TypeScript API Guidelines
 
 ## Project Structure
 
@@ -1080,4 +1080,4 @@ app.get("/health", async (req, res) => {
 });
 ```
 
-This comprehensive backend development guide should help maintain consistency and quality across the MythosStream API development.
+This comprehensive backend development guide should help maintain consistency and quality across the SAANSE API development.

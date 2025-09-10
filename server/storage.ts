@@ -26,6 +26,7 @@ export interface IStorage {
   deleteVideo(id: string): Promise<boolean>;
   incrementVideoViews(id: string): Promise<void>;
   incrementVideoLikes(id: string): Promise<void>;
+  getRelatedVideos(params: { category: string; tags: string[]; excludeId?: string; limit?: number }): Promise<Video[]>;
 
   // Series operations
   getSeries(): Promise<Series[]>;
@@ -102,26 +103,96 @@ export class SupabaseStorage implements IStorage {
   }
 
   async searchVideos(query: string): Promise<Video[]> {
+    if (!query.trim()) return [];
+    
+    const searchQuery = query.trim().toLowerCase();
+    
+    // Enhanced search that includes title, description, category, and tags
+    // For tags, we use jsonb_array_elements_text to search within the JSON array
     const { data, error } = await supabase
       .from('videos')
       .select('*')
       .eq('is_active', true)
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+      .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    // Post-process results to also search in tags and rank by relevance
+    let results = data || [];
+    
+    // Filter and rank results for better relevance
+    const rankedResults = results.map(video => {
+      let relevanceScore = 0;
+      const titleMatch = video.title.toLowerCase().includes(searchQuery);
+      const descMatch = video.description?.toLowerCase().includes(searchQuery);
+      const categoryMatch = video.category.toLowerCase().includes(searchQuery);
+      const tagsMatch = video.tags?.some((tag: string) => 
+        tag.toLowerCase().includes(searchQuery)
+      );
+      
+      // Give different weights to different types of matches
+      if (titleMatch) relevanceScore += 10;
+      if (categoryMatch) relevanceScore += 8;
+      if (tagsMatch) relevanceScore += 6;
+      if (descMatch) relevanceScore += 4;
+      
+      // Exact matches get higher scores
+      if (video.title.toLowerCase() === searchQuery) relevanceScore += 20;
+      if (video.category.toLowerCase() === searchQuery) relevanceScore += 15;
+      if (video.tags?.some((tag: string) => tag.toLowerCase() === searchQuery)) relevanceScore += 12;
+      
+      return { ...video, relevanceScore };
+    });
+    
+    // Filter out videos with no relevance and sort by relevance score
+    return rankedResults
+      .filter(video => 
+        video.relevanceScore > 0 || 
+        video.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(searchQuery)
+        )
+      )
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .map(({ relevanceScore, ...video }) => video); // Remove relevanceScore from final result
+  }
+
+  // Helper function to transform camelCase to snake_case for database fields
+  private transformVideoFields(video: any): any {
+    return {
+      title: video.title?.trim(),
+      description: video.description?.trim(),
+      category: video.category,
+      duration: video.duration,
+      // Handle both camelCase and snake_case input
+      thumbnail_url: (video.thumbnailUrl || video.thumbnail_url)?.trim(),
+      video_url: (video.videoUrl || video.video_url)?.trim(),
+      tags: video.tags || [],
+      content_type: video.contentType || video.content_type || 'standalone',
+      series_id: (video.seriesId || video.series_id) && (video.seriesId || video.series_id).trim() !== '' ? (video.seriesId || video.series_id).trim() : null,
+      episode_number: video.episodeNumber || video.episode_number || null,
+      is_active: video.isActive !== undefined ? video.isActive : (video.is_active !== undefined ? video.is_active : true)
+    };
   }
 
   async createVideo(video: InsertVideo): Promise<Video> {
-    const validatedVideo = insertVideoSchema.parse(video);
+    console.log("Storage.createVideo input:", video);
+    
+    // Transform camelCase fields to snake_case for database
+    const transformedVideo = this.transformVideoFields(video);
+    console.log("Transformed video data:", transformedVideo);
+    
     const { data, error } = await supabase
       .from('videos')
-      .insert(validatedVideo)
+      .insert(transformedVideo)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase insert error:", error);
+      throw error;
+    }
+    console.log("Video created successfully:", data);
     return data;
   }
 
@@ -158,6 +229,105 @@ export class SupabaseStorage implements IStorage {
   async incrementVideoLikes(id: string): Promise<void> {
     const { error } = await supabase.rpc('increment_video_likes', { video_id: id });
     if (error) throw error;
+  }
+
+  async getRelatedVideos(params: { category: string; tags: string[]; excludeId?: string; limit?: number }): Promise<Video[]> {
+    const { category, tags, excludeId, limit = 20 } = params;
+    
+    console.log('Getting related videos for:', { category, tags, excludeId, limit });
+    
+    // Start with a simple query to get videos from the same category
+    let query = supabase
+      .from('videos')
+      .select('*')
+      .eq('is_active', true)
+      .eq('category', category); // Start with same category only
+    
+    // Exclude the current video if specified
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+    
+    // Order by views descending for most popular first
+    query = query
+      .order('views', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    const { data: categoryData, error: categoryError } = await query;
+    
+    if (categoryError) {
+      console.error('Category query error:', categoryError);
+      throw categoryError;
+    }
+    
+    console.log('Category videos found:', categoryData?.length);
+    
+    // If we don't have enough videos from the same category, get more from other categories
+    let allRelatedVideos = categoryData || [];
+    
+    if (allRelatedVideos.length < limit) {
+      // Get additional videos that share tags or are from any category
+      const remainingLimit = limit - allRelatedVideos.length;
+      
+      let additionalQuery = supabase
+        .from('videos')
+        .select('*')
+        .eq('is_active', true)
+        .neq('category', category); // Different category
+      
+      // Exclude current video and already selected videos
+      if (excludeId) {
+        additionalQuery = additionalQuery.neq('id', excludeId);
+      }
+      
+      const selectedIds = allRelatedVideos.map(v => v.id);
+      if (selectedIds.length > 0) {
+        additionalQuery = additionalQuery.not('id', 'in', `(${selectedIds.join(',')})`);
+      }
+      
+      additionalQuery = additionalQuery
+        .order('views', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(remainingLimit);
+      
+      const { data: additionalData, error: additionalError } = await additionalQuery;
+      
+      if (additionalError) {
+        console.error('Additional query error:', additionalError);
+        // Don't throw, just use what we have
+      } else {
+        console.log('Additional videos found:', additionalData?.length);
+        allRelatedVideos = [...allRelatedVideos, ...(additionalData || [])];
+      }
+    }
+    
+    // Now sort the combined results to prioritize by relevance
+    const sortedData = allRelatedVideos.sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+      
+      // Same category gets highest priority
+      if (a.category === category) scoreA += 1000;
+      if (b.category === category) scoreB += 1000;
+      
+      // Count shared tags if available
+      if (tags && tags.length > 0) {
+        const sharedTagsA = (a.tags || []).filter(tag => tags.includes(tag)).length;
+        const sharedTagsB = (b.tags || []).filter(tag => tags.includes(tag)).length;
+        scoreA += sharedTagsA * 100;
+        scoreB += sharedTagsB * 100;
+      }
+      
+      // Add view count as final tiebreaker
+      scoreA += (a.views || 0) / 1000; // Scale down views so they don't override category/tag scoring
+      scoreB += (b.views || 0) / 1000;
+      
+      return scoreB - scoreA;
+    });
+    
+    console.log('Final related videos count:', sortedData.length);
+    return sortedData.slice(0, limit);
   }
 
   // Series operations implementation
@@ -303,13 +473,18 @@ export class SupabaseStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const validatedUser = insertUserSchema.parse(user);
+    
     const { data, error } = await supabase
       .from('users')
       .insert(validatedUser)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Database error creating user:", error);
+      throw error;
+    }
+    
     return data;
   }
 
