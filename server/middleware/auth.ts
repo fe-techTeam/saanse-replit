@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { storage } from '../storage';
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -31,6 +32,23 @@ export const authenticateJWT = async (req: AuthenticatedRequest, res: Response, 
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
+    // Check if user exists in our database, create if not
+    let dbUser = await storage.getUserBySupabaseUid(user.id);
+    
+    if (!dbUser) {
+      try {
+        dbUser = await storage.createUser({
+          supabaseUid: user.id,
+          email: user.email || '',
+          name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+          avatar: user.user_metadata?.avatar_url || null,
+        });
+      } catch (createError) {
+        console.error('Failed to create user:', createError);
+        // Continue anyway, the user might already exist due to race condition or previous partial creation
+      }
+    }
+
     // Attach user to request object
     req.user = user;
     next();
@@ -54,6 +72,23 @@ export const optionalAuth = async (req: AuthenticatedRequest, res: Response, nex
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (!error && user) {
+      // Check if user exists in our database, create if not
+      let dbUser = await storage.getUserBySupabaseUid(user.id);
+      if (!dbUser) {
+        console.log('User not found in database, creating user:', user.id);
+        try {
+          dbUser = await storage.createUser({
+            supabaseUid: user.id,
+            email: user.email || '',
+            name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+            avatar: user.user_metadata?.avatar_url || null,
+          });
+          console.log('User created successfully:', dbUser);
+        } catch (createError) {
+          console.error('Failed to create user:', createError);
+          // Continue anyway, the user might already exist
+        }
+      }
       req.user = user;
     }
   } catch (error) {

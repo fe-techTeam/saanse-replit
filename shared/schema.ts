@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, numeric, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -61,6 +61,26 @@ export const viewHistory = pgTable("view_history", {
   progress: numeric("progress", { precision: 10, scale: 6 }).default(0).notNull(), // in seconds with decimals
 });
 
+export const watchLater = pgTable("watch_later", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  videoId: text("video_id").notNull(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+  priority: integer("priority").default(0).notNull(), // Higher number = higher priority
+  notes: text("notes"), // Optional user notes
+  isWatched: boolean("is_watched").default(false).notNull(),
+  watchedAt: timestamp("watched_at"), // When the video was actually watched
+  progress: numeric("progress", { precision: 10, scale: 6 }).default(0).notNull(), // Last watched position
+}, (table) => ({
+  // Composite unique constraint to prevent duplicate entries
+  userVideoUnique: unique("user_video_unique").on(table.userId, table.videoId),
+  // Indexes for better performance
+  userIdIdx: index("watch_later_user_id_idx").on(table.userId),
+  videoIdIdx: index("watch_later_video_id_idx").on(table.videoId),
+  addedAtIdx: index("watch_later_added_at_idx").on(table.addedAt),
+  priorityIdx: index("watch_later_priority_idx").on(table.priority),
+}));
+
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
@@ -99,6 +119,12 @@ export const insertViewHistorySchema = createInsertSchema(viewHistory).omit({
   watchedAt: true,
 });
 
+export const insertWatchLaterSchema = createInsertSchema(watchLater).omit({
+  id: true,
+  addedAt: true,
+  watchedAt: true,
+});
+
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
   id: true,
   createdAt: true,
@@ -115,5 +141,7 @@ export type Playlist = typeof playlists.$inferSelect;
 export type InsertPlaylist = z.infer<typeof insertPlaylistSchema>;
 export type ViewHistory = typeof viewHistory.$inferSelect;
 export type InsertViewHistory = z.infer<typeof insertViewHistorySchema>;
+export type WatchLater = typeof watchLater.$inferSelect;
+export type InsertWatchLater = z.infer<typeof insertWatchLaterSchema>;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;

@@ -3,22 +3,13 @@ import { ChevronLeft, ChevronRight, Play, Plus, ThumbsUp, Eye } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-interface Video {
-  id: string;
-  title: string;
-  description: string;
-  thumbnailUrl: string;
-  duration: number;
-  views: number;
-  likes: number;
-  category: string;
-}
+import { WatchLaterButton } from "@/components/WatchLaterButton";
+import type { VideoType } from "@/types/video";
 
 interface NetflixRowProps {
   title: string;
-  videos: Video[];
-  onVideoClick?: (video: Video) => void;
+  videos: VideoType[];
+  onVideoClick?: (video: VideoType) => void;
 }
 
 export function NetflixRow({ title, videos, onVideoClick }: NetflixRowProps) {
@@ -94,7 +85,7 @@ export function NetflixRow({ title, videos, onVideoClick }: NetflixRowProps) {
               <div className="relative aspect-video">
                 {/* Thumbnail */}
                 <img
-                  src={video.thumbnailUrl}
+                  src={video.thumbnail_url}
                   alt={video.title}
                   className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                 />
@@ -106,12 +97,13 @@ export function NetflixRow({ title, videos, onVideoClick }: NetflixRowProps) {
                       <Button size="sm" className="bg-white text-black hover:bg-gray-200">
                         <Play className="w-4 h-4 fill-black" />
                       </Button>
-                      <Button size="sm" variant="outline" className="border-white text-black hover:bg-white hover:text-black">
-                        <Plus className="w-4 h-4 fill-black" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-white text-black hover:bg-white hover:text-black">
-                        <ThumbsUp className="w-4 h-4 fill-black" />
-                      </Button>
+                      <WatchLaterButton 
+                        video={video} 
+                        size="sm" 
+                        variant="outline"
+                        className="border-white text-white hover:bg-white hover:text-black"
+                        showText={false}
+                      />
                     </div>
                   </div>
                 )}

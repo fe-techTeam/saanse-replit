@@ -54,6 +54,22 @@ export interface ViewHistoryType {
   progress: number;
 }
 
+export interface WatchLaterType {
+  id: string;
+  userId: string;
+  videoId: string;
+  addedAt: Date;
+  priority: number;
+  notes?: string;
+  isWatched: boolean;
+  watchedAt?: Date;
+  progress: number;
+}
+
+export interface WatchLaterWithVideoType extends WatchLaterType {
+  video: VideoType;
+}
+
 export const VIDEO_CATEGORIES = [
   'Ramayana',
   'Krishna',

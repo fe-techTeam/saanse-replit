@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import type { Video, User, Playlist, ViewHistory, Series, InsertVideo, InsertUser, InsertPlaylist, InsertViewHistory, InsertSeries } from "@shared/schema";
-import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema } from "@shared/schema";
+import type { Video, User, Playlist, ViewHistory, Series, WatchLater, InsertVideo, InsertUser, InsertPlaylist, InsertViewHistory, InsertSeries, InsertWatchLater } from "@shared/schema";
+import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema, insertWatchLaterSchema } from "@shared/schema";
 
 // Add type for Supabase error
 interface SupabaseError {
@@ -60,6 +60,16 @@ export interface IStorage {
   createViewHistory(viewHistory: InsertViewHistory): Promise<ViewHistory>;
   updateViewHistory(id: string, updates: Partial<InsertViewHistory>): Promise<ViewHistory | null>;
   deleteViewHistory(id: string): Promise<boolean>;
+
+  // Watch later operations
+  getWatchLaterByUserId(userId: string): Promise<WatchLater[]>;
+  getWatchLaterWithVideos(userId: string): Promise<(WatchLater & { video: Video })[]>;
+  addToWatchLater(watchLater: InsertWatchLater): Promise<WatchLater>;
+  removeFromWatchLater(userId: string, videoId: string): Promise<boolean>;
+  updateWatchLater(id: string, updates: Partial<InsertWatchLater>): Promise<WatchLater | null>;
+  markAsWatched(userId: string, videoId: string): Promise<WatchLater | null>;
+  updateWatchProgress(userId: string, videoId: string, progress: number): Promise<WatchLater | null>;
+  isInWatchLater(userId: string, videoId: string): Promise<boolean>;
 }
 
 export class SupabaseStorage implements IStorage {
@@ -643,6 +653,159 @@ export class SupabaseStorage implements IStorage {
 
     if (error) throw error;
     return true;
+  }
+
+  // Watch later operations implementation
+  async getWatchLaterByUserId(userId: string): Promise<WatchLater[]> {
+    const { data, error } = await supabase
+      .from('watch_later')
+      .select('*')
+      .eq('userId', userId)
+      .order('priority', { ascending: false })
+      .order('addedAt', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getWatchLaterWithVideos(userId: string): Promise<(WatchLater & { video: Video })[]> {
+    // First get watch later items
+    const { data: watchLaterData, error: watchLaterError } = await supabase
+      .from('watch_later')
+      .select('*')
+      .eq('userId', userId)
+      .order('priority', { ascending: false })
+      .order('addedAt', { ascending: false });
+
+    if (watchLaterError) throw watchLaterError;
+    if (!watchLaterData || watchLaterData.length === 0) return [];
+
+    // Get video IDs
+    const videoIds = watchLaterData.map(item => item.videoId);
+
+    // Fetch videos
+    const { data: videosData, error: videosError } = await supabase
+      .from('videos')
+      .select('*')
+      .in('id', videoIds)
+      .eq('is_active', true);
+
+    if (videosError) throw videosError;
+
+    // Combine the data
+    const videosMap = new Map(videosData?.map(video => [video.id, video]) || []);
+    
+    return watchLaterData
+      .map(watchLaterItem => ({
+        ...watchLaterItem,
+        video: videosMap.get(watchLaterItem.videoId)
+      }))
+      .filter(item => item.video) // Only include items with valid videos
+      .map(item => item as WatchLater & { video: Video });
+  }
+
+  async addToWatchLater(watchLater: InsertWatchLater): Promise<WatchLater> {
+    const validatedWatchLater = insertWatchLaterSchema.parse(watchLater);
+    
+    // Check if already exists
+    const existing = await this.isInWatchLater(validatedWatchLater.userId, validatedWatchLater.videoId);
+    if (existing) {
+      // Return the existing entry instead of throwing an error
+      const { data, error } = await supabase
+        .from('watch_later')
+        .select('*')
+        .eq('userId', validatedWatchLater.userId)
+        .eq('videoId', validatedWatchLater.videoId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
+
+    const { data, error } = await supabase
+      .from('watch_later')
+      .insert(validatedWatchLater)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async removeFromWatchLater(userId: string, videoId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('watch_later')
+      .delete()
+      .eq('userId', userId)
+      .eq('videoId', videoId);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async updateWatchLater(id: string, updates: Partial<InsertWatchLater>): Promise<WatchLater | null> {
+    const { data, error } = await supabase
+      .from('watch_later')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
+  async markAsWatched(userId: string, videoId: string): Promise<WatchLater | null> {
+    const { data, error } = await supabase
+      .from('watch_later')
+      .update({ 
+        isWatched: true, 
+        watchedAt: new Date().toISOString() 
+      })
+      .eq('userId', userId)
+      .eq('videoId', videoId)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
+  async updateWatchProgress(userId: string, videoId: string, progress: number): Promise<WatchLater | null> {
+    const { data, error } = await supabase
+      .from('watch_later')
+      .update({ progress })
+      .eq('userId', userId)
+      .eq('videoId', videoId)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
+  async isInWatchLater(userId: string, videoId: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('watch_later')
+      .select('id')
+      .eq('userId', userId)
+      .eq('videoId', videoId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return false;
+      throw error;
+    }
+    return !!data;
   }
 }
 

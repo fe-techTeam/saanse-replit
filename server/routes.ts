@@ -1,6 +1,6 @@
 import { Express } from "express";
 import { storage } from "./storage";
-import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema } from "@shared/schema";
+import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema, insertWatchLaterSchema } from "@shared/schema";
 import { z } from "zod";
 import { registerAdminRoutes } from "./admin/admin-routes";
 import { authenticateJWT, optionalAuth, AuthenticatedRequest } from "./middleware/auth";
@@ -478,6 +478,185 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete view history" });
+    }
+  });
+
+  // Watch Later routes
+  app.get("/api/users/:userId/watch-later", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get user by supabase UID to get database ID
+      const user = await storage.getUserBySupabaseUid(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      console.log("Fetching watch later for user:", user.id);
+      const watchLater = await storage.getWatchLaterWithVideos(user.id);
+      console.log("Found watch later items:", watchLater.length);
+      
+      res.json(watchLater);
+    } catch (error) {
+      console.error("Watch later fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch watch later list" });
+    }
+  });
+
+app.post("/api/watch-later", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  try {
+    // Get user by supabase UID to get database ID
+    const user = await storage.getUserBySupabaseUid(req.user!.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Parse the request body and override userId with the database user ID
+    const watchLaterData = insertWatchLaterSchema.parse({
+      ...req.body,
+      userId: user.id // Use the database user ID, not the Supabase UID
+    });
+    
+    // Check if already exists before adding
+    const existing = await storage.isInWatchLater(watchLaterData.userId, watchLaterData.videoId);
+    if (existing) {
+      return res.status(200).json({ 
+        message: "Video is already in your Watch Later list",
+        alreadyExists: true,
+        watchLater: await storage.getWatchLaterByUserId(watchLaterData.userId)
+      });
+    }
+    
+    const watchLater = await storage.addToWatchLater(watchLaterData);
+    res.status(201).json({ 
+      message: "Video added to Watch Later list",
+      alreadyExists: false,
+      watchLater 
+    });
+  } catch (error) {
+    console.error("Watch later error:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    if (error instanceof Error && error.message.includes('already in watch later')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: "Failed to add to watch later" });
+  }
+});
+
+  app.delete("/api/watch-later/:userId/:videoId", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { videoId } = req.params;
+      
+      console.log("DELETE watch later request - videoId:", videoId, "supabaseUserId:", req.user!.id);
+      
+      // Get user by supabase UID to get database ID
+      const user = await storage.getUserBySupabaseUid(req.user!.id);
+      if (!user) {
+        console.log("User not found for supabase UID:", req.user!.id);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      console.log("Found user:", user.id);
+      const success = await storage.removeFromWatchLater(user.id, videoId);
+      console.log("Remove result:", success);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Video not found in watch later list" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Remove from watch later error:", error);
+      res.status(500).json({ error: "Failed to remove from watch later" });
+    }
+  });
+
+  app.patch("/api/watch-later/:id", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const updates = insertWatchLaterSchema.partial().parse(req.body);
+      
+      const watchLater = await storage.updateWatchLater(id, updates);
+      if (!watchLater) {
+        return res.status(404).json({ error: "Watch later entry not found" });
+      }
+      res.json(watchLater);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update watch later" });
+    }
+  });
+
+  app.post("/api/watch-later/:userId/:videoId/mark-watched", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { videoId } = req.params;
+      
+      console.log("POST mark watched request - videoId:", videoId, "supabaseUserId:", req.user!.id);
+      
+      // Get user by supabase UID to get database ID
+      const user = await storage.getUserBySupabaseUid(req.user!.id);
+      if (!user) {
+        console.log("User not found for supabase UID:", req.user!.id);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      console.log("Found user:", user.id);
+      const watchLater = await storage.markAsWatched(user.id, videoId);
+      console.log("Mark watched result:", watchLater ? "success" : "not found");
+      
+      if (!watchLater) {
+        return res.status(404).json({ error: "Video not found in watch later list" });
+      }
+      res.json(watchLater);
+    } catch (error) {
+      console.error("Mark as watched error:", error);
+      res.status(500).json({ error: "Failed to mark as watched" });
+    }
+  });
+
+  app.patch("/api/watch-later/:userId/:videoId/progress", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { videoId } = req.params;
+      const { progress } = req.body;
+      
+      if (typeof progress !== 'number' || progress < 0) {
+        return res.status(400).json({ error: "Invalid progress value" });
+      }
+      
+      // Get user by supabase UID to get database ID
+      const user = await storage.getUserBySupabaseUid(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const watchLater = await storage.updateWatchProgress(user.id, videoId, progress);
+      if (!watchLater) {
+        return res.status(404).json({ error: "Video not found in watch later list" });
+      }
+      res.json(watchLater);
+    } catch (error) {
+      console.error("Update progress error:", error);
+      res.status(500).json({ error: "Failed to update progress" });
+    }
+  });
+
+  app.get("/api/watch-later/:userId/:videoId/status", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { videoId } = req.params;
+      
+      // Get user by supabase UID to get database ID
+      const user = await storage.getUserBySupabaseUid(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const isInWatchLater = await storage.isInWatchLater(user.id, videoId);
+      res.json({ isInWatchLater });
+    } catch (error) {
+      console.error("Check watch later status error:", error);
+      res.status(500).json({ error: "Failed to check watch later status" });
     }
   });
 

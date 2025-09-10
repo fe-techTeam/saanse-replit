@@ -3,9 +3,11 @@ import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Set
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useWatchLater } from "@/hooks/useWatchLater";
 import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { NetflixHero } from "@/components/NetflixHero";
 import { NetflixRow } from "@/components/NetflixRow";
+import { WatchLaterButton } from "@/components/WatchLaterButton";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +21,7 @@ export default function Home() {
   });
 
   const { user, signOut, isAuthenticated } = useAuth();
+  const { watchLater } = useWatchLater();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -220,6 +223,14 @@ export default function Home() {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Watch List Button */}
+            <CircularButton 
+              onClick={() => navigate('/watchlist')}
+              className="bg-dharma-gold hover:bg-dharma-gold-light text-dharma-dark"
+            >
+              <Clock className="w-5 h-5" />
+            </CircularButton>
+            
             {/* Search Button */}
             <CircularButton 
               onClick={() => navigate('/search')}
@@ -274,11 +285,8 @@ export default function Home() {
       <div className={selectedCategory === "Home" ? "pt-24" : "pt-20"}>
         {selectedCategory === "Home" && featuredVideo && (
           <NetflixHero
-            title={featuredVideo.title}
-            description={featuredVideo.description || featuredVideo.shortDescription}
-            backgroundImage={featuredVideo.thumbnail_url}
+            video={featuredVideo}
             onPlay={() => handlePlayVideo(featuredVideo)}
-            onAddToList={() => toggleFavorite(featuredVideo.id)}
             onMoreInfo={() => setSelectedVideo(featuredVideo)}
           />
         )}
@@ -289,6 +297,15 @@ export default function Home() {
         {selectedCategory === "Home" ? (
           <>
             {/* Home Page Sections */}
+            {/* Watch Later Section - Only show if user has videos in watch later */}
+            {isAuthenticated && watchLater.length > 0 && (
+              <NetflixRow
+                title="Your Watch Later"
+                videos={watchLater.map(item => item.video)}
+                onVideoClick={handleVideoClick}
+              />
+            )}
+
             {sections.trendingVideos.length > 0 && (
               <NetflixRow
                 title="Trending Now"
@@ -477,19 +494,22 @@ export default function Home() {
                   Play
                 </button>
                 
-                <button 
-                  onClick={(e) => toggleFavorite(selectedVideo.id, e)}
-                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
-                >
-                  <Plus className="w-6 h-6 text-white" />
-                </button>
+                {/* Watch Later Button - Replaced Plus Button */}
+                <WatchLaterButton 
+                  video={selectedVideo} 
+                  variant="ghost" 
+                  size="sm"
+                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm text-white"
+                  showText={false}
+                />
                 
-                <button 
+                {/* Like Button - Commented Out */}
+                {/* <button 
                   onClick={(e) => toggleFavorite(selectedVideo.id, e)}
                   className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
                 >
                   <Heart className={`w-6 h-6 ${favorites.includes(selectedVideo.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                </button>
+                </button> */}
               </div>
             </div>
             

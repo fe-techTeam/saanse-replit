@@ -7,6 +7,7 @@ import Home from "@/pages/Home";
 import Search from "@/pages/Search";
 import CategoryPage from "@/pages/CategoryPage";
 import Library from "@/pages/Library";
+import WatchList from "@/pages/WatchList";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import AuthCallback from "@/pages/auth-callback";
@@ -34,6 +35,7 @@ function App() {
               <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
               <Route path="/category/:category" element={<ProtectedRoute><CategoryPage /></ProtectedRoute>} />
               <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+              <Route path="/watchlist" element={<ProtectedRoute><WatchList /></ProtectedRoute>} />
               
               {/* Admin routes (separate authentication) */}
               <Route path="/admin/*" element={<AdminApp />} />
