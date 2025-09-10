@@ -1,23 +1,22 @@
-import { Play, Plus, Info } from "lucide-react";
+import { Play, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WatchLaterButton } from "@/components/WatchLaterButton";
+import type { VideoType } from "@/types/video";
 
 interface HeroVideoProps {
-  title: string;
-  description: string;
-  backgroundImage: string;
+  video: VideoType;
   onPlay: () => void;
-  onAddToList: () => void;
   onMoreInfo: () => void;
 }
 
-export function NetflixHero({ title, description, backgroundImage, onPlay, onAddToList, onMoreInfo }: HeroVideoProps) {
+export function NetflixHero({ video, onPlay, onMoreInfo }: HeroVideoProps) {
   return (
     <div className="relative h-[80vh] w-full overflow-hidden">
       {/* Background Image with Gradient Overlay */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ 
-          backgroundImage: `url(${backgroundImage})`,
+          backgroundImage: `url(${video.thumbnail_url})`,
           backgroundPosition: 'center 25%'
         }}
       >
@@ -30,12 +29,12 @@ export function NetflixHero({ title, description, backgroundImage, onPlay, onAdd
         <div className="max-w-2xl space-y-6">
           {/* Title */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
-            {title}
+            {video.title}
           </h1>
           
           {/* Description */}
           <p className="text-lg md:text-xl text-gray-200 leading-relaxed max-w-lg drop-shadow-lg">
-            {description}
+            {video.description}
           </p>
           
           {/* Action Buttons */}
@@ -59,15 +58,13 @@ export function NetflixHero({ title, description, backgroundImage, onPlay, onAdd
               More Info
             </Button>
             
-            <Button 
-              size="lg" 
+            <WatchLaterButton 
+              video={video}
+              size="lg"
               variant="outline"
-              className="border-2 border-dharma-white/70 text-dharma-black hover:bg-dharma-white hover:text-dharma-black font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
-              onClick={onAddToList}
-            >
-              <Plus className="w-6 h-6 mr-2 text-gray-800 hover:text-dharma-black" />
-              My List
-            </Button>
+              className="border-2 border-dharma-white/70 text-dharma-white hover:bg-dharma-white hover:text-dharma-black font-semibold px-8 py-3 text-lg backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
+              showText={true}
+            />
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { VideoType } from "@/types/video";
 import { useAuth } from "@/hooks/useAuth";
+import { WatchLaterButton } from "@/components/WatchLaterButton";
 
 interface VideoPlayerProps {
   video: VideoType | null;
@@ -194,6 +195,14 @@ export function VideoPlayer({ video, isOpen, onClose, onNext }: VideoPlayerProps
             </Button>
             
             <div className="flex items-center space-x-4">
+              <WatchLaterButton 
+                video={video} 
+                variant="ghost" 
+                size="sm"
+                className="text-white hover:bg-white/20"
+                showText={false}
+              />
+              
               <Button
                 variant="ghost"
                 size="icon"
@@ -203,14 +212,15 @@ export function VideoPlayer({ video, isOpen, onClose, onNext }: VideoPlayerProps
                 <Share2 className="w-6 h-6" />
               </Button>
               
-              <Button
+              {/* Like Button - Commented Out */}
+              {/* <Button
                 variant="ghost"
                 size="icon"
                 className={`text-white p-2 ${isLiked ? 'text-dharma-red' : ''}`}
                 onClick={handleLike}
               >
                 <Heart className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { NetflixHero } from "@/components/NetflixHero";
 import { NetflixRow } from "@/components/NetflixRow";
+import { WatchLaterButton } from "@/components/WatchLaterButton";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { VIDEO_CATEGORIES, VideoType } from "@/types/video";
@@ -237,11 +238,8 @@ export default function CategoryPage() {
         {/* Hero Section */}
         {featuredVideo && (
           <NetflixHero
-            title={`${normalizedCategory}: ${featuredVideo.title}`}
-            description={getCategoryDescription(normalizedCategory)}
-            backgroundImage={featuredVideo.thumbnail_url}
+            video={featuredVideo}
             onPlay={() => handlePlayVideo(featuredVideo)}
-            onAddToList={() => toggleFavorite(featuredVideo.id)}
             onMoreInfo={() => setSelectedVideo(featuredVideo)}
           />
         )}
@@ -336,12 +334,22 @@ export default function CategoryPage() {
                   Play
                 </button>
                 
-                <button 
+                {/* Watch Later Button - Replaced Like Button */}
+                <WatchLaterButton 
+                  video={selectedVideo} 
+                  variant="ghost" 
+                  size="sm"
+                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm text-white"
+                  showText={false}
+                />
+                
+                {/* Like Button - Commented Out */}
+                {/* <button 
                   onClick={(e) => toggleFavorite(selectedVideo.id, e)}
                   className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
                 >
                   <Heart className={`w-6 h-6 ${favorites.includes(selectedVideo.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                </button>
+                </button> */}
               </div>
             </div>
             

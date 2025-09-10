@@ -18,6 +18,7 @@ import {
   Shuffle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WatchLaterButton } from "@/components/WatchLaterButton";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { VideoType } from "@/types/video";
@@ -791,7 +792,17 @@ export function YouTubeStylePlayer({
               </div>
               
               <div className="flex items-center space-x-2">
-                <Button
+                {/* Watch Later Button - Replaced Like Button */}
+                <WatchLaterButton 
+                  video={video} 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-white hover:bg-gray-700"
+                  showText={true}
+                />
+                
+                {/* Like Button - Commented Out */}
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   className={`text-white hover:bg-gray-700 ${isLiked ? 'text-red-500' : ''}`}
@@ -799,7 +810,7 @@ export function YouTubeStylePlayer({
                 >
                   <Heart className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
                   {video.likes + (isLiked ? 1 : 0)}
-                </Button>
+                </Button> */}
                 
                 <Button
                   variant="ghost"
