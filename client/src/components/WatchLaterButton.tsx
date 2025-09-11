@@ -115,7 +115,7 @@ export function WatchLaterButton({
       size={size}
       onClick={handleToggleWatchLater}
       disabled={isAdding || isRemoving}
-      className={`${isInWatchLater ? 'bg-dharma-gold text-dharma-dark hover:bg-dharma-gold-light' : ''} ${className}`}
+      className={`${isInWatchLater ? 'bg-red-600 text-white hover:bg-red-700 border-transparent hover:border-transparent' : ''} ${className}`}
     >
       {isInWatchLater ? (
         <>
