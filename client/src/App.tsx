@@ -10,6 +10,10 @@ import Library from "@/pages/Library";
 import WatchList from "@/pages/WatchList";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import MobileLogin from "@/pages/MobileLogin";
+import AuthSuccess from "@/pages/AuthSuccess";
+import AuthError from "@/pages/AuthError";
+import TestOtpVerification from "@/pages/TestOtpVerification";
 import AuthCallback from "@/pages/auth-callback";
 import NotFound from "@/pages/not-found";
 import AdminApp from "@/pages/admin/AdminApp";
@@ -28,6 +32,10 @@ function App() {
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/mobile-login" element={<MobileLogin />} />
+              <Route path="/auth/success" element={<AuthSuccess />} />
+              <Route path="/auth/error" element={<AuthError />} />
+              <Route path="/test-verify-otp" element={<TestOtpVerification />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               
               {/* Protected routes */}

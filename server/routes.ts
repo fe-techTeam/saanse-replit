@@ -3,7 +3,22 @@ import { storage } from "./storage";
 import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema, insertWatchLaterSchema } from "@shared/schema";
 import { z } from "zod";
 import { registerAdminRoutes } from "./admin/admin-routes";
-import { authenticateJWT, optionalAuth, AuthenticatedRequest } from "./middleware/auth";
+import { authenticateJWT, optionalAuth, requireDbUser, getDbUserId, getSupabaseUserId, AuthenticatedRequest } from "./middleware/auth";
+import { whatsappOtpService } from "./services/whatsapp-otp";
+import { createClient } from '@supabase/supabase-js';
+
+// Get configuration from environment variables
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
+
+// Helper function to get frontend URL with path
+function getFrontendUrl(path: string = ''): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BASE_URL}${cleanPath}`;
+}
 
 export async function registerRoutes(app: Express): Promise<void> {
   // Videos
@@ -334,30 +349,31 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Protected endpoint for getting user profile (requires auth)
-  app.get("/api/users/profile", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.get("/api/users/profile", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
-      const user = await storage.getUserBySupabaseUid(req.user!.id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+      const dbUser = req.dbUser;
+      
+      if (!dbUser) {
+        return res.status(500).json({ error: "User context not available" });
       }
-      res.json(user);
+      
+      res.json(dbUser);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }
   });
 
   // Playlists
-  app.get("/api/users/:userId/playlists", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.get("/api/users/:userId/playlists", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
-      const { userId } = req.params;
+      const dbUserId = getDbUserId(req);
       
-      // Get user by database ID to check against authenticated user
-      const requestedUser = await storage.getUserById(userId);
-      if (!requestedUser || requestedUser.supabaseUid !== req.user!.id) {
-        return res.status(403).json({ error: "Access denied" });
+      if (!dbUserId) {
+        return res.status(500).json({ error: "User context not available" });
       }
       
-      const playlists = await storage.getPlaylistsByUserId(userId);
+      // Use the authenticated user's database ID directly
+      const playlists = await storage.getPlaylistsByUserId(dbUserId);
       res.json(playlists);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch playlists" });
@@ -421,17 +437,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // View History
-  app.get("/api/users/:userId/history", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.get("/api/users/:userId/history", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
-      const { userId } = req.params;
+      const dbUserId = getDbUserId(req);
       
-      // Get user by database ID to check against authenticated user
-      const requestedUser = await storage.getUserById(userId);
-      if (!requestedUser || requestedUser.supabaseUid !== req.user!.id) {
-        return res.status(403).json({ error: "Access denied" });
+      if (!dbUserId) {
+        return res.status(500).json({ error: "User context not available" });
       }
       
-      const history = await storage.getViewHistoryByUserId(userId);
+      // Use the authenticated user's database ID directly
+      const history = await storage.getViewHistoryByUserId(dbUserId);
       res.json(history);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch view history" });
@@ -482,16 +497,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Watch Later routes
-  app.get("/api/users/:userId/watch-later", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.get("/api/users/:userId/watch-later", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
-      // Get user by supabase UID to get database ID
-      const user = await storage.getUserBySupabaseUid(req.user!.id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+      const dbUserId = getDbUserId(req);
+      
+      if (!dbUserId) {
+        return res.status(500).json({ error: "User context not available" });
       }
       
-      console.log("Fetching watch later for user:", user.id);
-      const watchLater = await storage.getWatchLaterWithVideos(user.id);
+      console.log("Fetching watch later for user:", dbUserId);
+      const watchLater = await storage.getWatchLaterWithVideos(dbUserId);
       console.log("Found watch later items:", watchLater.length);
       
       res.json(watchLater);
@@ -501,19 +516,18 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-app.post("/api/watch-later", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+app.post("/api/watch-later", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
   try {
-    // Get user by supabase UID to get database ID
-    const user = await storage.getUserBySupabaseUid(req.user!.id);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    const dbUserId = getDbUserId(req);
+    
+    if (!dbUserId) {
+      return res.status(500).json({ error: "User context not available" });
     }
 
     // Parse the request body and override userId with the database user ID
     const watchLaterData = insertWatchLaterSchema.parse({
       ...req.body,
-      userId: user.id // Use the database user ID, not the Supabase UID
+      userId: dbUserId // Use the database user ID from middleware
     });
     
     // Check if already exists before adding
@@ -544,21 +558,18 @@ app.post("/api/watch-later", authenticateJWT, async (req: AuthenticatedRequest, 
   }
 });
 
-  app.delete("/api/watch-later/:userId/:videoId", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.delete("/api/watch-later/:userId/:videoId", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
       const { videoId } = req.params;
+      const dbUserId = getDbUserId(req);
       
-      console.log("DELETE watch later request - videoId:", videoId, "supabaseUserId:", req.user!.id);
-      
-      // Get user by supabase UID to get database ID
-      const user = await storage.getUserBySupabaseUid(req.user!.id);
-      if (!user) {
-        console.log("User not found for supabase UID:", req.user!.id);
-        return res.status(404).json({ error: "User not found" });
+      if (!dbUserId) {
+        return res.status(500).json({ error: "User context not available" });
       }
       
-      console.log("Found user:", user.id);
-      const success = await storage.removeFromWatchLater(user.id, videoId);
+      console.log("DELETE watch later request - videoId:", videoId, "dbUserId:", dbUserId);
+      
+      const success = await storage.removeFromWatchLater(dbUserId, videoId);
       console.log("Remove result:", success);
       
       if (!success) {
@@ -589,21 +600,18 @@ app.post("/api/watch-later", authenticateJWT, async (req: AuthenticatedRequest, 
     }
   });
 
-  app.post("/api/watch-later/:userId/:videoId/mark-watched", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.post("/api/watch-later/:userId/:videoId/mark-watched", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
       const { videoId } = req.params;
+      const dbUserId = getDbUserId(req);
       
-      console.log("POST mark watched request - videoId:", videoId, "supabaseUserId:", req.user!.id);
-      
-      // Get user by supabase UID to get database ID
-      const user = await storage.getUserBySupabaseUid(req.user!.id);
-      if (!user) {
-        console.log("User not found for supabase UID:", req.user!.id);
-        return res.status(404).json({ error: "User not found" });
+      if (!dbUserId) {
+        return res.status(500).json({ error: "User context not available" });
       }
       
-      console.log("Found user:", user.id);
-      const watchLater = await storage.markAsWatched(user.id, videoId);
+      console.log("POST mark watched request - videoId:", videoId, "dbUserId:", dbUserId);
+      
+      const watchLater = await storage.markAsWatched(dbUserId, videoId);
       console.log("Mark watched result:", watchLater ? "success" : "not found");
       
       if (!watchLater) {
@@ -616,22 +624,21 @@ app.post("/api/watch-later", authenticateJWT, async (req: AuthenticatedRequest, 
     }
   });
 
-  app.patch("/api/watch-later/:userId/:videoId/progress", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.patch("/api/watch-later/:userId/:videoId/progress", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
       const { videoId } = req.params;
       const { progress } = req.body;
+      const dbUserId = getDbUserId(req);
+      
+      if (!dbUserId) {
+        return res.status(500).json({ error: "User context not available" });
+      }
       
       if (typeof progress !== 'number' || progress < 0) {
         return res.status(400).json({ error: "Invalid progress value" });
       }
       
-      // Get user by supabase UID to get database ID
-      const user = await storage.getUserBySupabaseUid(req.user!.id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      
-      const watchLater = await storage.updateWatchProgress(user.id, videoId, progress);
+      const watchLater = await storage.updateWatchProgress(dbUserId, videoId, progress);
       if (!watchLater) {
         return res.status(404).json({ error: "Video not found in watch later list" });
       }
@@ -642,21 +649,182 @@ app.post("/api/watch-later", authenticateJWT, async (req: AuthenticatedRequest, 
     }
   });
 
-  app.get("/api/watch-later/:userId/:videoId/status", authenticateJWT, async (req: AuthenticatedRequest, res) => {
+  app.get("/api/watch-later/:userId/:videoId/status", authenticateJWT, requireDbUser, async (req: AuthenticatedRequest, res) => {
     try {
       const { videoId } = req.params;
+      const dbUserId = getDbUserId(req);
       
-      // Get user by supabase UID to get database ID
-      const user = await storage.getUserBySupabaseUid(req.user!.id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+      if (!dbUserId) {
+        return res.status(500).json({ error: "User context not available" });
       }
       
-      const isInWatchLater = await storage.isInWatchLater(user.id, videoId);
+      const isInWatchLater = await storage.isInWatchLater(dbUserId, videoId);
       res.json({ isInWatchLater });
     } catch (error) {
       console.error("Check watch later status error:", error);
       res.status(500).json({ error: "Failed to check watch later status" });
+    }
+  });
+
+  // WhatsApp OTP Authentication Routes
+  app.post("/api/auth/send-otp", async (req, res) => {
+    try {
+      const { mobileNumber } = req.body;
+      
+      if (!mobileNumber) {
+        return res.status(400).json({ error: "Mobile number is required" });
+      }
+
+      const result = await whatsappOtpService.sendOtp(mobileNumber);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message,
+          otpId: result.otpId 
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          error: result.message 
+        });
+      }
+    } catch (error) {
+      console.error("Send OTP error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to send OTP" 
+      });
+    }
+  });
+
+  app.get("/api/auth/verify-otp", async (req, res) => {
+    try {
+      const { otp, mobile } = req.query;
+      
+      console.log('Verify OTP request:', { otp, mobile });
+      
+      if (!otp || !mobile) {
+        console.log('Missing OTP or mobile number');
+        return res.status(400).json({ 
+          success: false, 
+          error: "OTP and mobile number are required" 
+        });
+      }
+
+      const result = await whatsappOtpService.verifyOtpFromQuery(
+        otp as string, 
+        mobile as string
+      );
+      
+      console.log('Verification result:', result);
+      
+      if (result.success) {
+        // Redirect to frontend with success token
+        const redirectUrl = getFrontendUrl(`/auth/success?token=${result.token}&user=${encodeURIComponent(JSON.stringify(result.user))}`);
+        console.log('Redirecting to success:', redirectUrl);
+        res.redirect(redirectUrl);
+      } else {
+        // Redirect to frontend with error
+        const redirectUrl = getFrontendUrl(`/auth/error?message=${encodeURIComponent(result.message)}`);
+        console.log('Redirecting to error:', redirectUrl);
+        res.redirect(redirectUrl);
+      }
+    } catch (error) {
+      console.error("Verify OTP error:", error);
+      const redirectUrl = getFrontendUrl(`/auth/error?message=${encodeURIComponent('Failed to verify OTP')}`);
+      res.redirect(redirectUrl);
+    }
+  });
+
+  // Cleanup expired OTPs (can be called by cron job)
+  app.post("/api/auth/cleanup-otps", async (req, res) => {
+    try {
+      await whatsappOtpService.cleanupExpiredOtps();
+      res.json({ success: true, message: "Expired OTPs cleaned up" });
+    } catch (error) {
+      console.error("Cleanup OTPs error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to cleanup OTPs" 
+      });
+    }
+  });
+
+  // Debug endpoint to get latest unused OTP (for testing only)
+  app.get("/api/auth/debug/latest-otp", async (req, res) => {
+    try {
+      // First try to get the latest unused, non-expired OTP
+      const now = new Date();
+      console.log('Debug endpoint - Current time:', now.toISOString());
+      
+      const { data: validOtp, error: validError } = await supabase
+        .from('otp_verifications')
+        .select('*')
+        .eq('is_used', false)
+        .gt('expires_at', now.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (validOtp && !validError) {
+        // Handle timezone properly - ensure we're working with UTC
+        const expiresAt = new Date(validOtp.expires_at + (validOtp.expires_at.includes('Z') ? '' : 'Z'));
+        const timeLeft = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+        
+        console.log('Valid OTP found - Current time:', now.toISOString());
+        console.log('Valid OTP found - Expires at (raw):', validOtp.expires_at);
+        console.log('Valid OTP found - Expires at (parsed):', expiresAt.toISOString());
+        console.log('Valid OTP found - Current timestamp:', now.getTime());
+        console.log('Valid OTP found - Expires timestamp:', expiresAt.getTime());
+        console.log('Valid OTP found - Time difference (ms):', expiresAt.getTime() - now.getTime());
+        console.log('Valid OTP found - Time left (seconds):', timeLeft);
+
+        return res.json({ 
+          success: true, 
+          otp: validOtp.otp,
+          mobile: validOtp.mobile_number,
+          expires: validOtp.expires_at,
+          used: validOtp.is_used,
+          expired: false,
+          timeLeft
+        });
+      }
+
+      // If no valid OTP found, get the latest OTP regardless of status
+      const { data, error } = await supabase
+        .from('otp_verifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.error("Debug OTP error:", error);
+        return res.status(500).json({ error: "Failed to get latest OTP" });
+      }
+
+      const currentTime = new Date();
+      const expiresAt = new Date(data.expires_at + (data.expires_at.includes('Z') ? '' : 'Z'));
+      const isExpired = currentTime > expiresAt;
+      
+      console.log('Debug - Current time:', currentTime.toISOString());
+      console.log('Debug - Expires at:', expiresAt.toISOString());
+      console.log('Debug - Is expired:', isExpired);
+      console.log('Debug - Time difference (ms):', expiresAt.getTime() - currentTime.getTime());
+
+      res.json({ 
+        success: true, 
+        otp: data.otp,
+        mobile: data.mobile_number,
+        expires: data.expires_at,
+        used: data.is_used,
+        expired: isExpired,
+        timeLeft: isExpired ? 0 : Math.max(0, Math.floor((expiresAt.getTime() - currentTime.getTime()) / 1000))
+      });
+    } catch (error) {
+      console.error("Debug OTP error:", error);
+      res.status(500).json({ error: "Failed to get latest OTP" });
     }
   });
 

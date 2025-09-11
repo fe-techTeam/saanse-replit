@@ -5,12 +5,18 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: text("email").notNull().unique(),
+  email: text("email").unique(), // Made nullable - either email or mobile required
   displayName: text("display_name"),
   photoURL: text("photo_url"),
   supabaseUid: text("supabase_uid").notNull().unique(),
+  mobile: text("mobile").unique(), // Primary mobile field
+  mobileNumber: text("mobile_number").unique(), // Legacy field - will be deprecated
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Ensure either email or mobile is present
+  emailOrMobileCheck: sql`CHECK (("email" IS NOT NULL) OR ("mobile" IS NOT NULL))`,
+  mobileIdx: index("users_mobile_idx").on(table.mobile),
+}));
 
 export const videos = pgTable("videos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -91,6 +97,21 @@ export const adminUsers = pgTable("admin_users", {
   lastLoginAt: timestamp("last_login_at"),
 });
 
+export const otpVerifications = pgTable("otp_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mobileNumber: text("mobile_number").notNull(),
+  otp: text("otp").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  isUsed: boolean("is_used").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  usedAt: timestamp("used_at"),
+  userId: text("user_id"), // Link to user if verification successful
+}, (table) => ({
+  mobileNumberIdx: index("otp_mobile_number_idx").on(table.mobileNumber),
+  otpIdx: index("otp_otp_idx").on(table.otp),
+  expiresAtIdx: index("otp_expires_at_idx").on(table.expiresAt),
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -131,6 +152,12 @@ export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
   lastLoginAt: true,
 });
 
+export const insertOtpVerificationSchema = createInsertSchema(otpVerifications).omit({
+  id: true,
+  createdAt: true,
+  usedAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Video = typeof videos.$inferSelect;
@@ -145,3 +172,5 @@ export type WatchLater = typeof watchLater.$inferSelect;
 export type InsertWatchLater = z.infer<typeof insertWatchLaterSchema>;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type OtpVerification = typeof otpVerifications.$inferSelect;
+export type InsertOtpVerification = z.infer<typeof insertOtpVerificationSchema>;
