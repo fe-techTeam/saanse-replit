@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { Smartphone, Mail } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -160,6 +161,28 @@ export default function Login() {
             <label htmlFor="remember" className="text-white text-sm">
               Remember me
             </label>
+          </div>
+          
+          {/* Mobile Login Option */}
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-black text-gray-400">Or continue with</span>
+              </div>
+            </div>
+            
+            <Button
+              type="button"
+              onClick={() => navigate('/mobile-login')}
+              variant="outline"
+              className="w-full mt-4 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+            >
+              <Smartphone className="w-4 h-4 mr-2" />
+              Mobile Number (WhatsApp OTP)
+            </Button>
           </div>
           
           <div className="mt-8 text-gray-400 text-sm">

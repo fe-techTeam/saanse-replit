@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import type { Video, User, Playlist, ViewHistory, Series, WatchLater, InsertVideo, InsertUser, InsertPlaylist, InsertViewHistory, InsertSeries, InsertWatchLater } from "@shared/schema";
-import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema, insertWatchLaterSchema } from "@shared/schema";
+import type { Video, User, Playlist, ViewHistory, Series, WatchLater, InsertVideo, InsertUser, InsertPlaylist, InsertViewHistory, InsertSeries, InsertWatchLater, OtpVerification, InsertOtpVerification } from "@shared/schema";
+import { insertVideoSchema, insertUserSchema, insertPlaylistSchema, insertViewHistorySchema, insertSeriesSchema, insertWatchLaterSchema, insertOtpVerificationSchema } from "@shared/schema";
 
 // Add type for Supabase error
 interface SupabaseError {
@@ -70,6 +70,13 @@ export interface IStorage {
   markAsWatched(userId: string, videoId: string): Promise<WatchLater | null>;
   updateWatchProgress(userId: string, videoId: string, progress: number): Promise<WatchLater | null>;
   isInWatchLater(userId: string, videoId: string): Promise<boolean>;
+
+  // OTP operations
+  createOtpVerification(otp: InsertOtpVerification): Promise<OtpVerification>;
+  findValidOtp(otp: string, mobileNumber: string): Promise<OtpVerification | null>;
+  markOtpAsUsed(otpId: string): Promise<boolean>;
+  getUserByMobileNumber(mobileNumber: string): Promise<User | null>;
+  deleteExpiredOtps(): Promise<boolean>;
 }
 
 export class SupabaseStorage implements IStorage {
@@ -484,9 +491,23 @@ export class SupabaseStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const validatedUser = insertUserSchema.parse(user);
     
+    // Map camelCase to snake_case for database
+    const dbUser = {
+      supabase_uid: validatedUser.supabaseUid,
+      email: validatedUser.email, // Required until migration is complete
+      display_name: validatedUser.displayName,
+      photo_url: validatedUser.photoURL,
+      mobile_number: validatedUser.mobileNumber || null, // Keep legacy field for compatibility
+    };
+    
+    // Only add mobile field if it's provided and the column exists
+    if (validatedUser.mobile) {
+      dbUser.mobile = validatedUser.mobile;
+    }
+    
     const { data, error } = await supabase
       .from('users')
-      .insert(validatedUser)
+      .insert(dbUser)
       .select()
       .single();
 
@@ -806,6 +827,107 @@ export class SupabaseStorage implements IStorage {
       throw error;
     }
     return !!data;
+  }
+
+  // OTP operations implementation
+  async createOtpVerification(otp: InsertOtpVerification): Promise<OtpVerification> {
+    // Direct mapping from input to database format
+    const dbOtp = {
+      mobile_number: otp.mobileNumber,
+      otp: otp.otp,
+      expires_at: otp.expiresAt,
+      is_used: otp.isUsed || false,
+      user_id: otp.userId || null,
+    };
+    
+    console.log('Creating OTP with data:', dbOtp);
+    
+    const { data, error } = await supabase
+      .from('otp_verifications')
+      .insert(dbOtp)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating OTP:', error);
+      throw error;
+    }
+    return data;
+  }
+
+  async findValidOtp(otp: string, mobileNumber: string): Promise<OtpVerification | null> {
+    console.log('Searching for OTP:', { otp, mobileNumber });
+    
+    // First, let's check what OTPs exist for this mobile number
+    const { data: allOtps, error: allError } = await supabase
+      .from('otp_verifications')
+      .select('*')
+      .eq('mobile_number', mobileNumber)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    
+    console.log('All OTPs for mobile:', allOtps);
+    
+    // Now search for the specific OTP
+    const { data, error } = await supabase
+      .from('otp_verifications')
+      .select('*')
+      .eq('otp', otp)
+      .eq('mobile_number', mobileNumber)
+      .eq('is_used', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    console.log('OTP search result:', { data, error });
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('No OTP found (PGRST116)');
+        return null;
+      }
+      throw error;
+    }
+    return data;
+  }
+
+  async markOtpAsUsed(otpId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('otp_verifications')
+      .update({ 
+        is_used: true, 
+        used_at: new Date().toISOString() 
+      })
+      .eq('id', otpId);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async getUserByMobileNumber(mobileNumber: string): Promise<User | null> {
+    // First try the new mobile column, then fallback to legacy mobile_number column
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .or(`mobile.eq.${mobileNumber},mobile_number.eq.${mobileNumber}`)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
+  async deleteExpiredOtps(): Promise<boolean> {
+    const { error } = await supabase
+      .from('otp_verifications')
+      .delete()
+      .lt('expires_at', new Date().toISOString());
+
+    if (error) throw error;
+    return true;
   }
 }
 
