@@ -2,10 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { storage } from '../storage';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY || ''
+);
 
 interface AuthenticatedRequest extends Request {
   user?: {

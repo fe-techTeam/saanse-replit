@@ -3,16 +3,21 @@ import { storage } from '../storage';
 import { insertOtpVerificationSchema } from '../../shared/schema';
 import type { InsertOtpVerification } from '../../shared/schema';
 
-// WhatsApp Business API configuration
+// Configuration from environment variables
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL || 'https://graph.facebook.com/v18.0';
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
 // OTP Configuration
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 30; // Increased to 30 minutes for testing
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
+// Helper function to get full URL with path
+function getFullUrl(path: string = ''): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BASE_URL}${cleanPath}`;
+}
 
 export class WhatsAppOtpService {
   /**
@@ -50,7 +55,7 @@ export class WhatsAppOtpService {
       return false;
     }
 
-    const verificationUrl = `${BASE_URL}/api/auth/verify-otp?otp=${otp}&mobile=${encodeURIComponent(mobileNumber)}`;
+    const verificationUrl = getFullUrl(`/api/auth/verify-otp?otp=${otp}&mobile=${encodeURIComponent(mobileNumber)}`);
     
     const message = {
       messaging_product: 'whatsapp',

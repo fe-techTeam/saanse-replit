@@ -17,7 +17,8 @@ NC='\033[0m' # No Color
 
 # Function to check if server is running
 check_server() {
-    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+    BASE_URL=${BASE_URL:-"http://localhost:${PORT:-3000}"}
+    if curl -s "$BASE_URL" > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Server Status: RUNNING${NC}"
         return 0
     else
@@ -31,14 +32,14 @@ check_api() {
     echo -e "${BLUE}📡 API Endpoints Check:${NC}"
     
     # Check videos API
-    if curl -s http://localhost:3000/api/videos > /dev/null 2>&1; then
+    if curl -s "$BASE_URL/api/videos" > /dev/null 2>&1; then
         echo -e "  ${GREEN}✅ /api/videos - OK${NC}"
     else
         echo -e "  ${RED}❌ /api/videos - FAILED${NC}"
     fi
     
     # Check admin API (should return auth error, which means it's working)
-    if curl -s http://localhost:3000/api/admin/dashboard | grep -q "authentication"; then
+    if curl -s "$BASE_URL/api/admin/dashboard" | grep -q "authentication"; then
         echo -e "  ${GREEN}✅ /api/admin/dashboard - OK (Auth working)${NC}"
     else
         echo -e "  ${RED}❌ /api/admin/dashboard - FAILED${NC}"
@@ -83,7 +84,7 @@ check_database() {
     echo -e "${BLUE}🗄️  Database Check:${NC}"
     
     # Try to get videos from API to test database
-    VIDEO_COUNT=$(curl -s http://localhost:3000/api/videos | jq length 2>/dev/null)
+    VIDEO_COUNT=$(curl -s "$BASE_URL/api/videos" | jq length 2>/dev/null)
     
     if [ ! -z "$VIDEO_COUNT" ] && [ "$VIDEO_COUNT" -ge 0 ]; then
         echo -e "  ${GREEN}✅ Database: CONNECTED (${VIDEO_COUNT} videos)${NC}"
@@ -96,7 +97,7 @@ check_database() {
 check_frontend() {
     echo -e "${BLUE}🌐 Frontend Check:${NC}"
     
-    if curl -s http://localhost:3000/ | grep -q "SAANSE"; then
+    if curl -s "$BASE_URL/" | grep -q "SAANSE"; then
         echo -e "  ${GREEN}✅ Main Page: LOADING${NC}"
     else
         echo -e "  ${RED}❌ Main Page: FAILED${NC}"

@@ -104,7 +104,8 @@ async function setupAdminDatabase() {
     console.log('\n📋 Admin Credentials:');
     console.log('   Email: harshadmadaye@firsteconomy.com');
     console.log('   Password: admin123');
-    console.log('\n🌐 Access the admin panel at: http://localhost:3000/admin');
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    console.log(`\n🌐 Access the admin panel at: ${baseUrl}/admin`);
 
   } catch (error) {
     console.error('❌ Setup failed:', error);

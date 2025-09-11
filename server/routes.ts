@@ -7,9 +7,18 @@ import { authenticateJWT, optionalAuth, requireDbUser, getDbUserId, getSupabaseU
 import { whatsappOtpService } from "./services/whatsapp-otp";
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Get configuration from environment variables
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
+
+// Helper function to get frontend URL with path
+function getFrontendUrl(path: string = ''): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BASE_URL}${cleanPath}`;
+}
 
 export async function registerRoutes(app: Express): Promise<void> {
   // Videos
@@ -711,19 +720,19 @@ app.post("/api/watch-later", authenticateJWT, requireDbUser, async (req: Authent
       console.log('Verification result:', result);
       
       if (result.success) {
-        // Redirect to frontend with success token - use port 3000 since that's where the full-stack app runs
-        const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/success?token=${result.token}&user=${encodeURIComponent(JSON.stringify(result.user))}`;
+        // Redirect to frontend with success token
+        const redirectUrl = getFrontendUrl(`/auth/success?token=${result.token}&user=${encodeURIComponent(JSON.stringify(result.user))}`);
         console.log('Redirecting to success:', redirectUrl);
         res.redirect(redirectUrl);
       } else {
         // Redirect to frontend with error
-        const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/error?message=${encodeURIComponent(result.message)}`;
+        const redirectUrl = getFrontendUrl(`/auth/error?message=${encodeURIComponent(result.message)}`);
         console.log('Redirecting to error:', redirectUrl);
         res.redirect(redirectUrl);
       }
     } catch (error) {
       console.error("Verify OTP error:", error);
-      const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/error?message=${encodeURIComponent('Failed to verify OTP')}`;
+      const redirectUrl = getFrontendUrl(`/auth/error?message=${encodeURIComponent('Failed to verify OTP')}`);
       res.redirect(redirectUrl);
     }
   });

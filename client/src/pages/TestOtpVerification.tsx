@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Smartphone, ArrowLeft, RefreshCw } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
 
 export default function TestOtpVerification() {
   const [searchParams] = useSearchParams();
@@ -21,8 +22,14 @@ export default function TestOtpVerification() {
   const fetchLatestOtp = async () => {
     setIsLoadingOtp(true);
     try {
-      const response = await fetch('/api/auth/debug/latest-otp');
-      const data = await response.json();
+      const data = await apiClient.get<{
+        success: boolean;
+        otp?: string;
+        mobile?: string;
+        used?: boolean;
+        expired?: boolean;
+        timeLeft?: number;
+      }>('/auth/debug/latest-otp');
       
       if (data.success) {
         if (data.used) {
@@ -81,17 +88,13 @@ export default function TestOtpVerification() {
   const generateNewOtp = async () => {
     setIsLoadingOtp(true);
     try {
-      const response = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mobileNumber: mobile.length === 10 ? mobile : mobile.replace('91', ''),
-        }),
+      const data = await apiClient.post<{
+        success: boolean;
+        message?: string;
+        otpId?: string;
+      }>('/auth/send-otp', {
+        mobileNumber: mobile.length === 10 ? mobile : mobile.replace('91', ''),
       });
-
-      const data = await response.json();
 
       if (data.success) {
         toast({
@@ -147,7 +150,7 @@ export default function TestOtpVerification() {
       });
       
       // Navigate directly to the verification endpoint - let the browser handle the redirect
-      const verificationUrl = `/api/auth/verify-otp?otp=${otp}&mobile=${encodeURIComponent(formattedMobile)}`;
+      const verificationUrl = apiClient.getUrl(`/auth/verify-otp?otp=${otp}&mobile=${encodeURIComponent(formattedMobile)}`);
       console.log('Navigating to:', verificationUrl);
       
       // Use window.location.href to navigate directly - this will handle the 302 redirect properly

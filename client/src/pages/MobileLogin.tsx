@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api-client";
 
 export default function MobileLogin() {
   const [mobileNumber, setMobileNumber] = useState("");
@@ -43,17 +44,13 @@ export default function MobileLogin() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mobileNumber: mobileNumber.replace(/\D/g, ''), // Send only digits
-        }),
+      const data = await apiClient.post<{
+        success: boolean;
+        message?: string;
+        otpId?: string;
+      }>('/auth/send-otp', {
+        mobileNumber: mobileNumber.replace(/\D/g, ''), // Send only digits
       });
-
-      const data = await response.json();
 
       if (data.success) {
         toast({
