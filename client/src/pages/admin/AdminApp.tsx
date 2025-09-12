@@ -5,6 +5,8 @@ import AdminLogin from "./AdminLogin";
 import AdminLayout from "./AdminLayout";
 import AdminDashboard from "./AdminDashboard";
 import AdminVideos from "./AdminVideos";
+import AdminSeriesList from "./AdminSeriesList";
+import AdminSeriesDetail from "./AdminSeriesDetail";
 import AdminUsers from "./AdminUsers";
 import AdminAnalytics from "./AdminAnalytics";
 import AdminSettings from "./AdminSettings";
@@ -25,6 +27,8 @@ export default function AdminApp() {
                   <Route index element={<AdminDashboard />} />
                   <Route path="/dashboard" element={<AdminDashboard />} />
                   <Route path="/videos" element={<AdminVideos />} />
+                  <Route path="/series" element={<AdminSeriesList />} />
+                  <Route path="/series/:id" element={<AdminSeriesDetail />} />
                   <Route path="/users" element={<AdminUsers />} />
                   <Route path="/analytics" element={<AdminAnalytics />} />
                   <Route path="/settings" element={<AdminSettings />} />

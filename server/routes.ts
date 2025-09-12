@@ -5,6 +5,7 @@ import { z } from "zod";
 import { registerAdminRoutes } from "./admin/admin-routes";
 import { authenticateJWT, optionalAuth, requireDbUser, getDbUserId, getSupabaseUserId, AuthenticatedRequest } from "./middleware/auth";
 import { whatsappOtpService } from "./services/whatsapp-otp";
+import { reorderEpisodes } from "./services/series";
 import { createClient } from '@supabase/supabase-js';
 
 // Get configuration from environment variables
@@ -126,7 +127,6 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Convert snake_case to camelCase for validation
       thumbnailUrl: data.thumbnailUrl || data.thumbnail_url,
       videoUrl: data.videoUrl || data.video_url,
-      contentType: data.contentType || data.content_type,
       seriesId: data.seriesId || data.series_id,
       episodeNumber: data.episodeNumber || data.episode_number,
       isActive: data.isActive !== undefined ? data.isActive : data.is_active
@@ -241,6 +241,34 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Reorder episodes within a series
+  app.patch("/api/series/:id/videos/reorder", async (req, res) => {
+    console.log("=== REORDER ENDPOINT HIT ===");
+    try {
+      const { id } = req.params;
+      const mappings = req.body as { videoId: string; episodeNumber: number }[];
+      
+      console.log("Reorder request received:", { id, mappings, timestamp: new Date().toISOString() });
+
+      if (!Array.isArray(mappings)) {
+        console.log("Invalid mappings - not an array");
+        return res.status(400).json({ error: "Body must be array of {videoId, episodeNumber}" });
+      }
+
+      console.log("About to call reorderEpisodes...");
+      const updated = await reorderEpisodes(id, mappings);
+      console.log("Reorder completed successfully:", updated.length, "videos");
+      res.json(updated);
+    } catch (error: any) {
+      console.error("=== REORDER ERROR ===", error);
+      res.status(500).json({ 
+        error: "Failed to reorder episodes", 
+        details: error?.message || String(error),
+        stack: error?.stack 
+      });
+    }
+  });
+
   app.post("/api/series", async (req, res) => {
     try {
       const seriesData = insertSeriesSchema.parse(req.body);
@@ -281,6 +309,16 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete series" });
+    }
+  });
+
+  // Update episode counts for all series
+  app.post("/api/series/update-counts", async (req, res) => {
+    try {
+      await storage.updateAllSeriesEpisodeCounts();
+      res.json({ message: "Episode counts updated successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update episode counts" });
     }
   });
 

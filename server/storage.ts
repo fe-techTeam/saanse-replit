@@ -178,15 +178,12 @@ export class SupabaseStorage implements IStorage {
     return {
       title: video.title?.trim(),
       description: video.description?.trim(),
-      category: video.category,
       duration: video.duration,
-      // Handle both camelCase and snake_case input
       thumbnail_url: (video.thumbnailUrl || video.thumbnail_url)?.trim(),
       video_url: (video.videoUrl || video.video_url)?.trim(),
       tags: video.tags || [],
-      content_type: video.contentType || video.content_type || 'standalone',
-      series_id: (video.seriesId || video.series_id) && (video.seriesId || video.series_id).trim() !== '' ? (video.seriesId || video.series_id).trim() : null,
-      episode_number: video.episodeNumber || video.episode_number || null,
+      series_id: (video.seriesId || video.series_id)?.trim(),
+      episode_number: video.episodeNumber ?? video.episode_number,
       is_active: video.isActive !== undefined ? video.isActive : (video.is_active !== undefined ? video.is_active : true)
     };
   }
@@ -213,17 +210,21 @@ export class SupabaseStorage implements IStorage {
   }
 
   async updateVideo(id: string, updates: Partial<InsertVideo>): Promise<Video | null> {
+    console.log('updateVideo called with:', { id, updates });
+    
     const { data, error } = await supabase
       .from('videos')
-      .update(updates)
+      .update(updates as any)
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
+      console.error('updateVideo error:', error);
       if (error.code === 'PGRST116') return null;
       throw error;
     }
+    console.log('updateVideo success:', data);
     return data;
   }
 
@@ -386,14 +387,34 @@ export class SupabaseStorage implements IStorage {
   }
 
   async createSeries(series: InsertSeries): Promise<Series> {
+    console.log("Creating series with data:", series);
     const validatedSeries = insertSeriesSchema.parse(series);
+    console.log("Validated series:", validatedSeries);
+    
+    // Transform camelCase to snake_case for database
+    const dbSeries = {
+      title: validatedSeries.title,
+      slug: validatedSeries.slug,
+      description: validatedSeries.description,
+      category: validatedSeries.category || 'general',
+      thumbnail_url: validatedSeries.thumbnailUrl,
+      banner_url: validatedSeries.bannerUrl,
+      status: validatedSeries.status || 'draft',
+    };
+    
+    console.log("DB series payload:", dbSeries);
+    
     const { data, error } = await supabase
       .from('series')
-      .insert(validatedSeries)
+      .insert(dbSeries)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase series insert error:", error);
+      throw error;
+    }
+    console.log("Series created successfully:", data);
     return data;
   }
 
@@ -432,6 +453,36 @@ export class SupabaseStorage implements IStorage {
 
     if (error) throw error;
     return data || [];
+  }
+
+  async updateSeriesEpisodeCount(seriesId: string): Promise<void> {
+    const { count } = await supabase
+      .from('videos')
+      .select('*', { count: 'exact', head: true })
+      .eq('series_id', seriesId)
+      .eq('is_active', true);
+    
+    await supabase
+      .from('series')
+      .update({ total_episodes: count || 0 })
+      .eq('id', seriesId);
+  }
+
+  async updateAllSeriesEpisodeCounts(): Promise<void> {
+    // Update all series episode counts based on actual video count
+    const { error } = await supabase.rpc('update_series_episode_counts');
+    if (error) {
+      // If RPC doesn't exist, do it manually
+      const { data: series, error: seriesError } = await supabase
+        .from('series')
+        .select('id');
+      
+      if (seriesError) throw seriesError;
+      
+      for (const s of series || []) {
+        await this.updateSeriesEpisodeCount(s.id);
+      }
+    }
   }
 
   // User operations implementation

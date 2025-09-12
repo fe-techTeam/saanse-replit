@@ -1,6 +1,32 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthHeaders } from "./jwt";
 
+// Safari detection utility
+const isSafari = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const userAgent = window.navigator.userAgent;
+  return /Safari/.test(userAgent) && !/Chrome/.test(userAgent) && !/Chromium/.test(userAgent);
+};
+
+// Request throttling for Safari
+const requestThrottleMap = new Map<string, number>();
+const SAFARI_THROTTLE_DELAY = 1000; // 1 second minimum between same requests in Safari
+
+const shouldThrottleRequest = (queryKey: string): boolean => {
+  if (!isSafari()) return false;
+  
+  const now = Date.now();
+  const lastRequest = requestThrottleMap.get(queryKey);
+  
+  if (lastRequest && (now - lastRequest) < SAFARI_THROTTLE_DELAY) {
+    console.log(`Throttling request for Safari: ${queryKey}`);
+    return true;
+  }
+  
+  requestThrottleMap.set(queryKey, now);
+  return false;
+};
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -46,8 +72,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const queryKeyString = queryKey.join("/");
+    
+    // Safari-specific throttling
+    if (shouldThrottleRequest(queryKeyString)) {
+      // Return cached data or throw to prevent request
+      throw new Error("Request throttled for Safari");
+    }
+    
     const headers = getAuthHeaders();
-    const res = await fetch(queryKey.join("/") as string, {
+    const res = await fetch(queryKeyString, {
       credentials: "include",
       headers,
     });
@@ -66,11 +100,19 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      // Safari-specific configuration
+      staleTime: isSafari() ? 2 * 60 * 1000 : 5 * 60 * 1000, // 2 minutes for Safari, 5 for others
+      cacheTime: isSafari() ? 5 * 60 * 1000 : 10 * 60 * 1000, // 5 minutes for Safari, 10 for others
+      retry: isSafari() ? 0 : 1, // No retries in Safari
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      // Safari-specific error handling
+      useErrorBoundary: false,
+      suspense: false,
     },
     mutations: {
-      retry: false,
+      retry: isSafari() ? 0 : 1, // No retries in Safari for mutations
     },
   },
 });

@@ -18,36 +18,41 @@ export const users = pgTable("users", {
   mobileIdx: index("users_mobile_idx").on(table.mobile),
 }));
 
+// VIDEOS are now strictly part of a Series. Stand-alone videos & category/contentType are removed.
 export const videos = pgTable("videos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   description: text("description"),
-  category: text("category").notNull(),
-  duration: numeric("duration", { precision: 10, scale: 6 }).notNull(), // in seconds with decimals
+  duration: numeric("duration", { precision: 10, scale: 6 }).notNull(), // seconds
   thumbnailUrl: text("thumbnail_url").notNull(),
   videoUrl: text("video_url").notNull(),
   likes: integer("likes").default(0).notNull(),
   views: integer("views").default(0).notNull(),
   tags: jsonb("tags").$type<string[]>().default([]).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
-  contentType: text("content_type").notNull().default('standalone'), // 'standalone' or 'series'
-  seriesId: text("series_id"), // null for standalone content, references series.id for series content
-  episodeNumber: integer("episode_number"), // null for standalone, episode number for series
-  cloudinaryPublicId: text("cloudinary_public_id"), // Cloudinary public ID for the video
-  streamingUrls: jsonb("streaming_urls"), // JSON object containing different format URLs
+  // Foreign key – enforced in DB migration; kept as plain text here
+  seriesId: text("series_id").notNull(),
+  // Episode number must be unique within a series (index handled at DB level)
+  episodeNumber: integer("episode_number").notNull(),
+  cloudinaryPublicId: text("cloudinary_public_id"),
+  streamingUrls: jsonb("streaming_urls"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const series = pgTable("series", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
   description: text("description"),
-  category: text("category").notNull(),
+  // Category is retained in DB but optional & hidden from UI
+  category: text("category"),
   thumbnailUrl: text("thumbnail_url").notNull(),
   bannerUrl: text("banner_url"),
+  status: text("status").notNull().default('draft'), // draft | published | archived
   totalEpisodes: integer("total_episodes").default(0).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const playlists = pgTable("playlists", {
@@ -64,7 +69,7 @@ export const viewHistory = pgTable("view_history", {
   userId: text("user_id").notNull(),
   videoId: text("video_id").notNull(),
   watchedAt: timestamp("watched_at").defaultNow().notNull(),
-  progress: numeric("progress", { precision: 10, scale: 6 }).default(0).notNull(), // in seconds with decimals
+  progress: numeric("progress", { precision: 10, scale: 6 }).default(sql`0`).notNull(), // in seconds with decimals
 });
 
 export const watchLater = pgTable("watch_later", {
@@ -76,7 +81,7 @@ export const watchLater = pgTable("watch_later", {
   notes: text("notes"), // Optional user notes
   isWatched: boolean("is_watched").default(false).notNull(),
   watchedAt: timestamp("watched_at"), // When the video was actually watched
-  progress: numeric("progress", { precision: 10, scale: 6 }).default(0).notNull(), // Last watched position
+  progress: numeric("progress", { precision: 10, scale: 6 }).default(sql`0`).notNull(), // Last watched position
 }, (table) => ({
   // Composite unique constraint to prevent duplicate entries
   userVideoUnique: unique("user_video_unique").on(table.userId, table.videoId),
@@ -122,12 +127,13 @@ export const insertVideoSchema = createInsertSchema(videos).omit({
   likes: true,
   views: true,
   createdAt: true,
-});
+}); // episodeNumber & seriesId are required now
 
 export const insertSeriesSchema = createInsertSchema(series).omit({
   id: true,
   totalEpisodes: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertPlaylistSchema = createInsertSchema(playlists).omit({

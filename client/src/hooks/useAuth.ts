@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase, signInWithEmail, signUpWithEmail, signOutUser } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import type { UserType } from "@/types/video";
@@ -25,6 +25,13 @@ const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // Refresh 5 minutes before expiry
 const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours max session
 const ACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check activity every minute
 
+// Safari detection utility
+const isSafari = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const userAgent = window.navigator.userAgent;
+  return /Safari/.test(userAgent) && !/Chrome/.test(userAgent) && !/Chromium/.test(userAgent);
+};
+
 // Simple encryption for localStorage (XOR cipher)
 const encryptData = (data: string): string => {
   const key = 'SAANSE_2024_SECURE';
@@ -40,35 +47,89 @@ const decryptData = (encryptedData: string): string => {
   ).join('');
 };
 
-// Secure storage functions
+// Safari-compatible storage functions
+const isStorageAvailable = (): boolean => {
+  try {
+    const test = '__storage_test__';
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return true;
+  } catch (error) {
+    console.warn('localStorage not available:', error);
+    return false;
+  }
+};
+
 const storeAuthData = (authData: AuthToken): void => {
   try {
+    if (!isStorageAvailable()) {
+      console.warn('localStorage not available, using sessionStorage as fallback');
+      const encryptedData = encryptData(JSON.stringify(authData));
+      sessionStorage.setItem(AUTH_STORAGE_KEY, encryptedData);
+      return;
+    }
+    
     const encryptedData = encryptData(JSON.stringify(authData));
     localStorage.setItem(AUTH_STORAGE_KEY, encryptedData);
   } catch (error) {
     console.error('Failed to store auth data:', error);
+    // Fallback to sessionStorage
+    try {
+      const encryptedData = encryptData(JSON.stringify(authData));
+      sessionStorage.setItem(AUTH_STORAGE_KEY, encryptedData);
+    } catch (fallbackError) {
+      console.error('Failed to store auth data in sessionStorage:', fallbackError);
+    }
   }
 };
 
 const getStoredAuthData = (): AuthToken | null => {
   try {
-    const storedData = localStorage.getItem(AUTH_STORAGE_KEY);
+    // Try localStorage first
+    let storedData = null;
+    if (isStorageAvailable()) {
+      storedData = localStorage.getItem(AUTH_STORAGE_KEY);
+    }
+    
+    // Fallback to sessionStorage if localStorage is not available or empty
+    if (!storedData) {
+      storedData = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    }
+    
     if (!storedData) return null;
     
     const decryptedData = decryptData(storedData);
     return JSON.parse(decryptedData);
   } catch (error) {
     console.error('Failed to retrieve auth data:', error);
-    // Clear corrupted data
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    // Clear corrupted data from both storages
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (e) {
+      console.warn('Could not clear localStorage:', e);
+    }
+    try {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (e) {
+      console.warn('Could not clear sessionStorage:', e);
+    }
     return null;
   }
 };
 
 const clearAuthData = (): void => {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-  // Clear legacy storage
-  localStorage.removeItem('mythosstream_auth');
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem('mythosstream_auth');
+  } catch (error) {
+    console.warn('Could not clear localStorage:', error);
+  }
+  
+  try {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Could not clear sessionStorage:', error);
+  }
 };
 
 export function useAuth() {
@@ -76,29 +137,50 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [refreshTimer, setRefreshTimer] = useState<NodeJS.Timeout | null>(null);
   const [activityTimer, setActivityTimer] = useState<NodeJS.Timeout | null>(null);
+  const [authCheckTimer, setAuthCheckTimer] = useState<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
-  // Track user activity for security
+  // Track user activity for security (Safari-compatible)
   const updateLastActivity = () => {
-    localStorage.setItem('saanse_last_activity', Date.now().toString());
+    try {
+      if (isStorageAvailable()) {
+        localStorage.setItem('saanse_last_activity', Date.now().toString());
+      } else {
+        sessionStorage.setItem('saanse_last_activity', Date.now().toString());
+      }
+    } catch (error) {
+      console.warn('Could not update activity timestamp:', error);
+    }
   };
 
   const checkSessionTimeout = async () => {
-    const lastActivity = localStorage.getItem('saanse_last_activity');
-    if (lastActivity) {
-      const timeSinceActivity = Date.now() - parseInt(lastActivity);
-      
-      if (timeSinceActivity > SESSION_TIMEOUT) {
-        console.log('Session timeout due to inactivity');
-        await signOut();
-        return;
+    try {
+      // Check activity from both storage types (Safari compatibility)
+      let lastActivity = null;
+      if (isStorageAvailable()) {
+        lastActivity = localStorage.getItem('saanse_last_activity');
       }
-    }
-    
-    const authData = getStoredAuthData();
-    if (authData && Date.now() > authData.expires_at) {
-      console.log('Session timeout due to token expiry');
-      await signOut();
+      if (!lastActivity) {
+        lastActivity = sessionStorage.getItem('saanse_last_activity');
+      }
+      
+      if (lastActivity) {
+        const timeSinceActivity = Date.now() - parseInt(lastActivity);
+        
+        if (timeSinceActivity > SESSION_TIMEOUT) {
+          console.log('Session timeout due to inactivity');
+          await signOut();
+          return;
+        }
+      }
+      
+      const authData = getStoredAuthData();
+      if (authData && Date.now() > authData.expires_at) {
+        console.log('Session timeout due to token expiry');
+        await signOut();
+      }
+    } catch (error) {
+      console.warn('Error checking session timeout:', error);
     }
   };
 
@@ -127,15 +209,56 @@ export function useAuth() {
       setActivityTimer(null);
     }
     
-    // Clean up activity tracking
-    localStorage.removeItem('saanse_last_activity');
+    // Clean up activity tracking (Safari-compatible)
+    try {
+      localStorage.removeItem('saanse_last_activity');
+    } catch (error) {
+      console.warn('Could not clear localStorage activity:', error);
+    }
+    try {
+      sessionStorage.removeItem('saanse_last_activity');
+    } catch (error) {
+      console.warn('Could not clear sessionStorage activity:', error);
+    }
   };
 
   // Check if user is logged in on app start
   useEffect(() => {
     checkAuthState();
     
-    // Cleanup timers on unmount
+    // Debounced auth state check for Safari compatibility
+    const debouncedCheckAuthState = () => {
+      if (authCheckTimer) {
+        clearTimeout(authCheckTimer);
+      }
+      
+      const delay = isSafari() ? 500 : 100; // Longer delay for Safari
+      const timer = setTimeout(() => {
+        console.log('Debounced auth state check triggered');
+        checkAuthState();
+      }, delay);
+      
+      setAuthCheckTimer(timer);
+    };
+
+    // Listen for storage events to update auth state immediately (Safari-compatible)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === AUTH_STORAGE_KEY) {
+        console.log('Auth storage changed, scheduling debounced check');
+        debouncedCheckAuthState();
+      }
+    };
+
+    // Safari-specific: Also listen for custom events as Safari may not fire storage events properly
+    const handleCustomAuthChange = () => {
+      console.log('Custom auth change event received, scheduling debounced check');
+      debouncedCheckAuthState();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('saanse-auth-change', handleCustomAuthChange);
+    
+    // Cleanup timers and listeners on unmount
     return () => {
       if (refreshTimer) {
         clearTimeout(refreshTimer);
@@ -143,6 +266,11 @@ export function useAuth() {
       if (activityTimer) {
         clearInterval(activityTimer);
       }
+      if (authCheckTimer) {
+        clearTimeout(authCheckTimer);
+      }
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('saanse-auth-change', handleCustomAuthChange);
     };
   }, []);
 
@@ -229,7 +357,7 @@ export function useAuth() {
         const timeUntilExpiry = storedAuthData.expires_at - Date.now();
         
         if (timeUntilExpiry > TOKEN_REFRESH_BUFFER) {
-          console.log('Stored token is valid, setting user');
+          console.log('Stored token is valid, setting user:', storedAuthData.user);
           setUser(storedAuthData.user);
           scheduleTokenRefresh(storedAuthData);
           setLoading(false);
@@ -392,7 +520,7 @@ export function useAuth() {
   };
 
   // Get auth headers for API requests
-  const getAuthHeaders = () => {
+  const getAuthHeaders = useCallback(() => {
     const authData = getStoredAuthData();
     if (authData && authData.expires_at > Date.now()) {
       return {
@@ -403,7 +531,7 @@ export function useAuth() {
     return {
       'Content-Type': 'application/json'
     };
-  };
+  }, []);
 
   // Validate session server-side (optional enhanced security)
   const validateSession = async (): Promise<boolean> => {

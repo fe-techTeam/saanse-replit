@@ -4,12 +4,16 @@ import { CheckCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthSuccess() {
   const [searchParams] = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(true);
+  const [authProcessed, setAuthProcessed] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAuthenticated, loading } = useAuth();
 
   const token = searchParams.get('token');
   const userParam = searchParams.get('user');
@@ -46,7 +50,31 @@ export default function AuthSuccess() {
         };
 
         const encryptedData = encryptData(JSON.stringify(authData));
-        localStorage.setItem('saanse_auth', encryptedData);
+        
+        // Safari-compatible storage with fallback
+        try {
+          localStorage.setItem('saanse_auth', encryptedData);
+        } catch (error) {
+          console.warn('localStorage not available, using sessionStorage:', error);
+          sessionStorage.setItem('saanse_auth', encryptedData);
+        }
+
+        // Safari-compatible event dispatching
+        try {
+          // Try standard storage event first
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'saanse_auth',
+            newValue: encryptedData,
+            storageArea: localStorage
+          }));
+        } catch (error) {
+          console.warn('StorageEvent not supported, using custom event:', error);
+        }
+        
+        // Always dispatch custom event for Safari compatibility
+        window.dispatchEvent(new CustomEvent('saanse-auth-change', {
+          detail: { key: 'saanse_auth', newValue: encryptedData }
+        }));
 
         // Show success message
         toast({
@@ -54,10 +82,9 @@ export default function AuthSuccess() {
           description: `Welcome back, ${userData.name || userData.displayName || 'User'}!`,
         });
 
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 2000);
+        console.log('Auth data stored successfully, marking as processed');
+        // Mark auth as processed
+        setAuthProcessed(true);
 
       } catch (error) {
         console.error('Auth processing error:', error);
@@ -72,17 +99,55 @@ export default function AuthSuccess() {
       }
     };
 
-    processAuth();
-  }, [token, userParam, navigate, toast]);
+    // Only process auth once
+    if (authProcessed) {
+      return;
+    }
 
-  if (isProcessing) {
+    processAuth();
+  }, [token, userParam, navigate, toast, authProcessed, isProcessing]);
+
+  // Handle redirect after authentication is confirmed
+  useEffect(() => {
+    if (authProcessed && !loading && isAuthenticated && !redirecting) {
+      console.log('Auth confirmed, starting redirect...');
+      setRedirecting(true);
+      
+      // Wait a moment for the auth state to fully propagate
+      const redirectTimer = setTimeout(() => {
+        console.log('Redirecting to home page...');
+        window.location.href = '/';  // Use window.location for a hard redirect
+      }, 1000);
+
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [authProcessed, loading, isAuthenticated, redirecting]);
+
+  // Fallback redirect after 8 seconds to prevent infinite loops
+  useEffect(() => {
+    if (authProcessed && !redirecting) {
+      const fallbackTimer = setTimeout(() => {
+        console.log('Fallback redirect triggered');
+        setRedirecting(true);
+        window.location.href = '/';  // Use window.location for a hard redirect
+      }, 8000);
+
+      return () => clearTimeout(fallbackTimer);
+    }
+  }, [authProcessed, redirecting]);
+
+  if (isProcessing || redirecting || (authProcessed && (loading || !isAuthenticated))) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <Card className="bg-gray-900 border-gray-800 w-full max-w-md">
           <CardContent className="p-8 text-center">
             <Loader2 className="w-12 h-12 text-dharma-gold animate-spin mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">Processing Authentication</h2>
-            <p className="text-gray-400">Please wait while we log you in...</p>
+            <h2 className="text-xl font-semibold text-white mb-2">
+              {isProcessing ? "Processing Authentication" : redirecting ? "Redirecting..." : "Completing Login"}
+            </h2>
+            <p className="text-gray-400">
+              {isProcessing ? "Please wait while we log you in..." : redirecting ? "Taking you to the dashboard..." : "Redirecting to dashboard..."}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -108,7 +173,10 @@ export default function AuthSuccess() {
           </p>
           
           <Button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              setRedirecting(true);
+              window.location.href = '/';
+            }}
             className="bg-dharma-gold hover:bg-dharma-gold-light text-dharma-dark font-semibold"
           >
             Go to Dashboard
