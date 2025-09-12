@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,11 +12,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileVideo, CheckCircle, AlertCircle } from "lucide-react";
-
-const categories = [
-  "Ramayana", "Mahabharata", "Krishna", "Shiva", "Bhajans", "Explained",
-  "Hanuman", "Ganesha", "Devi", "Festivals"
-];
+import { SeriesSelect } from "./SeriesSelect";
+import { SeriesDialog } from "./SeriesDialog";
 
 const formatOptions = [
   { value: "all", label: "All Formats (HLS, MP4, WebM, DASH)", recommended: true },
@@ -30,11 +27,9 @@ const formatOptions = [
 const videoUploadSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  category: z.enum(categories as [string, ...string[]]),
   tags: z.string().optional(),
   is_active: z.boolean().default(true),
-  content_type: z.enum(['standalone', 'series']).default('standalone'),
-  series_id: z.string().optional(),
+  series_id: z.string().min(1, "Series is required"),
   episode_number: z.number().optional(),
   format_options: z.string().default('all'),
 });
@@ -58,16 +53,15 @@ export default function VideoUploadDialog({
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'success' | 'error'>('idle');
   const [uploadResult, setUploadResult] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [seriesDialogOpen, setSeriesDialogOpen] = useState(false);
 
   const form = useForm<VideoUploadData>({
     resolver: zodResolver(videoUploadSchema),
     defaultValues: {
       title: "",
       description: "",
-      category: "Krishna",
       tags: "",
       is_active: true,
-      content_type: 'standalone',
       series_id: "",
       episode_number: undefined,
       format_options: 'all',
@@ -145,13 +139,11 @@ export default function VideoUploadDialog({
       formData.append('video', selectedFile);
       formData.append('title', data.title);
       formData.append('description', data.description || '');
-      formData.append('category', data.category);
       formData.append('tags', data.tags || '');
-      formData.append('content_type', data.content_type);
       formData.append('is_active', data.is_active.toString());
       formData.append('format_options', data.format_options);
       
-      if (data.content_type === 'series' && data.episode_number) {
+      if (data.episode_number) {
         formData.append('episode_number', data.episode_number.toString());
       }
       if (data.series_id) {
@@ -357,26 +349,18 @@ export default function VideoUploadDialog({
                 )}
               />
               
+              {/* Series selection */}
               <FormField
                 control={form.control}
-                name="category"
+                name="series_id"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Series *</FormLabel>
+                    <SeriesSelect
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onCreateNew={() => setSeriesDialogOpen(true)}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -384,21 +368,21 @@ export default function VideoUploadDialog({
 
               <FormField
                 control={form.control}
-                name="content_type"
+                name="episode_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Content Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="standalone">Standalone</SelectItem>
-                        <SelectItem value="series">Part of Series</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Episode Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="1" 
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Only for series content
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -481,28 +465,6 @@ export default function VideoUploadDialog({
 
                 <FormField
                   control={form.control}
-                  name="episode_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Episode Number</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="1" 
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Only for series content
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="is_active"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -543,6 +505,7 @@ export default function VideoUploadDialog({
           </form>
         </Form>
       </DialogContent>
+      <SeriesDialog open={seriesDialogOpen} onOpenChange={setSeriesDialogOpen} />
     </Dialog>
   );
 }

@@ -15,7 +15,7 @@ import { CircularButton } from "@/components/ui/circular-button";
 export default function CategoryPage() {
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, isAuthenticated, getAuthHeaders } = useAuth();
   const { toast } = useToast();
 
   const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
@@ -34,7 +34,21 @@ export default function CategoryPage() {
 
   const { data: categoryVideos = [], isLoading } = useQuery<VideoType[]>({
     queryKey: [`/api/videos/category/${normalizedCategory}`],
-    enabled: !!validCategory,
+    queryFn: async () => {
+      const response = await fetch(`/api/videos/category/${normalizedCategory}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch category videos");
+      }
+      return response.json();
+    },
+    enabled: !!validCategory && isAuthenticated,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    retry: 1,
   });
 
   const handleLogout = async () => {

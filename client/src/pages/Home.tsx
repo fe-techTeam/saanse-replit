@@ -12,15 +12,41 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { VIDEO_CATEGORIES } from "@/types/video";
+import { SeriesRow } from "@/components/SeriesRow";
 import { CircularButton } from "@/components/ui/circular-button";
+import { isSafari, getSafariQueryConfig, safariDebouncer, cleanupSafariResources } from "@/lib/safari-utils";
 
 export default function Home() {
+  const { user, signOut, isAuthenticated, getAuthHeaders } = useAuth();
+  
   const { data: videos = [], isLoading } = useQuery({
-    queryKey: ["/api/videos"]
+    queryKey: ["/api/videos"],
+    queryFn: async () => {
+      const fetchVideos = async () => {
+        const response = await fetch("/api/videos", {
+          headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch videos");
+        }
+        return response.json();
+      };
+
+      // Safari-specific debouncing
+      if (isSafari()) {
+        return safariDebouncer.debounce("/api/videos", fetchVideos);
+      }
+      
+      return fetchVideos();
+    },
+    enabled: isAuthenticated,
+    ...getSafariQueryConfig(),
+    // Fallback for non-Safari browsers
+    staleTime: isSafari() ? undefined : 5 * 60 * 1000,
+    cacheTime: isSafari() ? undefined : 10 * 60 * 1000,
+    retry: isSafari() ? undefined : 1,
   });
 
-  const { user, signOut, isAuthenticated } = useAuth();
   const { watchLater } = useWatchLater();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -34,7 +60,16 @@ export default function Home() {
   const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("Home");
+  // Home no longer filters by category – series-centric
+
+  // Safari cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (isSafari()) {
+        cleanupSafariResources();
+      }
+    };
+  }, []);
 
   // Handle logout
   const handleLogout = async () => {
@@ -136,17 +171,17 @@ export default function Home() {
 
   // Filter videos based on selected category
   const getFilteredVideos = () => {
-    if (selectedCategory === "Home") {
+    if (selectedVideo === "Home") {
       return enhancedVideos; // Show all videos for home
     }
-    return enhancedVideos.filter(v => v.category === selectedCategory);
+    return enhancedVideos.filter(v => v.category === selectedVideo);
   };
 
   const filteredVideos = getFilteredVideos();
 
   // Organize videos into sections based on selected category
   const getCategorySections = () => {
-    if (selectedCategory === "Home") {
+    if (selectedVideo === "Home") {
       // Original home page sections
       return {
         trendingVideos: enhancedVideos.slice(0, 10),
@@ -171,7 +206,18 @@ export default function Home() {
     }
   };
 
-  const sections = getCategorySections();
+  // Basic sections for series-centric homepage
+  const sections = {
+    trendingVideos: enhancedVideos.slice(0, 10),
+    newReleases: enhancedVideos.slice(10, 20),
+    watchAgain: enhancedVideos.slice(20, 30),
+    popularPicks: enhancedVideos.slice(30, 40),
+    ramayanaSeries: [] as any[],
+    krishnaStories: [] as any[],
+    mahabharataEpic: [] as any[],
+    devotionalContent: [] as any[],
+    becauseYouWatched: [] as any[],
+  };
 
   const handleVideoClick = (video: any) => {
     setSelectedVideo(video);
@@ -183,43 +229,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Enhanced Header with Categories and Search */}
+      {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-sm">
         {/* Top Row - Logo, Category Tabs, Search, Logout */}
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-6">
             <h1 className="text-red-600 text-2xl font-bold tracking-wide">SAANSE</h1>
             
-            {/* Category Navigation Tabs */}
-            <div className="hidden md:flex space-x-1 overflow-x-auto scrollbar-hide">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
-                  selectedCategory === "Home"
-                    ? "bg-red-600 text-white"
-                    : "text-gray-300 hover:bg-red-600/20 hover:text-red-400"
-                }`}
-                onClick={() => setSelectedCategory("Home")}
-              >
-                Home
-              </Button>
-              {VIDEO_CATEGORIES.map((category) => (
-                <Button
-                  key={category}
-                  variant="ghost"
-                  size="sm"
-                  className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
-                    selectedCategory === category
-                      ? "bg-red-600 text-white"
-                      : "text-gray-300 hover:bg-red-600/20 hover:text-red-400"
-                  }`}
-                  onClick={() => setSelectedCategory(category)}
-                >
-                  {category}
-                </Button>
-              ))}
-            </div>
+            {/* Series-centric, no category tabs */}
           </div>
           
           <div className="flex items-center space-x-4">
@@ -248,42 +265,12 @@ export default function Home() {
         </div>
 
         {/* Mobile Category Navigation Tabs */}
-        <div className="md:hidden px-4 pb-2">
-          <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
-                selectedCategory === "Home" 
-                  ? 'bg-red-600 text-white' 
-                  : 'text-gray-300 hover:bg-red-600/20 hover:text-red-400'
-              }`}
-              onClick={() => setSelectedCategory("Home")}
-            >
-              Home
-            </Button>
-            {VIDEO_CATEGORIES.map((category) => (
-              <Button
-                key={category}
-                variant="ghost"
-                size="sm"
-                className={`whitespace-nowrap px-4 py-2 rounded-full transition-colors ${
-                  selectedCategory === category 
-                    ? 'bg-red-600 text-white' 
-                    : 'text-gray-300 hover:bg-red-600/20 hover:text-red-400'
-                }`}
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
-        </div>
+        {/* (Category tabs removed) */}
       </div>
 
       {/* Hero Section - Only show on Home */}
-      <div className={selectedCategory === "Home" ? "pt-24" : "pt-20"}>
-        {selectedCategory === "Home" && featuredVideo && (
+      <div className="pt-24">
+        {featuredVideo && (
           <NetflixHero
             video={featuredVideo}
             onPlay={() => handlePlayVideo(featuredVideo)}
@@ -292,166 +279,91 @@ export default function Home() {
         )}
       </div>
 
+      {/* Series row */}
+      <SeriesRow />
+
       {/* Content Sections - Netflix Style Grid */}
       <div className="bg-black pb-20">
-        {selectedCategory === "Home" ? (
-          <>
-            {/* Home Page Sections */}
-            {/* Watch Later Section - Only show if user has videos in watch later */}
-            {isAuthenticated && watchLater.length > 0 && (
-              <NetflixRow
-                title="Your Watch Later"
-                videos={watchLater.map(item => item.video)}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.trendingVideos.length > 0 && (
-              <NetflixRow
-                title="Trending Now"
-                videos={sections.trendingVideos}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.newReleases.length > 0 && (
-              <NetflixRow
-                title="New Releases"
-                videos={sections.newReleases}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.watchAgain.length > 0 && (
-              <NetflixRow
-                title="Continue Watching"
-                videos={sections.watchAgain}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.ramayanaSeries.length > 0 && (
-              <NetflixRow
-                title="Ramayana: Divine Epic"
-                videos={sections.ramayanaSeries}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.krishnaStories.length > 0 && (
-              <NetflixRow
-                title="Krishna: Divine Stories"
-                videos={sections.krishnaStories}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.popularPicks.length > 0 && (
-              <NetflixRow
-                title="Popular on SAANSE"
-                videos={sections.popularPicks}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.mahabharataEpic.length > 0 && (
-              <NetflixRow
-                title="Mahabharata: The Great Epic"
-                videos={sections.mahabharataEpic}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.devotionalContent.length > 0 && (
-              <NetflixRow
-                title="Devotional Bhajans"
-                videos={sections.devotionalContent}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.becauseYouWatched.length > 0 && (
-              <NetflixRow
-                title="Because You Watched Krishna Stories"
-                videos={sections.becauseYouWatched}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            {/* Category Page Sections */}
-            {sections.allCategoryContent && sections.allCategoryContent.length > 0 && (
-              <NetflixRow
-                title={`All ${selectedCategory} Content`}
-                videos={sections.allCategoryContent}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.trendingInCategory && sections.trendingInCategory.length > 0 && (
-              <NetflixRow
-                title={`Trending in ${selectedCategory}`}
-                videos={sections.trendingInCategory}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.popularInCategory && sections.popularInCategory.length > 0 && (
-              <NetflixRow
-                title={`Popular ${selectedCategory} Stories`}
-                videos={sections.popularInCategory}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-
-            {sections.recentInCategory && sections.recentInCategory.length > 0 && (
-              <NetflixRow
-                title={`Recently Added to ${selectedCategory}`}
-                videos={sections.recentInCategory}
-                onVideoClick={handleVideoClick}
-              />
-            )}
-          </>
+        {/* Home rows */}
+        {/* Watch Later Section - Only show if user has videos in watch later */}
+        {isAuthenticated && watchLater.length > 0 && (
+          <NetflixRow
+            title="Your Watch Later"
+            videos={watchLater.map(item => item.video)}
+            onVideoClick={handleVideoClick}
+          />
         )}
 
-        {/* Additional Netflix-style rows - only show on Home */}
-        {selectedCategory === "Home" && (
-          <>
-            <NetflixRow
-              title="Top 10 in India Today"
-              videos={enhancedVideos.slice(0, 10)}
-              onVideoClick={handleVideoClick}
-            />
-
-            <NetflixRow
-              title="Spiritual Documentaries"
-              videos={enhancedVideos.slice(15, 25)}
-              onVideoClick={handleVideoClick}
-            />
-
-            <NetflixRow
-              title="Festival Celebrations"
-              videos={enhancedVideos.slice(25, 35)}
-              onVideoClick={handleVideoClick}
-            />
-          </>
+        {sections.trendingVideos.length > 0 && (
+          <NetflixRow
+            title="Trending Now"
+            videos={sections.trendingVideos}
+            onVideoClick={handleVideoClick}
+          />
         )}
 
-        {selectedCategory === "Home" && (
-          <>
-            <NetflixRow
-              title="Mythological Tales"
-              videos={enhancedVideos.slice(35, 45)}
-              onVideoClick={handleVideoClick}
-            />
+        {sections.newReleases.length > 0 && (
+          <NetflixRow
+            title="New Releases"
+            videos={sections.newReleases}
+            onVideoClick={handleVideoClick}
+          />
+        )}
 
-            <NetflixRow
-              title="Sacred Mantras & Chants"
-              videos={enhancedVideos.slice(45, 55)}
-              onVideoClick={handleVideoClick}
-            />
-          </>
+        {sections.watchAgain.length > 0 && (
+          <NetflixRow
+            title="Continue Watching"
+            videos={sections.watchAgain}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {sections.ramayanaSeries.length > 0 && (
+          <NetflixRow
+            title="Ramayana: Divine Epic"
+            videos={sections.ramayanaSeries}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {sections.krishnaStories.length > 0 && (
+          <NetflixRow
+            title="Krishna: Divine Stories"
+            videos={sections.krishnaStories}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {sections.popularPicks.length > 0 && (
+          <NetflixRow
+            title="Popular on SAANSE"
+            videos={sections.popularPicks}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {sections.mahabharataEpic.length > 0 && (
+          <NetflixRow
+            title="Mahabharata: The Great Epic"
+            videos={sections.mahabharataEpic}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {sections.devotionalContent.length > 0 && (
+          <NetflixRow
+            title="Devotional Bhajans"
+            videos={sections.devotionalContent}
+            onVideoClick={handleVideoClick}
+          />
+        )}
+
+        {sections.becauseYouWatched.length > 0 && (
+          <NetflixRow
+            title="Because You Watched Krishna Stories"
+            videos={sections.becauseYouWatched}
+            onVideoClick={handleVideoClick}
+          />
         )}
       </div>
 

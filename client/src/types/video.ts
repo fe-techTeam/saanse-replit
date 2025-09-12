@@ -26,7 +26,13 @@ export interface SeriesType {
   total_episodes: number;
   is_active: boolean;
   created_at: string;
+  slug: string;
+  status: string;
+  updated_at: string;
 }
+
+// Alias for consistency with shared schema
+export type Series = SeriesType;
 
 export interface PlaylistType {
   id: string;

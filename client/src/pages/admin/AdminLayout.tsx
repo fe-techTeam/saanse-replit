@@ -19,7 +19,8 @@ import {
   Video,
   Home,
   Menu,
-  Shield
+  Shield,
+  PlaySquare
 } from "lucide-react";
 import { useAdminAuth } from "./AdminAuthProvider";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ interface AdminLayoutProps {
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: Home, exact: true },
   { name: "Videos", href: "/admin/videos", icon: Video, exact: false },
+  { name: "Series", href: "/admin/series", icon: PlaySquare, exact: false },
   { name: "Users", href: "/admin/users", icon: Users, exact: false },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3, exact: false },
   { name: "Settings", href: "/admin/settings", icon: Settings, exact: false },

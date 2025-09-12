@@ -31,8 +31,9 @@ class ApiClient {
   }
 
   private buildUrl(endpoint: string, params?: Record<string, string | number | boolean>): string {
-    // Use the getApiUrl helper function
-    const url = getApiUrl(endpoint);
+    // Remove /api prefix if it exists in endpoint since getApiUrl adds it
+    const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
+    const url = getApiUrl(cleanEndpoint);
     
     if (!params) return url;
 
@@ -72,6 +73,8 @@ class ApiClient {
     const { params, ...fetchOptions } = options;
     const url = this.buildUrl(endpoint, params);
     
+    console.log("API GET request to:", url);
+    
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -81,6 +84,7 @@ class ApiClient {
       ...fetchOptions,
     });
 
+    console.log("API response status:", response.status);
     return this.handleResponse<T>(response);
   }
 

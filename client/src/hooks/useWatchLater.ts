@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useAuth } from "./useAuth";
 import type { WatchLaterWithVideoType, WatchLaterType } from "@/types/video";
+import { isSafari, getSafariQueryConfig, safariDebouncer } from "@/lib/safari-utils";
 
 const API_BASE = "/api";
 
@@ -19,20 +20,33 @@ export function useWatchLater() {
     queryFn: async () => {
       if (!user?.id) throw new Error("User not authenticated");
       
-      const response = await fetch(`${API_BASE}/users/${user.id}/watch-later`, {
-        headers: getAuthHeaders(),
-      });
+      const fetchWatchLater = async () => {
+        const response = await fetch(`${API_BASE}/users/${user.id}/watch-later`, {
+          headers: getAuthHeaders(),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch watch later list");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to fetch watch later list");
+        }
+
+        return response.json();
+      };
+
+      // Safari-specific debouncing
+      if (isSafari()) {
+        const key = `/api/users/${user.id}/watch-later`;
+        return safariDebouncer.debounce(key, fetchWatchLater);
       }
-
-      return response.json();
+      
+      return fetchWatchLater();
     },
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    ...getSafariQueryConfig(),
+    // Fallback for non-Safari browsers
+    staleTime: isSafari() ? undefined : 5 * 60 * 1000,
+    cacheTime: isSafari() ? undefined : 10 * 60 * 1000,
+    retry: isSafari() ? undefined : 1,
   });
 
   // Add to watch later
