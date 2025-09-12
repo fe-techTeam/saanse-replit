@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Play, Heart, Search, User, Clock, Eye, Star, Info, Menu, X, LogOut, Settings, Plus, ThumbsUp } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useWatchLater } from "@/hooks/useWatchLater";
@@ -25,6 +25,9 @@ export default function Home() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Let ProtectedRoute handle authentication redirects
+  // Removed redundant useEffect to prevent conflicts with ProtectedRoute
+
   const typedVideos = videos as any[];
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -36,25 +39,34 @@ export default function Home() {
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("Home");
 
-  // Handle logout
+  // Handle logout - Safari compatible
   const handleLogout = async () => {
     try {
+      console.log('Starting logout process...');
       await signOut();
+      
+      // Safari-specific: Small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       toast({
         title: "Signed out successfully",
         description: "You have been logged out of SAANSE.",
       });
-      navigate('/signup', { replace: true });
-      setTimeout(() => {
-        window.location.href = '/signup';
-      }, 100);
+      
+      // Safari-specific: Use window.location for immediate redirect
+      console.log('Redirecting to signup page...');
+      window.location.href = '/signup';
+      
     } catch (error) {
+      console.error('Logout error:', error);
       toast({
         variant: "destructive",
         title: "Logout failed",
         description: "An error occurred while logging out.",
       });
-      navigate('/signup', { replace: true });
+      
+      // Even on error, force redirect to signup
+      window.location.href = '/signup';
     }
   };
 
@@ -77,7 +89,7 @@ export default function Home() {
     return images[index % images.length];
   };
 
-  const enhancedVideos = typedVideos.map((video: any, index: number) => ({
+  const enhancedVideos = useMemo(() => typedVideos.map((video: any, index: number) => ({
     ...video,
     thumbnail_url: video.thumbnail_url || getUniqueThumbnail(index),
     thumbnailUrl: video.thumbnail_url || getUniqueThumbnail(index),
@@ -86,7 +98,7 @@ export default function Home() {
     duration: video.duration || (180 + Math.floor(Math.random() * 120)),
     views: video.views || (1000 + Math.floor(Math.random() * 50000)),
     likes: video.likes || (100 + Math.floor(Math.random() * 5000))
-  }));
+  })), [typedVideos]);
 
   // Auto-change hero every 6 seconds
   useEffect(() => {
@@ -118,34 +130,16 @@ export default function Home() {
     setVideoForPlayer(null);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="text-6xl font-bold text-white tracking-wider">SAANSE</div>
-          <div className="text-gray-400 text-lg">Loading divine stories...</div>
-          <div className="w-64 h-1 bg-gray-800 rounded-full mx-auto overflow-hidden">
-            <div className="h-full bg-red-600 w-3/4 animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const featuredVideo = enhancedVideos[currentHeroIndex] || enhancedVideos[0];
-
-  // Filter videos based on selected category
-  const getFilteredVideos = () => {
+  // Filter videos based on selected category - memoized (moved before early return)
+  const filteredVideos = useMemo(() => {
     if (selectedCategory === "Home") {
       return enhancedVideos; // Show all videos for home
     }
     return enhancedVideos.filter(v => v.category === selectedCategory);
-  };
+  }, [enhancedVideos, selectedCategory]);
 
-  const filteredVideos = getFilteredVideos();
-
-  // Organize videos into sections based on selected category
-  const getCategorySections = () => {
+  // Organize videos into sections based on selected category - memoized (moved before early return)
+  const sections = useMemo(() => {
     if (selectedCategory === "Home") {
       // Original home page sections
       return {
@@ -169,9 +163,38 @@ export default function Home() {
         recentInCategory: categoryVideos.slice(20, 30)
       };
     }
-  };
+  }, [enhancedVideos, selectedCategory, filteredVideos]);
 
-  const sections = getCategorySections();
+  const featuredVideo = enhancedVideos[currentHeroIndex] || enhancedVideos[0];
+
+  // Early return if not authenticated (Safari compatibility)
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="text-6xl font-bold text-white tracking-wider">SAANSE</div>
+          <div className="text-gray-400 text-lg">Redirecting to login...</div>
+          <div className="w-64 h-1 bg-gray-800 rounded-full mx-auto overflow-hidden">
+            <div className="h-full bg-red-600 w-3/4 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="text-6xl font-bold text-white tracking-wider">SAANSE</div>
+          <div className="text-gray-400 text-lg">Loading divine stories...</div>
+          <div className="w-64 h-1 bg-gray-800 rounded-full mx-auto overflow-hidden">
+            <div className="h-full bg-red-600 w-3/4 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleVideoClick = (video: any) => {
     setSelectedVideo(video);

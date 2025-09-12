@@ -78,35 +78,28 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Service Worker Registration - Force Refresh for SAANSE -->
+    <!-- Service Worker Registration - Safari Compatible -->
     <script>
-      if ('serviceWorker' in navigator) {
+      // Safari detection
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafariBrowser = isSafari || isIOS;
+      
+      // Only register service worker for non-Safari browsers
+      if ('serviceWorker' in navigator && !isSafariBrowser) {
         window.addEventListener('load', async () => {
           try {
-            // Unregister any existing service workers
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let registration of registrations) {
-              await registration.unregister();
-            }
-            
-            // Clear all caches
-            if ('caches' in window) {
-              const cacheNames = await caches.keys();
-              for (let cacheName of cacheNames) {
-                await caches.delete(cacheName);
-              }
-            }
-            
-            // Register new service worker
+            // Register service worker without force reload
             const registration = await navigator.serviceWorker.register('/sw.js');
             console.log('SAANSE SW registered: ', registration);
             
-            // Force page reload if service worker is updated
+            // Handle updates without automatic reload
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  window.location.reload();
+                  console.log('New service worker available - reload manually if needed');
+                  // Don't auto-reload - let user choose
                 }
               });
             });
@@ -114,6 +107,8 @@
             console.log('SW registration failed: ', error);
           }
         });
+      } else {
+        console.log('Service worker disabled for Safari compatibility');
       }
     </script>
     

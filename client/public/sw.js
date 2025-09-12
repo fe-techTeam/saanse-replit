@@ -3,6 +3,11 @@ const CACHE_NAME = 'saanse-v3.0.0';
 const STATIC_CACHE = 'saanse-static-v3.0.0';
 const DYNAMIC_CACHE = 'saanse-dynamic-v3.0.0';
 
+// Safari detection
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isSafariBrowser = isSafari || isIOS;
+
 const staticAssets = [
   '/',
   '/src/main.tsx',
@@ -81,28 +86,30 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Handle navigation requests
+  // Handle navigation requests - Safari compatibility
   if (request.mode === 'navigate') {
+    // For Safari, bypass service worker for navigation requests to prevent reload loops
+    if (isSafariBrowser) {
+      event.respondWith(fetch(request));
+      return;
+    }
+    
     event.respondWith(
       fetch(request)
         .then(response => {
-          // Cache successful navigation responses
-          if (response.ok) {
-            const responseClone = response.clone();
-            caches.open(DYNAMIC_CACHE).then(cache => {
-              cache.put(request, responseClone);
-            });
-          }
+          // Don't cache navigation responses to prevent reload issues
           return response;
         })
         .catch(() => {
-          // Fallback to cache or offline page
+          // Only return cached response if it exists, otherwise let network handle it
           return caches.match(request).then(cachedResponse => {
             if (cachedResponse) {
               return cachedResponse;
             }
-            // Return cached index for SPA routing
-            return caches.match('/');
+            // For SPA routing, return cached index only if available
+            return caches.match('/').then(indexResponse => {
+              return indexResponse || Response.error();
+            });
           });
         })
     );

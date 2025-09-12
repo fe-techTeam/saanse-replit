@@ -113,7 +113,7 @@ export default function WatchList() {
             <div className="text-red-500 text-xl mb-4">Error loading Watch List</div>
             <p className="text-gray-400 mb-4">{error.message}</p>
             <Button
-              onClick={() => window.location.reload()}
+              onClick={() => navigate('/watchlist', { replace: true })}
               className="bg-dharma-gold hover:bg-dharma-gold-light text-dharma-dark"
             >
               Retry
