@@ -9,7 +9,10 @@
       "Bash(cmd /c:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

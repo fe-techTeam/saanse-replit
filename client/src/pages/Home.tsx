@@ -8,6 +8,7 @@ import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { NetflixHero } from "@/components/NetflixHero";
 import { NetflixRow } from "@/components/NetflixRow";
 import { WatchLaterButton } from "@/components/WatchLaterButton";
+import { MoreInfoDialog } from "@/components/MoreInfoDialog";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,8 @@ export default function Home() {
   const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [moreInfoVideo, setMoreInfoVideo] = useState<any>(null);
+  const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   // Home no longer filters by category – series-centric
 
   // Safari cleanup on unmount
@@ -151,6 +154,16 @@ export default function Home() {
   const handleCloseVideoPlayer = () => {
     setIsVideoPlayerOpen(false);
     setVideoForPlayer(null);
+  };
+
+  const handleMoreInfo = (video: any) => {
+    setMoreInfoVideo(video);
+    setIsMoreInfoOpen(true);
+  };
+
+  const handleCloseMoreInfo = () => {
+    setIsMoreInfoOpen(false);
+    setMoreInfoVideo(null);
   };
 
   if (isLoading) {
@@ -274,7 +287,7 @@ export default function Home() {
           <NetflixHero
             video={featuredVideo}
             onPlay={() => handlePlayVideo(featuredVideo)}
-            onMoreInfo={() => setSelectedVideo(featuredVideo)}
+            onMoreInfo={() => handleMoreInfo(featuredVideo)}
           />
         )}
       </div>
@@ -465,6 +478,16 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* More Info Dialog */}
+      {moreInfoVideo && (
+        <MoreInfoDialog
+          isOpen={isMoreInfoOpen}
+          onClose={handleCloseMoreInfo}
+          video={moreInfoVideo}
+          onPlay={handleVideoPlay}
+        />
       )}
 
       <YouTubeStylePlayer
