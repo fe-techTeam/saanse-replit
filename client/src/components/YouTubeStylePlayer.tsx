@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useReducer, useCallback } from "react";
+import { useState, useRef, useEffect, useReducer, useCallback, useMemo } from "react";
 import { 
   X, 
   Play, 
@@ -9,19 +9,17 @@ import {
   Minimize, 
   SkipBack, 
   SkipForward,
-  Heart,
-  Share2,
-  Download,
   Settings,
   MoreVertical,
   Repeat,
   Shuffle,
   Loader2,
-  Subtitles
+  Subtitles,
+  List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { WatchLaterButton } from "@/components/WatchLaterButton";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { PlaylistModal } from "@/components/PlaylistModal";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { VideoType } from "@/types/video";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,8 +42,6 @@ interface PlayerState {
   isMuted: boolean;
   isFullscreen: boolean;
   showControls: boolean;
-  isLiked: boolean;
-  showInfo: boolean;
   playbackRate: number;
   isSeekBarHovered: boolean;
   isLoop: boolean;
@@ -55,6 +51,10 @@ interface PlayerState {
   showSubtitles: boolean;
   currentPlaylist: VideoType[];
   currentPlaylistIndex: number;
+  showPlaylistModal: boolean;
+  canPlay: boolean;
+  hasAttemptedPlay: boolean;
+  playbackError: string | null;
 }
 
 type PlayerAction = 
@@ -65,8 +65,6 @@ type PlayerAction =
   | { type: 'SET_MUTED'; payload: boolean }
   | { type: 'SET_FULLSCREEN'; payload: boolean }
   | { type: 'SET_SHOW_CONTROLS'; payload: boolean }
-  | { type: 'SET_LIKED'; payload: boolean }
-  | { type: 'SET_SHOW_INFO'; payload: boolean }
   | { type: 'SET_PLAYBACK_RATE'; payload: number }
   | { type: 'SET_SEEKBAR_HOVERED'; payload: boolean }
   | { type: 'SET_LOOP'; payload: boolean }
@@ -76,6 +74,10 @@ type PlayerAction =
   | { type: 'SET_SUBTITLES'; payload: boolean }
   | { type: 'SET_PLAYLIST'; payload: { playlist: VideoType[]; currentIndex: number } }
   | { type: 'SET_PLAYLIST_INDEX'; payload: number }
+  | { type: 'SET_PLAYLIST_MODAL'; payload: boolean }
+  | { type: 'SET_CAN_PLAY'; payload: boolean }
+  | { type: 'SET_HAS_ATTEMPTED_PLAY'; payload: boolean }
+  | { type: 'SET_PLAYBACK_ERROR'; payload: string | null }
   | { type: 'RESET_PLAYER' };
 
 const initialPlayerState: PlayerState = {
@@ -84,19 +86,21 @@ const initialPlayerState: PlayerState = {
   duration: 0,
   volume: 1,
   isMuted: false,
-  isFullscreen: false,
+  isFullscreen: true,
   showControls: true,
-  isLiked: false,
-  showInfo: true,
   playbackRate: 1,
   isSeekBarHovered: false,
   isLoop: false,
   isRandom: false,
-  isLoading: true,
+  isLoading: false,
   error: null,
   showSubtitles: false,
   currentPlaylist: [],
   currentPlaylistIndex: -1,
+  showPlaylistModal: false,
+  canPlay: false,
+  hasAttemptedPlay: false,
+  playbackError: null,
 };
 
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
@@ -115,10 +119,6 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       return { ...state, isFullscreen: action.payload };
     case 'SET_SHOW_CONTROLS':
       return { ...state, showControls: action.payload };
-    case 'SET_LIKED':
-      return { ...state, isLiked: action.payload };
-    case 'SET_SHOW_INFO':
-      return { ...state, showInfo: action.payload };
     case 'SET_PLAYBACK_RATE':
       return { ...state, playbackRate: action.payload };
     case 'SET_SEEKBAR_HOVERED':
@@ -137,6 +137,14 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       return { ...state, currentPlaylist: action.payload.playlist, currentPlaylistIndex: action.payload.currentIndex };
     case 'SET_PLAYLIST_INDEX':
       return { ...state, currentPlaylistIndex: action.payload };
+    case 'SET_PLAYLIST_MODAL':
+      return { ...state, showPlaylistModal: action.payload };
+    case 'SET_CAN_PLAY':
+      return { ...state, canPlay: action.payload };
+    case 'SET_HAS_ATTEMPTED_PLAY':
+      return { ...state, hasAttemptedPlay: action.payload };
+    case 'SET_PLAYBACK_ERROR':
+      return { ...state, playbackError: action.payload, error: action.payload };
     case 'RESET_PLAYER':
       return { ...initialPlayerState };
     default:
@@ -154,20 +162,31 @@ export function YouTubeStylePlayer({
   onVideoChange
 }: YouTubeStylePlayerProps) {
   const [playerState, dispatch] = useReducer(playerReducer, initialPlayerState);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
   const cleanupRef = useRef<(() => void)[]>([]);
+  const lastVideoIdRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const getVideoUrl = useCallback(() => {
+  // Memoize video URL to prevent multiple requests
+  const videoUrl = useMemo(() => {
     if (!video?.video_url) {
+      console.warn('No video URL provided, using fallback');
       return "https://res.cloudinary.com/demo/video/upload/samples/cld-sample-video.mp4";
     }
-    return video.video_url;
+    
+    // Validate URL format
+    try {
+      new URL(video.video_url);
+      return video.video_url;
+    } catch (error) {
+      console.error('Invalid video URL format:', video.video_url, 'Using fallback');
+      return "https://res.cloudinary.com/demo/video/upload/samples/cld-sample-video.mp4";
+    }
   }, [video?.video_url]);
 
   const addCleanup = useCallback((cleanup: () => void) => {
@@ -190,101 +209,60 @@ export function YouTubeStylePlayer({
     if (!isOpen) {
       // When closing player, stop video and clean up
       const videoEl = videoRef.current;
-      if (videoEl) {
+      if (videoEl && videoEl.src) {
         videoEl.pause();
         videoEl.currentTime = 0;
-        videoEl.src = '';
-        videoEl.load(); // Reset video element
+        videoEl.removeAttribute('src');
+        videoEl.load();
       }
       runCleanups();
       dispatch({ type: 'RESET_PLAYER' });
       return;
     }
 
-    if (video) {
-      // When changing video, reset playback state completely
-      console.log('Resetting video state for new video:', video.title);
+    if (video && isOpen) {
+      // When changing video, reset playback state
       dispatch({ type: 'SET_TIME', payload: 0 });
       dispatch({ type: 'SET_DURATION', payload: 0 });
       dispatch({ type: 'SET_PLAYING', payload: false });
-      dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       dispatch({ type: 'SET_SHOW_CONTROLS', payload: true });
-      dispatch({ type: 'SET_SEEKBAR_HOVERED', payload: false });
-      
-      // Reset video element properly
-      const videoEl = videoRef.current;
-      if (videoEl) {
-        videoEl.pause();
-        videoEl.currentTime = 0;
-        // Don't reset src here as it will be set in the next effect
-      }
-      
-      // Keep user preferences: loop, random, volume, muted, subtitles, etc.
+      dispatch({ type: 'SET_FULLSCREEN', payload: true });
+      dispatch({ type: 'SET_CAN_PLAY', payload: false });
+      dispatch({ type: 'SET_HAS_ATTEMPTED_PLAY', payload: false });
+      dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
     }
   }, [isOpen, video?.id, runCleanups]);
 
-  // Fetch related videos from Supabase
-  const { data: relatedVideos = [], isLoading: isLoadingRelated, error: relatedError } = useQuery<VideoType[]>({
-    queryKey: ["/api/videos/related", video?.id, video?.category, JSON.stringify(video?.tags)],
-    queryFn: async () => {
-      if (!video) return [];
-      
-      const tagsArray = Array.isArray(video.tags) ? video.tags : [];
-      const searchParams = new URLSearchParams();
-      searchParams.set('category', video.category || 'Unknown');
-      if (tagsArray.length > 0) {
-        searchParams.set('tags', tagsArray.join(','));
+
+  // Monitor network status
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Only retry if we actually have a network-related error
+      if (playerState.playbackError?.includes('Network') && video && !playerState.isPlaying) {
+        dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
+        dispatch({ type: 'SET_HAS_ATTEMPTED_PLAY', payload: false });
       }
-      searchParams.set('exclude', video.id);
-      searchParams.set('limit', '12');
-      
-      const response = await apiRequest("GET", `/api/videos/related?${searchParams.toString()}`);
-      const result = await response.json();
-      return Array.isArray(result) ? result : [];
-    },
-    enabled: !!video && isOpen,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-
-  // Build playlist when video changes or related videos are loaded
-  useEffect(() => {
-    if (!video || !isOpen) return;
-    
-    // Create playlist: current video + related videos
-    const playlist = [video, ...relatedVideos];
-    
-    // Find current video index in the new playlist
-    const currentIndex = playlist.findIndex(v => v.id === video.id);
-    const finalIndex = currentIndex >= 0 ? currentIndex : 0;
-    
-    // Only update if playlist actually changed or current video changed
-    const currentPlaylistIds = playerState.currentPlaylist.map(v => v.id).join(',');
-    const newPlaylistIds = playlist.map(v => v.id).join(',');
-    
-    if (currentPlaylistIds !== newPlaylistIds || playerState.currentPlaylistIndex !== finalIndex) {
-      console.log('Updating playlist:', {
-        playlistLength: playlist.length,
-        currentIndex: finalIndex,
-        currentVideo: video.title
-      });
-      dispatch({ type: 'SET_PLAYLIST', payload: { playlist, currentIndex: finalIndex } });
-    }
-  }, [video?.id, relatedVideos, isOpen, playerState.currentPlaylist, playerState.currentPlaylistIndex]);
-
-
-  // Check for mobile device
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
     };
     
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    addCleanup(() => window.removeEventListener('resize', checkMobile));
-  }, [addCleanup]);
+    const handleOffline = () => {
+      setIsOnline(false);
+      if (playerState.isPlaying) {
+        dispatch({ type: 'SET_PLAYBACK_ERROR', payload: 'No internet connection' });
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    addCleanup(() => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    });
+  }, [isOpen, video?.id, playerState.playbackError, playerState.isPlaying, addCleanup]);
 
   // API mutations
   const viewMutation = useMutation({
@@ -293,14 +271,6 @@ export function YouTubeStylePlayer({
     },
   });
 
-  const likeMutation = useMutation({
-    mutationFn: async (videoId: string) => {
-      await apiRequest("POST", `/api/videos/${videoId}/likes`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-    },
-  });
 
   const historyMutation = useMutation({
     mutationFn: async (data: { userId: string; videoId: string; progress: number }) => {
@@ -322,7 +292,7 @@ export function YouTubeStylePlayer({
     }
   }, [isOpen, video?.id, user?.id]);
 
-  // Video element setup and autoplay
+  // Video element setup with enhanced error handling and fallbacks
   useEffect(() => {
     if (!isOpen || !video) return;
 
@@ -330,44 +300,172 @@ export function YouTubeStylePlayer({
     if (!videoEl) return;
 
     let isComponentMounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+    let isSetupComplete = false;
+    let hasSetSource = false;
 
     const setupVideo = async () => {
+      // Skip if already setup for this video
+      if (isSetupComplete || lastVideoIdRef.current === video.id) return;
+      
       try {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        videoEl.load();
-
-        const handleCanPlay = () => {
-          if (!isComponentMounted) return;
-          console.log('Video can play, attempting autoplay');
-          dispatch({ type: 'SET_LOADING', payload: false });
+        // Set video source with error handling
+        const currentVideoUrl = videoUrl;
+        
+        // Only set source if it's actually different
+        if (videoEl.src !== currentVideoUrl) {
+          console.log('Setting up new video:', video.title, currentVideoUrl);
+          lastVideoIdRef.current = video.id;
+          hasSetSource = true;
+          dispatch({ type: 'SET_LOADING', payload: true });
           
-          // Attempt autoplay
-          const playPromise = videoEl.play();
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                if (isComponentMounted) {
-                  console.log('Autoplay successful');
-                  dispatch({ type: 'SET_PLAYING', payload: true });
+          // Clear existing source first to prevent conflicts
+          if (videoEl.src) {
+            videoEl.removeAttribute('src');
+            videoEl.load();
+          }
+          
+          // Set new source
+          videoEl.src = currentVideoUrl;
+          videoEl.preload = 'auto';
+          videoEl.crossOrigin = 'anonymous';
+          videoEl.load();
+        }
+
+        const handleCanPlay = async () => {
+          if (!isComponentMounted || isSetupComplete) return;
+          
+          dispatch({ type: 'SET_LOADING', payload: false });
+          dispatch({ type: 'SET_CAN_PLAY', payload: true });
+          isSetupComplete = true;
+          
+          // Attempt autoplay with retry logic
+          await attemptAutoplay();
+        };
+
+        const attemptAutoplay = async () => {
+          if (!isComponentMounted) return;
+          
+          dispatch({ type: 'SET_HAS_ATTEMPTED_PLAY', payload: true });
+
+          try {
+            // Ensure video is in a playable state
+            if (videoEl.readyState < 3) { // HAVE_FUTURE_DATA
+              console.log('Video not ready for playback, waiting...');
+              return;
+            }
+
+            const playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+              await playPromise;
+              if (isComponentMounted) {
+                console.log('Autoplay successful');
+                dispatch({ type: 'SET_PLAYING', payload: true });
+                dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
+              }
+            }
+          } catch (error: any) {
+            console.warn('Autoplay failed:', error.message);
+            if (isComponentMounted) {
+              // Handle different types of autoplay errors
+              if (error.name === 'NotAllowedError') {
+                console.log('Autoplay blocked by browser policy - user interaction required');
+                dispatch({ type: 'SET_PLAYING', payload: false });
+                dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null }); // Don't show error for autoplay block
+              } else if (error.name === 'AbortError') {
+                console.log('Playback aborted - possibly due to new load');
+                dispatch({ type: 'SET_PLAYING', payload: false });
+              } else {
+                // Retry for network or other errors
+                if (retryCount < maxRetries) {
+                  retryCount++;
+                  console.log(`Retrying playback (${retryCount}/${maxRetries})...`);
+                  setTimeout(() => {
+                    if (isComponentMounted) {
+                      dispatch({ type: 'SET_HAS_ATTEMPTED_PLAY', payload: false });
+                      attemptAutoplay();
+                    }
+                  }, 1000 * retryCount);
+                } else {
+                  dispatch({ type: 'SET_PLAYBACK_ERROR', payload: `Playback failed: ${error.message}` });
                 }
-              })
-              .catch((error) => {
-                console.log('Autoplay blocked:', error.message);
-                if (isComponentMounted) {
-                  dispatch({ type: 'SET_PLAYING', payload: false });
-                }
-              });
+              }
+            }
           }
         };
 
         const handleLoadedMetadata = () => {
-          if (isComponentMounted && videoEl.duration) {
+          if (isComponentMounted && videoEl.duration && !isNaN(videoEl.duration) && !isSetupComplete) {
             dispatch({ type: 'SET_DURATION', payload: videoEl.duration });
           }
         };
 
-        videoEl.addEventListener('canplay', handleCanPlay, { once: true });
-        videoEl.addEventListener('loadedmetadata', handleLoadedMetadata);
+        const handleLoadedData = () => {
+          if (isComponentMounted) {
+            console.log('Video data loaded - ready for playback');
+          }
+        };
+
+        const handleError = (event: Event) => {
+          if (!isComponentMounted) return;
+          
+          const error = (event.target as HTMLVideoElement)?.error;
+          let errorMessage = 'Video playback error';
+          
+          if (error) {
+            switch (error.code) {
+              case error.MEDIA_ERR_ABORTED:
+                errorMessage = 'Video playback aborted';
+                break;
+              case error.MEDIA_ERR_NETWORK:
+                errorMessage = 'Network error while loading video';
+                break;
+              case error.MEDIA_ERR_DECODE:
+                errorMessage = 'Video decoding error';
+                break;
+              case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                errorMessage = 'Video format not supported';
+                break;
+              default:
+                errorMessage = `Video error (${error.code})`;
+            }
+          }
+          
+          console.error('Video error:', errorMessage, error);
+          dispatch({ type: 'SET_PLAYBACK_ERROR', payload: errorMessage });
+          dispatch({ type: 'SET_LOADING', payload: false });
+        };
+
+        const handleWaiting = () => {
+          if (isComponentMounted) {
+            dispatch({ type: 'SET_LOADING', payload: true });
+          }
+        };
+
+        const handlePlaying = () => {
+          if (isComponentMounted) {
+            dispatch({ type: 'SET_LOADING', payload: false });
+            dispatch({ type: 'SET_PLAYING', payload: true });
+          }
+        };
+
+        const handlePause = () => {
+          if (isComponentMounted) {
+            dispatch({ type: 'SET_PLAYING', payload: false });
+          }
+        };
+
+        // Add all event listeners - only if not already added
+        if (!isSetupComplete) {
+          videoEl.addEventListener('canplay', handleCanPlay, { once: true });
+          videoEl.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+          videoEl.addEventListener('loadeddata', handleLoadedData, { once: true });
+          videoEl.addEventListener('error', handleError);
+          videoEl.addEventListener('waiting', handleWaiting);
+          videoEl.addEventListener('playing', handlePlaying);
+          videoEl.addEventListener('pause', handlePause);
+        }
 
         // Handle subtitle track visibility
         const handleSubtitleChange = () => {
@@ -379,17 +477,26 @@ export function YouTubeStylePlayer({
           }
         };
 
-        // Set initial subtitle state
         handleSubtitleChange();
 
         addCleanup(() => {
           isComponentMounted = false;
+          isSetupComplete = false;
+          hasSetSource = false;
+          lastVideoIdRef.current = null;
           videoEl.removeEventListener('canplay', handleCanPlay);
           videoEl.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          videoEl.removeEventListener('loadeddata', handleLoadedData);
+          videoEl.removeEventListener('error', handleError);
+          videoEl.removeEventListener('waiting', handleWaiting);
+          videoEl.removeEventListener('playing', handlePlaying);
+          videoEl.removeEventListener('pause', handlePause);
         });
-      } catch (error) {
+
+      } catch (error: any) {
+        console.error('Video setup error:', error);
         if (isComponentMounted) {
-          dispatch({ type: 'SET_ERROR', payload: 'Failed to load video' });
+          dispatch({ type: 'SET_PLAYBACK_ERROR', payload: `Setup failed: ${error.message}` });
         }
       }
     };
@@ -398,8 +505,10 @@ export function YouTubeStylePlayer({
 
     return () => {
       isComponentMounted = false;
+      isSetupComplete = false;
+      hasSetSource = false;
     };
-  }, [isOpen, video?.id, playerState.showSubtitles, addCleanup]);
+  }, [isOpen, video?.id, addCleanup]);
 
   // Handle subtitle track visibility when showSubtitles changes
   useEffect(() => {
@@ -431,28 +540,8 @@ export function YouTubeStylePlayer({
     if (videoEl.playbackRate !== playerState.playbackRate) {
       videoEl.playbackRate = playerState.playbackRate;
     }
-
-    console.log('Video element state synced:', {
-      volume: videoEl.volume,
-      muted: videoEl.muted,
-      paused: videoEl.paused,
-      currentTime: videoEl.currentTime,
-      duration: videoEl.duration
-    });
   }, [playerState.volume, playerState.isMuted, playerState.playbackRate, isOpen]);
 
-  // Debug effect to track state changes
-  useEffect(() => {
-    console.log('Player state changed:', {
-      isPlaying: playerState.isPlaying,
-      isLoading: playerState.isLoading,
-      error: playerState.error,
-      currentTime: playerState.currentTime,
-      duration: playerState.duration,
-      playlistIndex: playerState.currentPlaylistIndex,
-      playlistLength: playerState.currentPlaylist.length
-    });
-  }, [playerState.isPlaying, playerState.isLoading, playerState.error, playerState.currentTime, playerState.duration, playerState.currentPlaylistIndex, playerState.currentPlaylist.length]);
 
   // Video event listeners
   useEffect(() => {
@@ -470,9 +559,6 @@ export function YouTubeStylePlayer({
         dispatch({ type: 'SET_DURATION', payload: videoEl.duration });
       }
     };
-
-    const handlePlay = () => dispatch({ type: 'SET_PLAYING', payload: true });
-    const handlePause = () => dispatch({ type: 'SET_PLAYING', payload: false });
     
     const handleEnded = () => {
       console.log('Video ended. Loop enabled:', playerState.isLoop);
@@ -525,30 +611,45 @@ export function YouTubeStylePlayer({
       dispatch({ type: 'SET_MUTED', payload: videoEl.muted });
     };
 
-    const handleError = () => {
-      dispatch({ type: 'SET_ERROR', payload: 'Video playback error' });
+    const handleError = (event: Event) => {
+      const target = event.target as HTMLVideoElement;
+      const error = target?.error;
+      
+      let errorMessage = 'Video playback error';
+      if (error) {
+        switch (error.code) {
+          case error.MEDIA_ERR_ABORTED:
+            errorMessage = 'Video playback was aborted';
+            break;
+          case error.MEDIA_ERR_NETWORK:
+            errorMessage = 'Network error occurred';
+            break;
+          case error.MEDIA_ERR_DECODE:
+            errorMessage = 'Video decoding failed';
+            break;
+          case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = 'Video format not supported';
+            break;
+          default:
+            errorMessage = `Video error (code: ${error.code})`;
+        }
+      }
+      
+      console.error('Video playback error:', errorMessage, error);
+      dispatch({ type: 'SET_PLAYBACK_ERROR', payload: errorMessage });
       dispatch({ type: 'SET_PLAYING', payload: false });
-    };
-
-    const handleLoadStart = () => {
-      dispatch({ type: 'SET_LOADING', payload: true });
-    };
-
-    const handleCanPlay = () => {
       dispatch({ type: 'SET_LOADING', payload: false });
     };
+
+
 
     const events = [
       ['timeupdate', updateTime],
       ['loadedmetadata', updateDuration],
       ['durationchange', updateDuration],
-      ['play', handlePlay],
-      ['pause', handlePause],
       ['ended', handleEnded],
       ['volumechange', handleVolumeChange],
       ['error', handleError],
-      ['loadstart', handleLoadStart],
-      ['canplay', handleCanPlay],
     ] as const;
 
     events.forEach(([event, handler]) => {
@@ -560,7 +661,7 @@ export function YouTubeStylePlayer({
         videoEl.removeEventListener(event, handler);
       });
     });
-  }, [isOpen, onNext, playerState.isLoop, relatedVideos, video?.id, onVideoChange, addCleanup]);
+  }, [isOpen, onNext, playerState.isLoop, video?.id, onVideoChange, addCleanup]);
 
   // Handle loop state change - update video element loop attribute
   useEffect(() => {
@@ -570,15 +671,6 @@ export function YouTubeStylePlayer({
     }
   }, [playerState.isLoop, isOpen]);
 
-  // Auto-advance to next video when loop is disabled and we have related videos
-  useEffect(() => {
-    console.log('Playlist mode update:', {
-      isLoop: playerState.isLoop,
-      hasRelatedVideos: relatedVideos?.length > 0,
-      currentVideo: video?.id,
-      relatedCount: relatedVideos?.length
-    });
-  }, [playerState.isLoop, relatedVideos?.length, video?.id]);
 
   // Auto-hide controls with smooth transitions
   useEffect(() => {
@@ -591,7 +683,7 @@ export function YouTubeStylePlayer({
       
       dispatch({ type: 'SET_SHOW_CONTROLS', payload: true });
       
-      if (playerState.isPlaying && !isMobile) {
+      if (playerState.isPlaying) {
         controlsTimeoutRef.current = setTimeout(() => {
           dispatch({ type: 'SET_SHOW_CONTROLS', payload: false });
         }, 3000);
@@ -602,7 +694,7 @@ export function YouTubeStylePlayer({
 
     const handleMouseMove = () => resetControlsTimeout();
     const handleMouseLeave = () => {
-      if (playerState.isPlaying && !isMobile) {
+      if (playerState.isPlaying) {
         dispatch({ type: 'SET_SHOW_CONTROLS', payload: false });
       }
     };
@@ -628,7 +720,7 @@ export function YouTubeStylePlayer({
         clearTimeout(controlsTimeoutRef.current);
       }
     });
-  }, [isOpen, playerState.isPlaying, playerState.showControls, isMobile, addCleanup]);
+  }, [isOpen, playerState.isPlaying, playerState.showControls, addCleanup]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -817,50 +909,101 @@ export function YouTubeStylePlayer({
       return;
     }
 
-    console.log('Toggle play called. Current state:', playerState.isPlaying);
-    console.log('Video element paused:', videoEl.paused);
-    console.log('Video element readyState:', videoEl.readyState);
+    console.log('Toggle play called. Current state:', {
+      isPlaying: playerState.isPlaying,
+      paused: videoEl.paused,
+      readyState: videoEl.readyState,
+      canPlay: playerState.canPlay,
+      hasError: !!playerState.playbackError
+    });
 
     try {
+      dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
+
       if (playerState.isPlaying || !videoEl.paused) {
-        console.log('Attempting to pause video');
+        console.log('Pausing video');
         videoEl.pause();
         dispatch({ type: 'SET_PLAYING', payload: false });
-      } else {
-        console.log('Attempting to play video');
-        // Ensure video is ready
-        if (videoEl.readyState >= 2) { // HAVE_CURRENT_DATA
-          const playPromise = videoEl.play();
-          if (playPromise !== undefined) {
-            await playPromise;
-            dispatch({ type: 'SET_PLAYING', payload: true });
-          }
-        } else {
-          console.log('Video not ready, waiting for canplay event');
-          const waitForReady = () => {
-            return new Promise<void>((resolve) => {
-              const handleCanPlay = () => {
-                videoEl.removeEventListener('canplay', handleCanPlay);
-                resolve();
-              };
-              videoEl.addEventListener('canplay', handleCanPlay, { once: true });
-            });
-          };
-          
-          await waitForReady();
-          const playPromise = videoEl.play();
-          if (playPromise !== undefined) {
-            await playPromise;
-            dispatch({ type: 'SET_PLAYING', payload: true });
-          }
-        }
+        return;
       }
-    } catch (error) {
-      console.error('Playback error:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Playback failed: ${error.message}` });
+
+      // Attempt to play
+      console.log('Attempting to play video');
+
+      // Check if video is ready for playback
+      if (videoEl.readyState < 2) { // Less than HAVE_CURRENT_DATA
+        console.log('Video not ready, waiting...');
+        dispatch({ type: 'SET_LOADING', payload: true });
+        
+        // Wait for video to be ready
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Video loading timeout'));
+          }, 10000); // 10 second timeout
+
+          const handleCanPlay = () => {
+            cleanup();
+            resolve();
+          };
+
+          const handleError = () => {
+            cleanup();
+            reject(new Error('Video loading failed'));
+          };
+
+          const cleanup = () => {
+            clearTimeout(timeout);
+            videoEl.removeEventListener('canplay', handleCanPlay);
+            videoEl.removeEventListener('error', handleError);
+          };
+
+          videoEl.addEventListener('canplay', handleCanPlay, { once: true });
+          videoEl.addEventListener('error', handleError, { once: true });
+        });
+
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+
+      // Now attempt playback
+      const playPromise = videoEl.play();
+      
+      if (playPromise !== undefined) {
+        await playPromise;
+        console.log('Playback successful');
+        dispatch({ type: 'SET_PLAYING', payload: true });
+        dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
+      } else {
+        console.warn('Play promise undefined - old browser?');
+        // For older browsers that don't return a promise
+        setTimeout(() => {
+          if (!videoEl.paused) {
+            dispatch({ type: 'SET_PLAYING', payload: true });
+          }
+        }, 100);
+      }
+
+    } catch (error: any) {
+      console.error('Toggle play error:', error);
+      
+      let errorMessage = error.message || 'Unknown playback error';
+      
+      // Handle specific error types
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Playback requires user interaction';
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = 'Video format not supported';
+      } else if (error.name === 'AbortError') {
+        errorMessage = 'Playback was interrupted';
+        // Don't show error for abort - usually means user changed video
+        return;
+      }
+
+      dispatch({ type: 'SET_PLAYBACK_ERROR', payload: errorMessage });
       dispatch({ type: 'SET_PLAYING', payload: false });
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [playerState.isPlaying]);
+  }, [playerState.isPlaying, playerState.canPlay, playerState.playbackError]);
 
   const skipTime = useCallback((seconds: number) => {
     const videoEl = videoRef.current;
@@ -972,35 +1115,6 @@ export function YouTubeStylePlayer({
     }
   }, []);
 
-  const handleLike = useCallback(() => {
-    if (!video) return;
-    
-    dispatch({ type: 'SET_LIKED', payload: !playerState.isLiked });
-    likeMutation.mutate(video.id);
-  }, [video?.id, playerState.isLiked, likeMutation]);
-
-  const handleShare = useCallback(async () => {
-    if (!video) return;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: video.title,
-          text: video.description,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.log('Share cancelled');
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        // You could add a toast notification here
-      } catch (error) {
-        console.warn('Failed to copy to clipboard');
-      }
-    }
-  }, [video?.title, video?.description]);
 
   const toggleLoop = useCallback(() => {
     dispatch({ type: 'SET_LOOP', payload: !playerState.isLoop });
@@ -1014,11 +1128,10 @@ export function YouTubeStylePlayer({
     dispatch({ type: 'SET_SUBTITLES', payload: !playerState.showSubtitles });
   }, [playerState.showSubtitles]);
 
-  const handleRelatedVideoClick = useCallback((relatedVideo: VideoType) => {
-    if (onVideoChange) {
-      onVideoChange(relatedVideo);
-    }
-  }, [onVideoChange]);
+  const togglePlaylistModal = useCallback(() => {
+    dispatch({ type: 'SET_PLAYLIST_MODAL', payload: !playerState.showPlaylistModal });
+  }, [playerState.showPlaylistModal]);
+
 
   // Navigation functions for playlist
   const handleNext = useCallback(() => {
@@ -1177,38 +1290,84 @@ export function YouTubeStylePlayer({
   return (
     <div 
       ref={containerRef}
-      className={`fixed inset-0 bg-black z-50 transition-all duration-300 ${playerState.isFullscreen ? '' : isMobile ? 'flex flex-col' : 'flex'}`}
+      className="fixed inset-0 bg-black z-50"
     >
-      {/* Video Container */}
-      <div className={`relative flex items-center justify-center ${isMobile && !playerState.isFullscreen ? 'h-[40vh]' : 'flex-1'}`}>
+      {/* Video Container - Always Fullscreen */}
+      <div className="relative flex items-center justify-center h-full w-full">
         {/* Loading Overlay */}
-        {playerState.isLoading && (
+        {playerState.isLoading && !playerState.error && !playerState.playbackError && (
           <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-10">
             <div className="flex flex-col items-center space-y-4">
               <Loader2 className="w-12 h-12 text-white animate-spin" />
-              <p className="text-white text-sm">Loading video...</p>
+              <p className="text-white text-sm">
+                {!playerState.canPlay ? 'Loading video...' : 'Buffering...'}
+              </p>
+              <p className="text-gray-400 text-xs">
+                {video?.title}
+              </p>
+              {!isOnline && (
+                <p className="text-orange-400 text-xs">
+                  ⚠️ No internet connection
+                </p>
+              )}
             </div>
           </div>
         )}
 
         {/* Error Overlay */}
-        {playerState.error && (
+        {(playerState.error || playerState.playbackError) && (
           <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-10">
-            <div className="flex flex-col items-center space-y-4">
+            <div className="flex flex-col items-center space-y-4 max-w-md mx-auto p-6">
               <div className="text-red-500 text-6xl">⚠️</div>
-              <p className="text-white text-lg">{playerState.error}</p>
-              <Button
-                onClick={() => dispatch({ type: 'SET_ERROR', payload: null })}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Try Again
-              </Button>
+              <h3 className="text-white text-xl font-semibold">Playback Error</h3>
+              <p className="text-gray-300 text-center leading-relaxed">
+                {playerState.playbackError || playerState.error}
+              </p>
+              
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    dispatch({ type: 'SET_ERROR', payload: null });
+                    dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
+                    dispatch({ type: 'SET_HAS_ATTEMPTED_PLAY', payload: false });
+                    // Reload the video
+                    const videoEl = videoRef.current;
+                    if (videoEl) {
+                      videoEl.load();
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Retry Video
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Try with fallback URL
+                    const videoEl = videoRef.current;
+                    if (videoEl) {
+                      videoEl.src = "https://res.cloudinary.com/demo/video/upload/samples/cld-sample-video.mp4";
+                      videoEl.load();
+                      dispatch({ type: 'SET_ERROR', payload: null });
+                      dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
+                      dispatch({ type: 'SET_HAS_ATTEMPTED_PLAY', payload: false });
+                    }
+                  }}
+                  className="border-gray-400 text-white hover:bg-gray-700"
+                >
+                  Load Demo Video
+                </Button>
+              </div>
+              
+              <p className="text-gray-500 text-xs text-center">
+                If the problem persists, try refreshing the page or check your internet connection.
+              </p>
             </div>
           </div>
         )}
         <video
           ref={videoRef}
-          src={getVideoUrl()}
           className="w-full h-full object-contain transition-opacity duration-300"
           poster={video?.thumbnail_url || "https://res.cloudinary.com/demo/image/upload/samples/cld-sample-video.jpg"}
           playsInline
@@ -1268,9 +1427,9 @@ export function YouTubeStylePlayer({
         )}
 
         {/* Controls Overlay */}
-        {(playerState.showControls || !playerState.isPlaying || isMobile) && !playerState.isLoading && !playerState.error && (
+        {(playerState.showControls || !playerState.isPlaying) && !playerState.isLoading && !playerState.error && (
           <div className={`absolute inset-0 bg-gradient-to-t from-black via-transparent to-black pointer-events-none transition-opacity duration-300 ${
-            playerState.showControls || !playerState.isPlaying || isMobile ? 'opacity-100' : 'opacity-0'
+            playerState.showControls || !playerState.isPlaying ? 'opacity-100' : 'opacity-0'
           }`}>
             {/* Top Controls */}
             <div className="absolute top-0 left-0 right-0 p-4 pointer-events-auto">
@@ -1454,6 +1613,21 @@ export function YouTubeStylePlayer({
                     <Subtitles className="w-5 h-5" />
                   </Button>
                   
+                  {/* Playlist Toggle - Only show if video is part of a series */}
+                  {video?.series_id && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 ${
+                        playerState.showPlaylistModal ? 'text-white bg-white bg-opacity-20' : ''
+                      }`}
+                      onClick={togglePlaylistModal}
+                      title="Episodes List"
+                    >
+                      <List className="w-5 h-5" />
+                    </Button>
+                  )}
+                  
                   {/* Fullscreen Toggle */}
                   <Button
                     variant="ghost"
@@ -1475,241 +1649,18 @@ export function YouTubeStylePlayer({
         )}
       </div>
 
-      {/* Side Panel (desktop) or Bottom Panel (mobile) - only in non-fullscreen mode */}
-      {!playerState.isFullscreen && (
-        <div className={`bg-gray-900 flex flex-col transition-all duration-300 ${
-          isMobile 
-            ? 'flex-1 border-t border-gray-700' 
-            : 'w-96 border-l border-gray-700'
-        }`}>
-          {/* Video Info */}
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-white text-lg font-semibold mb-2 line-clamp-2">
-              {video.title}
-            </h2>
-            
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-gray-400 text-sm">
-                <span>{video.views} views</span>
-                <span className="mx-2">•</span>
-                <span>{formatTime(video.duration)}</span>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                {/* Watch Later Button */}
-                <WatchLaterButton 
-                  video={video} 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-white hover:bg-gray-700 transition-colors duration-200"
-                  showText={false}
-                />
-                
-                {/* Like Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`text-white hover:bg-gray-700 transition-colors duration-200 ${
-                    playerState.isLiked ? 'text-red-500' : ''
-                  }`}
-                  onClick={handleLike}
-                >
-                  <Heart className={`w-4 h-4 mr-1 ${playerState.isLiked ? 'fill-current' : ''}`} />
-                  {video.likes + (playerState.isLiked ? 1 : 0)}
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-gray-700 transition-colors duration-200 flex items-center"
-                  onClick={handleShare}
-                >
-                  <Share2 className="w-4 h-4 mr-1" />
-                  <span>Share</span>
-                </Button>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-1 mb-4">
-              {video.tags.map((tag) => (
-                <span 
-                  key={tag}
-                  className="bg-red-600 text-white text-xs px-2 py-1 rounded-full font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            
-            {playerState.showInfo && video.description && (
-              <div className="text-gray-300 text-sm transition-all duration-300">
-                <p className="line-clamp-3">{video.description}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-dharma-gold hover:bg-gray-700 p-0 mt-2 transition-colors duration-200"
-                  onClick={() => dispatch({ type: 'SET_SHOW_INFO', payload: false })}
-                >
-                  Show less
-                </Button>
-              </div>
-            )}
-            
-            {!playerState.showInfo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-dharma-gold hover:bg-gray-700 p-0 transition-colors duration-200"
-                onClick={() => dispatch({ type: 'SET_SHOW_INFO', payload: true })}
-              >
-                Show more
-              </Button>
-            )}
-          </div>
-          
-          {/* Related Videos */}
-          <div className="flex-1 p-4 overflow-y-auto scrollbar-hide">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-medium">
-                Related Videos
-              </h3>
-            </div>
-            
-            {isLoadingRelated ? (
-              <div className="space-y-4">
-                <div className="text-gray-400 text-sm mb-2">Loading related videos...</div>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="aspect-video bg-gray-800 rounded-lg mb-2"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-800 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-800 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : relatedError ? (
-              <div className="text-center py-8">
-                <div className="text-red-400 text-sm mb-2">Error loading related videos</div>
-                <p className="text-gray-500 text-xs">{relatedError instanceof Error ? relatedError.message : 'Unknown error'}</p>
-                <div className="text-gray-600 text-xs mt-2">
-                  Video ID: {video?.id}<br/>
-                  Category: {video?.category}<br/>
-                  Tags: {JSON.stringify(video?.tags)}
-                </div>
-              </div>
-            ) : playerState.currentPlaylist.length > 0 ? (
-              <div className="space-y-4 animate-fade-in">
-                {playerState.currentPlaylist.map((playlistVideo, index) => {
-                  const isCurrentlyPlaying = playlistVideo.id === video?.id;
-                  const playlistIndex = index;
-                  return (
-                  <div
-                    key={playlistVideo.id}
-                    className="group cursor-pointer transition-all duration-300 hover:scale-[1.02] rounded-lg p-2 relative hover:bg-gray-800 hover:bg-opacity-50"
-                    onClick={() => handleRelatedVideoClick(playlistVideo)}
-                    style={{ 
-                      animationDelay: `${index * 0.1}s`,
-                      animation: 'fadeInUp 0.6s ease-out forwards'
-                    }}
-                  >
-                    {/* 16:9 Aspect Ratio Thumbnail Card */}
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-900 mb-3 shadow-md">
-                      <img
-                        src={playlistVideo.thumbnail_url}
-                        alt={playlistVideo.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.src = "https://res.cloudinary.com/demo/image/upload/samples/cld-sample-video.jpg";
-                        }}
-                      />
-                      
-                      {/* Duration Badge */}
-                      <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded font-medium backdrop-blur-sm">
-                        {formatTime(playlistVideo.duration)}
-                      </div>
-                      
-                      {/* Play Icon Overlay */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
-                        <div className="bg-red-600 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100 shadow-lg">
-                          <Play className="w-5 h-5 text-white fill-current" />
-                        </div>
-                      </div>
-                      
-                      {/* View Count Badge */}
-                      <div className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded font-medium backdrop-blur-sm">
-                        {playlistVideo.views} views
-                      </div>
-                    </div>
-                    
-                    {/* Video Info */}
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium line-clamp-2 leading-5 transition-colors duration-200 text-white group-hover:text-red-400">
-                        {playlistVideo.title}
-                      </h4>
-                      
-                      <div className="flex items-center justify-between">
-                        <p className="text-gray-400 text-xs font-medium">
-                          {playlistVideo.category}
-                        </p>
-                        <div className="text-gray-500 text-xs flex items-center space-x-1">
-                          <Heart className="w-3 h-3" />
-                          <span>{playlistVideo.likes}</span>
-                        </div>
-                      </div>
-                      
-                      {/* Common Tags */}
-                      {playlistVideo.tags.filter(tag => video?.tags?.includes(tag)).length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {playlistVideo.tags
-                            .filter(tag => video?.tags?.includes(tag))
-                            .slice(0, 2)
-                            .map(tag => (
-                              <span
-                                key={tag}
-                                className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-medium transition-colors duration-200 hover:bg-red-700"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  );
-                })}
-                
-                {/* Show message if only current video in playlist */}
-                {playerState.currentPlaylist.length === 1 && (
-                  <div className="text-center py-4 animate-fade-in">
-                    <div className="text-gray-400 text-sm mb-2">
-                      Single video mode
-                    </div>
-                    <p className="text-gray-500 text-xs">
-                      Related videos will appear here when available
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 animate-fade-in">
-                <div className="text-6xl mb-4 opacity-50">🎥</div>
-                <div className="text-gray-400 text-sm mb-2">
-                  No related videos found in "{video?.category}" category
-                </div>
-                <p className="text-gray-500 text-xs mb-4">
-                  {video?.tags && video.tags.length > 0 
-                    ? `We're looking for videos similar to: ${video.tags.join(', ')}` 
-                    : 'Be the first to discover content in this category!'}
-                </p>
-                <div className="text-dharma-gold text-xs bg-dharma-gold bg-opacity-10 p-3 rounded-lg">
-                  More {video?.category} videos will appear here as content grows
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Playlist Modal */}
+      {video && playerState.showPlaylistModal && (
+        <PlaylistModal
+          isOpen={playerState.showPlaylistModal}
+          onClose={() => dispatch({ type: 'SET_PLAYLIST_MODAL', payload: false })}
+          currentVideo={video}
+          onVideoSelect={(selectedVideo) => {
+            if (onVideoChange) {
+              onVideoChange(selectedVideo);
+            }
+          }}
+        />
       )}
     </div>
   );

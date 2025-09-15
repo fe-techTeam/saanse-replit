@@ -15,3 +15,13 @@ export function useSeries() {
     retry: 1,
   });
 }
+
+export function useSeriesById(seriesId: string, enabled = true) {
+  return useQuery<SeriesType>({
+    queryKey: ["/api/series", seriesId],
+    queryFn: () => apiClient.get<SeriesType>(`/api/series/${seriesId}`),
+    enabled: enabled && !!seriesId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+}

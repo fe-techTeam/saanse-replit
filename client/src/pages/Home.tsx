@@ -8,6 +8,7 @@ import { YouTubeStylePlayer } from "@/components/YouTubeStylePlayer";
 import { NetflixHero } from "@/components/NetflixHero";
 import { NetflixRow } from "@/components/NetflixRow";
 import { WatchLaterButton } from "@/components/WatchLaterButton";
+import { MoreInfoDialog } from "@/components/MoreInfoDialog";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +53,6 @@ export default function Home() {
   const { toast } = useToast();
 
   const typedVideos = videos as any[];
-  const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -60,6 +60,8 @@ export default function Home() {
   const [videoForPlayer, setVideoForPlayer] = useState<any>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
+  const [moreInfoVideo, setMoreInfoVideo] = useState<any>(null);
+  const [isMoreInfoOpen, setIsMoreInfoOpen] = useState(false);
   // Home no longer filters by category – series-centric
 
   // Safari cleanup on unmount
@@ -153,6 +155,39 @@ export default function Home() {
     setVideoForPlayer(null);
   };
 
+  const handleMoreInfo = (video: any) => {
+    setMoreInfoVideo(video);
+    setIsMoreInfoOpen(true);
+  };
+
+  const handleCloseMoreInfo = () => {
+    setIsMoreInfoOpen(false);
+    setMoreInfoVideo(null);
+  };
+
+  const handleSeriesClick = (series: any) => {
+    // Convert series to video format for MoreInfoDialog
+    // Use the first episode or create a representative video object
+    const seriesAsVideo = {
+      id: series.id,
+      title: series.title,
+      description: series.description,
+      thumbnail_url: series.thumbnail_url,
+      banner_url: series.banner_url,
+      series_id: series.id,
+      category: series.category || 'Series',
+      duration: 0, // Will be filled from first episode
+      views: series.total_episodes * 1000, // Estimate based on episodes
+      likes: series.total_episodes * 100,
+      created_at: series.created_at,
+      content_type: 'series',
+      episode_number: 1,
+      tags: series.tags || [],
+      video_url: '', // Not needed for series overview
+    };
+    handleMoreInfo(seriesAsVideo);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -169,42 +204,6 @@ export default function Home() {
 
   const featuredVideo = enhancedVideos[currentHeroIndex] || enhancedVideos[0];
 
-  // Filter videos based on selected category
-  const getFilteredVideos = () => {
-    if (selectedVideo === "Home") {
-      return enhancedVideos; // Show all videos for home
-    }
-    return enhancedVideos.filter(v => v.category === selectedVideo);
-  };
-
-  const filteredVideos = getFilteredVideos();
-
-  // Organize videos into sections based on selected category
-  const getCategorySections = () => {
-    if (selectedVideo === "Home") {
-      // Original home page sections
-      return {
-        trendingVideos: enhancedVideos.slice(0, 10),
-        newReleases: enhancedVideos.slice(10, 20),
-        ramayanaSeries: enhancedVideos.filter(v => v.category === 'Ramayana').slice(0, 10),
-        krishnaStories: enhancedVideos.filter(v => v.category === 'Krishna').slice(0, 10),
-        mahabharataEpic: enhancedVideos.filter(v => v.category === 'Mahabharata').slice(0, 10),
-        devotionalContent: enhancedVideos.filter(v => v.category === 'Bhajans').slice(0, 10),
-        popularPicks: enhancedVideos.slice(20, 30),
-        watchAgain: enhancedVideos.slice(30, 40),
-        becauseYouWatched: enhancedVideos.slice(40, 50)
-      };
-    } else {
-      // Category-specific sections
-      const categoryVideos = filteredVideos;
-      return {
-        allCategoryContent: categoryVideos,
-        trendingInCategory: categoryVideos.slice(0, 10),
-        popularInCategory: categoryVideos.slice(10, 20),
-        recentInCategory: categoryVideos.slice(20, 30)
-      };
-    }
-  };
 
   // Basic sections for series-centric homepage
   const sections = {
@@ -219,9 +218,7 @@ export default function Home() {
     becauseYouWatched: [] as any[],
   };
 
-  const handleVideoClick = (video: any) => {
-    setSelectedVideo(video);
-  };
+  // Remove unused handleVideoClick since we now use handleMoreInfo directly
 
   const handlePlayVideo = (video: any) => {
     handleVideoPlay(video);
@@ -274,13 +271,13 @@ export default function Home() {
           <NetflixHero
             video={featuredVideo}
             onPlay={() => handlePlayVideo(featuredVideo)}
-            onMoreInfo={() => setSelectedVideo(featuredVideo)}
+            onMoreInfo={() => handleMoreInfo(featuredVideo)}
           />
         )}
       </div>
 
       {/* Series row */}
-      <SeriesRow />
+      <SeriesRow onSeriesClick={handleSeriesClick} />
 
       {/* Content Sections - Netflix Style Grid */}
       <div className="bg-black pb-20">
@@ -290,7 +287,7 @@ export default function Home() {
           <NetflixRow
             title="Your Watch Later"
             videos={watchLater.map(item => item.video)}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -298,7 +295,7 @@ export default function Home() {
           <NetflixRow
             title="Trending Now"
             videos={sections.trendingVideos}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -306,7 +303,7 @@ export default function Home() {
           <NetflixRow
             title="New Releases"
             videos={sections.newReleases}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -314,7 +311,7 @@ export default function Home() {
           <NetflixRow
             title="Continue Watching"
             videos={sections.watchAgain}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -322,7 +319,7 @@ export default function Home() {
           <NetflixRow
             title="Ramayana: Divine Epic"
             videos={sections.ramayanaSeries}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -330,7 +327,7 @@ export default function Home() {
           <NetflixRow
             title="Krishna: Divine Stories"
             videos={sections.krishnaStories}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -338,7 +335,7 @@ export default function Home() {
           <NetflixRow
             title="Popular on SAANSE"
             videos={sections.popularPicks}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -346,7 +343,7 @@ export default function Home() {
           <NetflixRow
             title="Mahabharata: The Great Epic"
             videos={sections.mahabharataEpic}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -354,7 +351,7 @@ export default function Home() {
           <NetflixRow
             title="Devotional Bhajans"
             videos={sections.devotionalContent}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
 
@@ -362,115 +359,27 @@ export default function Home() {
           <NetflixRow
             title="Because You Watched Krishna Stories"
             videos={sections.becauseYouWatched}
-            onVideoClick={handleVideoClick}
+            onVideoClick={handleMoreInfo}
           />
         )}
       </div>
 
-      {/* Netflix-Style Video Modal */}
-      {selectedVideo && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-300"
-          onClick={() => setSelectedVideo(null)}
-        >
-          <div 
-            className="bg-zinc-900 rounded-xl max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-2xl transform animate-in zoom-in-95 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Hero Section with Video Thumbnail */}
-            <div className="relative h-[50vh] overflow-hidden">
-              <img 
-                src={selectedVideo.thumbnail_url} 
-                alt={selectedVideo.title}
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
-              
-              {/* Close Button */}
-              <button 
-                className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110"
-                onClick={() => setSelectedVideo(null)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              {/* Action Buttons */}
-              <div className="absolute bottom-6 left-6 flex items-center space-x-3">
-                <button 
-                  className="bg-white hover:bg-gray-200 text-black px-8 py-3 rounded-md font-semibold text-lg flex items-center transition-all duration-200 shadow-lg hover:shadow-xl"
-                  onClick={(e) => handleVideoPlay(selectedVideo, e)}
-                >
-                  <Play className="w-6 h-6 mr-2 fill-current" />
-                  Play
-                </button>
-                
-                {/* Watch Later Button - Replaced Plus Button */}
-                <WatchLaterButton 
-                  video={selectedVideo} 
-                  variant="ghost" 
-                  size="sm"
-                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm text-white"
-                  showText={false}
-                />
-                
-                {/* Like Button - Commented Out */}
-                {/* <button 
-                  onClick={(e) => toggleFavorite(selectedVideo.id, e)}
-                  className="w-12 h-12 bg-zinc-800/80 hover:bg-zinc-700 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
-                >
-                  <Heart className={`w-6 h-6 ${favorites.includes(selectedVideo.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                </button> */}
-              </div>
-            </div>
-            
-            {/* Content Section */}
-            <div className="p-6 space-y-6">
-              {/* Title and Meta Info */}
-              <div className="space-y-4">
-                <h1 className="text-3xl font-bold text-white leading-tight">
-                  {selectedVideo.title}
-                </h1>
-                
-                <div className="flex items-center space-x-4 text-sm">
-                  <span className="flex items-center text-green-400 font-medium">
-                    <Star className="w-4 h-4 mr-1 fill-current" />
-                    {selectedVideo.rating}
-                  </span>
-                  <span className="text-gray-400">2024</span>
-                  <span className="px-2 py-1 bg-zinc-700 text-white text-xs rounded">HD</span>
-                  <span className="text-gray-400">{Math.floor(selectedVideo.duration / 60)}m</span>
-                </div>
-              </div>
-              
-              {/* Description */}
-              <div className="space-y-4">
-                <p className="text-gray-300 text-lg leading-relaxed">
-                  {selectedVideo.description || selectedVideo.shortDescription}
-                </p>
-              </div>
-              
-              {/* Additional Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-700">
-                <div>
-                  <h3 className="text-gray-400 text-sm font-medium mb-2">Category</h3>
-                  <span className="text-white">{selectedVideo.category}</span>
-                </div>
-                <div>
-                  <h3 className="text-gray-400 text-sm font-medium mb-2">Views</h3>
-                  <span className="text-white">{selectedVideo.views?.toLocaleString()} views</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+
+      {/* More Info Dialog */}
+      {moreInfoVideo && (
+        <MoreInfoDialog
+          isOpen={isMoreInfoOpen}
+          onClose={handleCloseMoreInfo}
+          video={moreInfoVideo}
+          onPlay={handleVideoPlay}
+        />
       )}
 
       <YouTubeStylePlayer
         video={videoForPlayer}
         isOpen={isVideoPlayerOpen}
         onClose={handleCloseVideoPlayer}
+        onVideoChange={setVideoForPlayer}
       />
 
       <style dangerouslySetInnerHTML={{
