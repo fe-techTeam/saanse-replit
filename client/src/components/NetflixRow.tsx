@@ -1,9 +1,5 @@
-import { useState, useRef } from "react";
-import { ChevronLeft, ChevronRight, Play, Plus, ThumbsUp, Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { WatchLaterButton } from "@/components/WatchLaterButton";
+import { useState } from "react";
+import { Play, Plus, ThumbsUp, ChevronDown } from "lucide-react";
 import type { VideoType } from "@/types/video";
 
 interface NetflixRowProps {
@@ -14,22 +10,6 @@ interface NetflixRowProps {
 
 export function NetflixRow({ title, videos, onVideoClick }: NetflixRowProps) {
   const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const scrollAmount = 320; // Width of card + gap
-      const currentScroll = scrollRef.current.scrollLeft;
-      const newScroll = direction === 'left' 
-        ? currentScroll - scrollAmount 
-        : currentScroll + scrollAmount;
-      
-      scrollRef.current.scrollTo({
-        left: newScroll,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   const formatViews = (views: number) => {
     if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
@@ -42,107 +22,127 @@ export function NetflixRow({ title, videos, onVideoClick }: NetflixRowProps) {
     return `${minutes}m`;
   };
 
+  const getMatchPercentage = () => {
+    return Math.floor(Math.random() * 20) + 80; // 80-99% match
+  };
+
+  const handleVideoClick = (video: VideoType, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onVideoClick?.(video);
+  };
+
   return (
-    <div className="relative group mb-8">
+    <div className="mb-8">
       {/* Section Title */}
-      <h2 className="text-2xl font-semibold text-dharma-red mb-4 px-4 md:px-12 lg:px-16">
+      <h2 className="text-xl font-semibold text-white mb-4 px-4 md:px-12 lg:px-16">
         {title}
       </h2>
       
-      {/* Navigation Buttons */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300"
-        onClick={() => scroll('left')}
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </Button>
-      
-      <Button
-        variant="ghost"
-        size="sm"
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300"
-        onClick={() => scroll('right')}
-      >
-        <ChevronRight className="w-6 h-6" />
-      </Button>
-
       {/* Video Row */}
-      <div
-        ref={scrollRef}
-        className="flex gap-4 overflow-x-hidden scroll-smooth px-4 md:px-12 lg:px-16"
-      >
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16">
         {videos.map((video) => (
           <div
             key={video.id}
-            className="flex-none w-72 transition-all duration-300 hover:scale-105 cursor-pointer"
+            className="flex-none cursor-pointer relative group"
             onMouseEnter={() => setHoveredVideo(video.id)}
             onMouseLeave={() => setHoveredVideo(null)}
-            onClick={() => onVideoClick?.(video)}
+            onClick={(e) => handleVideoClick(video, e)}
           >
-            <Card className="bg-dharma-secondary border-dharma-gold/20 overflow-hidden hover:shadow-2xl hover:shadow-dharma-gold/20 transition-all duration-300">
-              <div className="relative aspect-video">
-                {/* Thumbnail */}
-                <img
-                  src={video.thumbnail_url}
-                  alt={video.title}
-                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-                />
-                
-                {/* Overlay on Hover */}
-                {hoveredVideo === video.id && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity duration-300">
-                    <div className="flex gap-2">
-                      <Button size="sm" className="bg-white text-black hover:bg-gray-200">
-                        <Play className="w-4 h-4 fill-black" />
-                      </Button>
-                      <WatchLaterButton 
-                        video={video} 
-                        size="sm" 
-                        variant="outline"
-                        className="border-white text-white hover:bg-white hover:text-black"
-                        showText={false}
-                      />
+            <div className="w-48 h-28 rounded-md overflow-hidden bg-gray-800 transition-transform duration-300 group-hover:scale-110 group-hover:z-50 relative">
+              <img
+                src={video.thumbnail_url}
+                alt={video.title}
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Hover Popup */}
+              {hoveredVideo === video.id && (
+                <div className="absolute inset-0 bg-zinc-900 rounded-md shadow-2xl transform scale-110 transition-all duration-300 z-50">
+                  {/* Thumbnail */}
+                  <div className="relative h-28">
+                    <img
+                      src={video.thumbnail_url}
+                      alt={video.title}
+                      className="w-full h-full object-cover rounded-t-md"
+                    />
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
+                        <Play className="w-5 h-5 text-black fill-black ml-0.5" />
+                      </button>
+                    </div>
+                    {/* Duration Badge */}
+                    <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 py-0.5 rounded">
+                      {formatDuration(video.duration)}
                     </div>
                   </div>
-                )}
-                
-                {/* Duration Badge */}
-                <Badge className="absolute bottom-2 right-2 bg-black/70 text-white text-xs">
-                  {formatDuration(video.duration)}
-                </Badge>
-              </div>
-
-              <CardContent className="p-4 space-y-3">
-                {/* Title */}
-                <h3 className="font-semibold text-white text-lg leading-tight line-clamp-2 min-h-[3.5rem]">
-                  {video.title}
-                </h3>
-                
-                {/* Description */}
-                <p className="text-gray-300 text-sm line-clamp-3 leading-relaxed min-h-[3.75rem]">
-                  {video.description}
-                </p>
-                
-                {/* Stats */}
-                <div className="flex items-center justify-between pt-2 border-t border-dharma-gold/20">
-                  <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      {formatViews(video.views)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ThumbsUp className="w-3 h-3" />
-                      {formatViews(video.likes)}
-                    </span>
+                  
+                  {/* Info Section */}
+                  <div className="p-3 space-y-2">
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2">
+                      <button 
+                        className="w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle play
+                        }}
+                      >
+                        <Play className="w-4 h-4 text-black fill-black ml-0.5" />
+                      </button>
+                      <button 
+                        className="w-8 h-8 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle add to list
+                        }}
+                      >
+                        <Plus className="w-4 h-4 text-white" />
+                      </button>
+                      <button 
+                        className="w-8 h-8 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle like
+                        }}
+                      >
+                        <ThumbsUp className="w-4 h-4 text-white" />
+                      </button>
+                      <div className="flex-1" />
+                      <button 
+                        className="w-8 h-8 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white transition-colors"
+                        onClick={(e) => handleVideoClick(video, e)}
+                      >
+                        <ChevronDown className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                    
+                    {/* Match percentage and rating info */}
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-green-400 font-bold">{getMatchPercentage()}% Match</span>
+                      <span className="text-gray-400">{formatDuration(video.duration)}</span>
+                      <span className="border border-gray-500 px-1 text-gray-300">HD</span>
+                    </div>
+                    
+                    {/* Title */}
+                    <div>
+                      <h3 className="text-white font-medium text-sm line-clamp-1">{video.title}</h3>
+                    </div>
+                    
+                    {/* Categories */}
+                    <div className="flex flex-wrap gap-1 text-xs text-gray-400">
+                      <span>{video.category}</span>
+                      {video.tags && video.tags.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span>{video.tags[0]}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <Badge variant="outline" className="text-dharma-gold border-dharma-gold/50 text-xs">
-                    {video.category}
-                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
           </div>
         ))}
       </div>
