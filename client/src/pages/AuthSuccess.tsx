@@ -59,22 +59,8 @@ export default function AuthSuccess() {
           sessionStorage.setItem('saanse_auth', encryptedData);
         }
 
-        // Safari-compatible event dispatching
-        try {
-          // Try standard storage event first
-          window.dispatchEvent(new StorageEvent('storage', {
-            key: 'saanse_auth',
-            newValue: encryptedData,
-            storageArea: localStorage
-          }));
-        } catch (error) {
-          console.warn('StorageEvent not supported, using custom event:', error);
-        }
-        
-        // Always dispatch custom event for Safari compatibility
-        window.dispatchEvent(new CustomEvent('saanse-auth-change', {
-          detail: { key: 'saanse_auth', newValue: encryptedData }
-        }));
+        // Don't dispatch storage events to prevent auth loops in Safari
+        // The auth hook will detect the stored data on its own
 
         // Show success message
         toast({
@@ -116,12 +102,12 @@ export default function AuthSuccess() {
       // Wait a moment for the auth state to fully propagate
       const redirectTimer = setTimeout(() => {
         console.log('Redirecting to home page...');
-        window.location.href = '/';  // Use window.location for a hard redirect
+        navigate('/', { replace: true });  // Use navigate instead of window.location
       }, 1000);
 
       return () => clearTimeout(redirectTimer);
     }
-  }, [authProcessed, loading, isAuthenticated, redirecting]);
+  }, [authProcessed, loading, isAuthenticated, redirecting, navigate]);
 
   // Fallback redirect after 8 seconds to prevent infinite loops
   useEffect(() => {
@@ -129,12 +115,12 @@ export default function AuthSuccess() {
       const fallbackTimer = setTimeout(() => {
         console.log('Fallback redirect triggered');
         setRedirecting(true);
-        window.location.href = '/';  // Use window.location for a hard redirect
+        navigate('/', { replace: true });  // Use navigate instead of window.location
       }, 8000);
 
       return () => clearTimeout(fallbackTimer);
     }
-  }, [authProcessed, redirecting]);
+  }, [authProcessed, redirecting, navigate]);
 
   if (isProcessing || redirecting || (authProcessed && (loading || !isAuthenticated))) {
     return (
@@ -175,7 +161,7 @@ export default function AuthSuccess() {
           <Button
             onClick={() => {
               setRedirecting(true);
-              window.location.href = '/';
+              navigate('/', { replace: true });
             }}
             className="bg-dharma-gold hover:bg-dharma-gold-light text-dharma-dark font-semibold"
           >

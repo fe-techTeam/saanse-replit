@@ -78,38 +78,43 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Service Worker Registration - Force Refresh for SAANSE -->
+    <!-- Service Worker Registration - Safari Compatible -->
     <script>
       if ('serviceWorker' in navigator) {
+        // Detect Safari
+        const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+        
         window.addEventListener('load', async () => {
           try {
-            // Unregister any existing service workers
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let registration of registrations) {
-              await registration.unregister();
-            }
-            
-            // Clear all caches
-            if ('caches' in window) {
-              const cacheNames = await caches.keys();
-              for (let cacheName of cacheNames) {
-                await caches.delete(cacheName);
+            // Don't aggressively clear caches in Safari - causes reload loops
+            if (!isSafari) {
+              // Clear old registrations only in non-Safari browsers
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (let registration of registrations) {
+                if (registration.scope !== location.origin + '/') {
+                  await registration.unregister();
+                }
               }
             }
             
-            // Register new service worker
+            // Register service worker
             const registration = await navigator.serviceWorker.register('/sw.js');
             console.log('SAANSE SW registered: ', registration);
             
-            // Force page reload if service worker is updated
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  window.location.reload();
+            // Safari-safe service worker update handling
+            if (!isSafari) {
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      // Show notification instead of forcing reload
+                      console.log('New service worker available. Reload page to update.');
+                    }
+                  });
                 }
               });
-            });
+            }
           } catch (error) {
             console.log('SW registration failed: ', error);
           }

@@ -240,7 +240,6 @@ export default function Home() {
             {/* Watch List Button */}
             <CircularButton 
               onClick={() => navigate('/watchlist')}
-              className="bg-dharma-gold hover:bg-dharma-gold-light text-dharma-dark"
             >
               <Clock className="w-5 h-5" />
             </CircularButton>
