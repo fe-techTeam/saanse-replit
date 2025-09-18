@@ -18,11 +18,12 @@ export const users = pgTable("users", {
   mobileIdx: index("users_mobile_idx").on(table.mobile),
 }));
 
-// VIDEOS are now strictly part of a Series. Stand-alone videos & category/contentType are removed.
+// VIDEOS are now strictly part of a Series. Category is maintained for database compatibility
 export const videos = pgTable("videos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   description: text("description"),
+  category: text("category").notNull(), // Maintained for database compatibility
   duration: numeric("duration", { precision: 10, scale: 6 }).notNull(), // seconds
   thumbnailUrl: text("thumbnail_url").notNull(),
   videoUrl: text("video_url").notNull(),

@@ -213,9 +213,43 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         format_options = 'all' // 'hls', 'mp4', 'webm', 'all'
       } = req.body;
 
+      // Debug: Log what we received
+      console.log('Upload request body:', req.body);
+      console.log('Extracted values:', { title, category, series_id, episode_number });
+
       // Validation
-      if (!title || !category) {
-        return res.status(400).json({ error: "Title and category are required" });
+      if (!title) {
+        console.log('Validation failed: title missing');
+        return res.status(400).json({ error: "Title is required" });
+      }
+      
+      if (!series_id || !episode_number) {
+        return res.status(400).json({ error: "Series ID and episode number are required" });
+      }
+
+      // Get series to derive category if needed
+      let finalCategory = category;
+      if (!finalCategory && series_id) {
+        try {
+          const series = await storage.getSeriesById(series_id);
+          if (series && series.category) {
+            finalCategory = series.category;
+            console.log(`Auto-populated category from series: ${finalCategory}`);
+          } else {
+            // Default fallback category
+            finalCategory = 'general';
+            console.log('Using default category: general');
+          }
+        } catch (error) {
+          console.error('Error getting series for category:', error);
+          finalCategory = 'general'; // Fallback
+        }
+      }
+      
+      // Ensure we always have a category value
+      if (!finalCategory) {
+        finalCategory = 'general';
+        console.log('Using fallback category: general');
       }
 
       // Minimal Cloudinary upload configuration - no transformations at all
@@ -232,22 +266,21 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       // Generate streaming URLs
       const streamingUrls = getVideoStreamingUrls(cloudinaryResult.public_id);
 
-      // Prepare video data for database
+      // Prepare video data for database (using correct field names for current schema)
       const videoData = {
         title,
         description: description || '',
-        category,
-        duration: cloudinaryResult.duration ? cloudinaryResult.duration.toString() : '0', // Convert to string for numeric field
-        thumbnail_url: streamingUrls.thumbnail,
-        video_url: cloudinaryResult.secure_url,
+        category: finalCategory, // Include category for database constraint
+        duration: cloudinaryResult.duration ? cloudinaryResult.duration.toString() : '0',
+        thumbnailUrl: streamingUrls.thumbnail,
+        videoUrl: cloudinaryResult.secure_url,
         tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : [],
-        is_active: is_active === true || is_active === 'true',
-        content_type: content_type || 'standalone',
-        series_id: series_id || null,
-        episode_number: episode_number ? parseInt(episode_number) : null,
+        isActive: is_active === true || is_active === 'true',
+        seriesId: series_id, // Required field
+        episodeNumber: parseInt(episode_number), // Required field
         // Store Cloudinary metadata
-        cloudinary_public_id: cloudinaryResult.public_id,
-        streaming_urls: streamingUrls,
+        cloudinaryPublicId: cloudinaryResult.public_id,
+        streamingUrls: streamingUrls,
       };
 
       // Create video in database
@@ -281,19 +314,18 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     try {
       const videoData = req.body;
       
-      // Use snake_case field names as expected by database
+      // Use correct field names as expected by database schema
       const transformedData = {
         title: videoData.title,
         description: videoData.description,
-        category: videoData.category,
+        category: videoData.category || 'general', // Ensure category is always provided
         duration: videoData.duration,
-        thumbnail_url: videoData.thumbnail_url,
-        video_url: videoData.video_url,
+        thumbnailUrl: videoData.thumbnailUrl,
+        videoUrl: videoData.videoUrl,
         tags: videoData.tags,
-        is_active: videoData.is_active,
-        content_type: videoData.content_type,
-        series_id: videoData.series_id || null,
-        episode_number: videoData.episode_number || null,
+        isActive: videoData.isActive,
+        seriesId: videoData.seriesId || null,
+        episodeNumber: videoData.episodeNumber || null,
       };
       
       const video = await storage.createVideo(transformedData);
@@ -331,10 +363,10 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       }
 
       // Delete from Cloudinary if it has a public_id
-      if (video.cloudinary_public_id) {
+      if (video.cloudinaryPublicId) {
         try {
-          await deleteVideoFromCloudinary(video.cloudinary_public_id);
-          console.log(`Deleted video from Cloudinary: ${video.cloudinary_public_id}`);
+          await deleteVideoFromCloudinary(video.cloudinaryPublicId);
+          console.log(`Deleted video from Cloudinary: ${video.cloudinaryPublicId}`);
         } catch (cloudinaryError) {
           console.warn(`Failed to delete from Cloudinary: ${cloudinaryError.message}`);
           // Continue with database deletion even if Cloudinary deletion fails
@@ -579,7 +611,7 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     try {
       const { q, type, category, status } = req.query;
       
-      let results = [];
+      let results: any[] = [];
       
       if (type === "videos" || !type) {
         const videos = await storage.getVideos();

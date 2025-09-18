@@ -20,7 +20,8 @@ const apiEndpoints = [
 // Install event - cache static assets
 self.addEventListener('install', event => {
   console.log('SAANSE SW: Installing...');
-  self.skipWaiting();
+  // Remove skipWaiting to prevent Safari reload loops
+  // self.skipWaiting();
   
   event.waitUntil(
     Promise.all([
@@ -48,8 +49,9 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      console.log('SAANSE SW: Claiming clients');
-      return self.clients.claim();
+      console.log('SAANSE SW: Ready (no client claim for Safari compatibility)');
+      // Remove clients.claim() to prevent Safari reload loops
+      // return self.clients.claim();
     })
   );
 });
