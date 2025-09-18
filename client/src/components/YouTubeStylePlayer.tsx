@@ -23,6 +23,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { VideoType } from "@/types/video";
 import { useAuth } from "@/hooks/useAuth";
+import { useSeriesVideos } from "@/hooks/useSeriesVideos";
 
 interface YouTubeStylePlayerProps {
   video: VideoType | null;
@@ -171,6 +172,15 @@ export function YouTubeStylePlayer({
   const lastVideoIdRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Fetch series videos if current video is part of a series
+  const { 
+    data: seriesVideos, 
+    isLoading: seriesLoading 
+  } = useSeriesVideos(
+    video?.series_id || "", 
+    isOpen && !!video?.series_id
+  );
 
   // Memoize video URL to prevent multiple requests
   const videoUrl = useMemo(() => {
@@ -560,12 +570,15 @@ export function YouTubeStylePlayer({
       }
     };
     
-    const handleEnded = () => {
-      console.log('Video ended. Loop enabled:', playerState.isLoop);
+    const handleEnded = async () => {
+      console.log('Video ended. Loop enabled:', playerState.isLoop, 'Video:', video?.title);
       dispatch({ type: 'SET_PLAYING', payload: false });
       
-      if (playerState.isLoop) {
-        console.log('Restarting video for loop');
+      // Check if this is a single video loop (not playlist loop)
+      const isSingleVideoLoop = playerState.isLoop && (!playerState.currentPlaylist || playerState.currentPlaylist.length <= 1);
+      
+      if (isSingleVideoLoop) {
+        console.log('Restarting single video for loop');
         // Small delay to ensure the ended event is fully processed
         setTimeout(() => {
           if (videoEl && !videoEl.paused) {
@@ -590,19 +603,45 @@ export function YouTubeStylePlayer({
           }
         }, 100);
       } else {
-        // Loop is disabled, play next video from playlist
-        console.log('Loop disabled, attempting to play next video from playlist');
-        setTimeout(() => {
+        // Try to play next video - either from series or playlist
+        console.log('Attempting to play next video');
+        
+        setTimeout(async () => {
+          // First check if we have a series and can get next video from cache
+          if (video?.series_id) {
+            try {
+              const seriesResult = await getNextVideoFromSeries();
+              if (seriesResult) {
+                console.log('Auto-playing next video from series:', seriesResult.nextVideo.title);
+                
+                // Update playlist state
+                dispatch({ 
+                  type: 'SET_PLAYLIST', 
+                  payload: { 
+                    playlist: seriesResult.playlist, 
+                    currentIndex: seriesResult.newIndex 
+                  } 
+                });
+                
+                if (onVideoChange) {
+                  onVideoChange(seriesResult.nextVideo);
+                }
+                return;
+              }
+            } catch (error) {
+              console.error('Error auto-playing next series video:', error);
+            }
+          }
+          
+          // Fallback to provided onNext or internal navigation
           if (onNext) {
-            // Use provided onNext if available (from parent playlist)
             console.log('Using provided onNext function');
             onNext();
           } else {
-            // Use internal playlist navigation
             console.log('Using internal playlist navigation');
-            handleNext();
+            await handleNext();
           }
-        }, 500); // Small delay for smooth transition
+        }, 800); // Slightly longer delay for smoother transitions
       }
     };
 
@@ -1133,59 +1172,59 @@ export function YouTubeStylePlayer({
   }, [playerState.showPlaylistModal]);
 
 
-  // Navigation functions for playlist
+  // Simple next function
   const handleNext = useCallback(() => {
+    console.log('Next button clicked - handleNext called');
+    
     const { currentPlaylist, currentPlaylistIndex } = playerState;
     
-    if (currentPlaylist.length === 0) {
-      console.log('No playlist available');
-      return;
-    }
-    
-    const nextIndex = currentPlaylistIndex + 1;
-    
-    if (nextIndex < currentPlaylist.length) {
-      const nextVideo = currentPlaylist[nextIndex];
-      console.log('Playing next video:', nextVideo.title);
-      dispatch({ type: 'SET_PLAYLIST_INDEX', payload: nextIndex });
-      if (onVideoChange) {
-        onVideoChange(nextVideo);
-      }
-    } else {
-      console.log('Reached end of playlist');
-      // Optionally loop back to first video
-      if (playerState.isLoop && currentPlaylist.length > 1) {
+    // Try to get next video from current playlist
+    if (currentPlaylist.length > 0) {
+      const nextIndex = currentPlaylistIndex + 1;
+      
+      if (nextIndex < currentPlaylist.length) {
+        // Go to next video in playlist
+        const nextVideo = currentPlaylist[nextIndex];
+        console.log('Going to next video:', nextVideo.title);
+        dispatch({ type: 'SET_PLAYLIST_INDEX', payload: nextIndex });
+        if (onVideoChange) {
+          onVideoChange(nextVideo);
+        }
+        return;
+      } else {
+        // Loop back to first video
         const firstVideo = currentPlaylist[0];
-        console.log('Looping back to first video:', firstVideo.title);
+        console.log('Looping to first video:', firstVideo.title);
         dispatch({ type: 'SET_PLAYLIST_INDEX', payload: 0 });
         if (onVideoChange) {
           onVideoChange(firstVideo);
         }
+        return;
       }
     }
-  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, playerState.isLoop, onVideoChange]);
+    
+    console.log('No playlist available for next navigation');
+  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, onVideoChange]);
   
   const handlePrevious = useCallback(() => {
+    console.log('Previous button clicked - handlePrevious called');
+    
     const { currentPlaylist, currentPlaylistIndex } = playerState;
     
-    if (currentPlaylist.length === 0) {
-      console.log('No playlist available');
-      return;
-    }
-    
-    const prevIndex = currentPlaylistIndex - 1;
-    
-    if (prevIndex >= 0) {
-      const prevVideo = currentPlaylist[prevIndex];
-      console.log('Playing previous video:', prevVideo.title);
-      dispatch({ type: 'SET_PLAYLIST_INDEX', payload: prevIndex });
-      if (onVideoChange) {
-        onVideoChange(prevVideo);
-      }
-    } else {
-      console.log('Already at first video');
-      // Optionally loop to last video
-      if (playerState.isLoop && currentPlaylist.length > 1) {
+    if (currentPlaylist.length > 0) {
+      const prevIndex = currentPlaylistIndex - 1;
+      
+      if (prevIndex >= 0) {
+        // Go to previous video
+        const prevVideo = currentPlaylist[prevIndex];
+        console.log('Going to previous video:', prevVideo.title);
+        dispatch({ type: 'SET_PLAYLIST_INDEX', payload: prevIndex });
+        if (onVideoChange) {
+          onVideoChange(prevVideo);
+        }
+        return;
+      } else {
+        // Loop to last video
         const lastIndex = currentPlaylist.length - 1;
         const lastVideo = currentPlaylist[lastIndex];
         console.log('Looping to last video:', lastVideo.title);
@@ -1193,22 +1232,68 @@ export function YouTubeStylePlayer({
         if (onVideoChange) {
           onVideoChange(lastVideo);
         }
+        return;
       }
     }
-  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, playerState.isLoop, onVideoChange]);
+    
+    console.log('No playlist available for previous navigation');
+  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, onVideoChange]);
   
-  // Helper functions to determine button states
+  // Simple always-enabled button functions
   const canGoNext = useCallback(() => {
-    const { currentPlaylist, currentPlaylistIndex } = playerState;
-    return currentPlaylist.length > 0 && 
-           (currentPlaylistIndex < currentPlaylist.length - 1 || playerState.isLoop);
-  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, playerState.isLoop]);
+    return true; // Always allow next button clicks
+  }, []);
   
   const canGoPrevious = useCallback(() => {
+    return true; // Always allow previous button clicks
+  }, []);
+
+  const getNextVideoInfo = useCallback(() => {
     const { currentPlaylist, currentPlaylistIndex } = playerState;
-    return currentPlaylist.length > 0 && 
-           (currentPlaylistIndex > 0 || playerState.isLoop);
-  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, playerState.isLoop]);
+    
+    // If we have external onNext, we don't know the next video info
+    if (onNext) {
+      return { title: 'Next video' }; // Generic info for external handlers
+    }
+    
+    if (!currentPlaylist.length) {
+      if (video?.series_id) {
+        return { title: 'Next episode' }; // Potential series video
+      }
+      return null;
+    }
+    
+    const nextIndex = currentPlaylistIndex + 1;
+    if (nextIndex < currentPlaylist.length) {
+      return currentPlaylist[nextIndex];
+    } else if (playerState.isLoop && currentPlaylist.length > 1) {
+      return currentPlaylist[0];
+    } else if (video?.series_id) {
+      return { title: 'Next episode' }; // Potential series video beyond current playlist
+    }
+    
+    return null;
+  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, playerState.isLoop, onNext, video?.series_id]);
+
+  const getPreviousVideoInfo = useCallback(() => {
+    const { currentPlaylist, currentPlaylistIndex } = playerState;
+    
+    // If we have external onPrevious, we don't know the previous video info
+    if (onPrevious) {
+      return { title: 'Previous video' }; // Generic info for external handlers
+    }
+    
+    if (!currentPlaylist.length) return null;
+    
+    const prevIndex = currentPlaylistIndex - 1;
+    if (prevIndex >= 0) {
+      return currentPlaylist[prevIndex];
+    } else if (playerState.isLoop && currentPlaylist.length > 1) {
+      return currentPlaylist[currentPlaylist.length - 1];
+    }
+    
+    return null;
+  }, [playerState.currentPlaylist, playerState.currentPlaylistIndex, playerState.isLoop, onPrevious]);
 
 
   const formatTime = useCallback((time: number) => {
@@ -1250,6 +1335,132 @@ export function YouTubeStylePlayer({
       runCleanups();
     };
   }, [runCleanups]);
+
+  // Initialize playlist when video changes or series data is loaded
+  useEffect(() => {
+    if (!isOpen || !video) return;
+
+    console.log('Initializing playlist for video:', video.title);
+    console.log('Video series_id:', video.series_id);
+    console.log('Series videos available:', seriesVideos?.length);
+
+    // Priority 1: Use series videos from the hook if available
+    if (video.series_id && seriesVideos && seriesVideos.length > 0) {
+      console.log('Using series videos from hook:', seriesVideos.length);
+      
+      // Sort series videos by episode number
+      const sortedSeriesVideos = [...seriesVideos].sort((a, b) => (a.episode_number || 0) - (b.episode_number || 0));
+      
+      // Find current video index in series
+      const currentIndex = sortedSeriesVideos.findIndex(v => v.id === video.id);
+      
+      if (currentIndex !== -1) {
+        console.log('Setting up series playlist, current video at index:', currentIndex);
+        dispatch({ 
+          type: 'SET_PLAYLIST', 
+          payload: { 
+            playlist: sortedSeriesVideos, 
+            currentIndex: currentIndex 
+          } 
+        });
+      } else {
+        console.warn('Current video not found in series data, adding it');
+        // Add current video to the series playlist
+        dispatch({ 
+          type: 'SET_PLAYLIST', 
+          payload: { 
+            playlist: [video, ...sortedSeriesVideos], 
+            currentIndex: 0 
+          } 
+        });
+      }
+      return;
+    }
+
+    // Priority 2: Use allVideos if provided (for non-series or fallback)
+    if (allVideos && allVideos.length > 0) {
+      console.log('Using allVideos for playlist:', allVideos.length);
+      const currentIndex = allVideos.findIndex(v => v.id === video.id);
+      dispatch({ 
+        type: 'SET_PLAYLIST', 
+        payload: { 
+          playlist: allVideos, 
+          currentIndex: currentIndex >= 0 ? currentIndex : 0 
+        } 
+      });
+      return;
+    }
+
+    // Priority 3: Single video playlist (fallback)
+    console.log('Using single video playlist');
+    dispatch({ 
+      type: 'SET_PLAYLIST', 
+      payload: { 
+        playlist: [video], 
+        currentIndex: 0 
+      } 
+    });
+  }, [isOpen, video?.id, video?.series_id, seriesVideos, allVideos]);
+
+
+
+  // Enhanced series-aware next video handler
+  const getNextVideoFromSeries = useCallback(async () => {
+    if (!video?.series_id) return null;
+
+    console.log('Getting next video for series:', video.series_id);
+
+    // First try cache
+    const seriesQueryKey = ["/api/series", video.series_id, "videos"];
+    let seriesVideos = queryClient.getQueryData(seriesQueryKey);
+
+    // If not in cache, try to fetch series videos
+    if (!seriesVideos) {
+      try {
+        console.log('Series not in cache, fetching from API');
+        seriesVideos = await queryClient.fetchQuery({
+          queryKey: seriesQueryKey,
+          queryFn: async () => {
+            const response = await apiRequest("GET", `/api/series/${video.series_id}/videos`);
+            return response;
+          },
+          staleTime: 5 * 60 * 1000, // 5 minutes
+        });
+        console.log('Fetched series videos:', seriesVideos?.length);
+      } catch (error) {
+        console.error('Failed to fetch series videos:', error);
+        return null;
+      }
+    }
+
+    if (!seriesVideos || !Array.isArray(seriesVideos)) {
+      console.warn('No series videos available');
+      return null;
+    }
+
+    // Find current video and get next one
+    const currentIndex = seriesVideos.findIndex(v => v.id === video.id);
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex < seriesVideos.length) {
+      console.log('Next video found in series at index:', nextIndex);
+      return {
+        nextVideo: seriesVideos[nextIndex],
+        playlist: seriesVideos,
+        newIndex: nextIndex
+      };
+    } else if (playerState.isLoop && seriesVideos.length > 1) {
+      console.log('End of series, looping to first video');
+      return {
+        nextVideo: seriesVideos[0],
+        playlist: seriesVideos,
+        newIndex: 0
+      };
+    }
+
+    console.log('No next video available in series');
+    return null;
+  }, [video?.id, video?.series_id, queryClient, playerState.isLoop]);
 
   // Handle proper cleanup when onClose is called
   const handleClose = useCallback(() => {
@@ -1434,14 +1645,29 @@ export function YouTubeStylePlayer({
             {/* Top Controls */}
             <div className="absolute top-0 left-0 right-0 p-4 pointer-events-auto">
               <div className="flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white hover:bg-opacity-20"
-                  onClick={handleClose}
-                >
-                  <X className="w-6 h-6" />
-                </Button>
+                <div className="flex items-center space-x-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white hover:bg-opacity-20"
+                    onClick={handleClose}
+                  >
+                    <X className="w-6 h-6" />
+                  </Button>
+                  
+                  {/* Series/Video Title with Episode Info */}
+                  <div className="flex flex-col">
+                    <h2 className="text-white text-lg font-semibold truncate max-w-96">
+                      {video?.title}
+                    </h2>
+                    {video?.series_id && playerState.currentPlaylist.length > 1 && (
+                      <p className="text-gray-300 text-sm">
+                        Episode {playerState.currentPlaylistIndex + 1} of {playerState.currentPlaylist.length}
+                        {video?.series_name && ` • ${video.series_name}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
                 
                 <div className="flex items-center space-x-2">
                   <Button
@@ -1499,18 +1725,22 @@ export function YouTubeStylePlayer({
               </div>
 
               {/* Control Buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-between pointer-events-auto">
+                <div className="flex items-center space-x-4 pointer-events-auto">
                   {/* Previous Button */}
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 transform hover:scale-110 ${
-                      !canGoPrevious() ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    onClick={onPrevious || handlePrevious}
-                    disabled={!canGoPrevious()}
-                    title={`Previous video (P) - ${playerState.currentPlaylistIndex > 0 ? 'Previous video' : playerState.isLoop ? 'Last video' : 'No previous video'}`}
+                    className="text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 transform hover:scale-110 cursor-pointer"
+                    onClick={() => {
+                      console.log('Previous button clicked!');
+                      if (onPrevious) {
+                        onPrevious();
+                      } else {
+                        handlePrevious();
+                      }
+                    }}
+                    title="Previous Video"
                   >
                     <SkipBack className="w-5 h-5" />
                   </Button>
@@ -1519,8 +1749,9 @@ export function YouTubeStylePlayer({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 transform hover:scale-110"
+                    className="text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 transform hover:scale-110 pointer-events-auto cursor-pointer"
                     onClick={togglePlay}
+                    title={playerState.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
                   >
                     {playerState.isPlaying ? (
                       <Pause className="w-6 h-6" />
@@ -1533,12 +1764,16 @@ export function YouTubeStylePlayer({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 transform hover:scale-110 ${
-                      !canGoNext() ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    onClick={onNext || handleNext}
-                    disabled={!canGoNext()}
-                    title={`Next video (N) - ${playerState.currentPlaylistIndex < playerState.currentPlaylist.length - 1 ? 'Next video' : playerState.isLoop ? 'First video' : 'No next video'}`}
+                    className="text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 transform hover:scale-110 cursor-pointer"
+                    onClick={() => {
+                      console.log('Next button clicked!');
+                      if (onNext) {
+                        onNext();
+                      } else {
+                        handleNext();
+                      }
+                    }}
+                    title="Next Video"
                   >
                     <SkipForward className="w-5 h-5" />
                   </Button>
@@ -1599,7 +1834,7 @@ export function YouTubeStylePlayer({
                   </span>
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 pointer-events-auto">
                   {/* Subtitles/CC Toggle */}
                   <Button
                     variant="ghost"
@@ -1618,13 +1853,19 @@ export function YouTubeStylePlayer({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 ${
+                      className={`text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200 relative ${
                         playerState.showPlaylistModal ? 'text-white bg-white bg-opacity-20' : ''
                       }`}
                       onClick={togglePlaylistModal}
-                      title="Episodes List"
+                      title={`Episodes List (${playerState.currentPlaylist.length} episodes)`}
                     >
                       <List className="w-5 h-5" />
+                      {/* Show episode count badge if we have cached episodes */}
+                      {playerState.currentPlaylist.length > 1 && (
+                        <span className="absolute -top-1 -right-1 bg-dharma-red text-white text-xs rounded-full min-w-[1.2rem] h-5 flex items-center justify-center font-semibold">
+                          {playerState.currentPlaylist.length}
+                        </span>
+                      )}
                     </Button>
                   )}
                   

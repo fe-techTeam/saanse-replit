@@ -23,14 +23,28 @@ const formatOptions = [
   { value: "webm", label: "WebM (720p, 480p)" },
 ];
 
+const categoryOptions = [
+  { value: "Ramayana", label: "Ramayana" },
+  { value: "Krishna", label: "Krishna" },
+  { value: "Mahabharata", label: "Mahabharata" },
+  { value: "Shiva", label: "Shiva" },
+  { value: "Hanuman", label: "Hanuman" },
+  { value: "Ganesha", label: "Ganesha" },
+  { value: "Devi", label: "Devi" },
+  { value: "Festivals", label: "Festivals" },
+  { value: "Bhajans", label: "Bhajans" },
+  { value: "Explained", label: "Explained" },
+];
+
 
 const videoUploadSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   tags: z.string().optional(),
+  category: z.string().optional(), // Made optional since it can be derived from series
   is_active: z.boolean().default(true),
   series_id: z.string().min(1, "Series is required"),
-  episode_number: z.number().optional(),
+  episode_number: z.number().min(1, "Episode number is required"),
   format_options: z.string().default('all'),
 });
 
@@ -61,9 +75,10 @@ export default function VideoUploadDialog({
       title: "",
       description: "",
       tags: "",
+      category: "",
       is_active: true,
       series_id: "",
-      episode_number: undefined,
+      episode_number: 1,
       format_options: 'all',
     },
   });
@@ -116,6 +131,9 @@ export default function VideoUploadDialog({
   };
 
   const handleUpload = async (data: VideoUploadData) => {
+    console.log('Upload form data received:', data);
+    console.log('Category value specifically:', data.category, typeof data.category);
+    
     if (!selectedFile) {
       alert('Please select a video file');
       return;
@@ -134,21 +152,46 @@ export default function VideoUploadDialog({
         throw new Error('Admin authentication required');
       }
 
+      // Validate required fields before creating FormData
+      console.log('Validating fields:', { 
+        title: data.title, 
+        category: data.category, 
+        series_id: data.series_id, 
+        episode_number: data.episode_number 
+      });
+      
+      if (!data.title || !data.series_id || !data.episode_number) {
+        console.error('Missing required fields:', { 
+          title: !!data.title, 
+          category: !!data.category, 
+          series_id: !!data.series_id, 
+          episode_number: !!data.episode_number 
+        });
+        alert('Please fill in all required fields: Title, Series, and Episode Number');
+        setIsUploading(false);
+        setUploadStatus('idle');
+        return;
+      }
+
       // Create FormData
       const formData = new FormData();
       formData.append('video', selectedFile);
       formData.append('title', data.title);
+      if (data.category) {
+        formData.append('category', data.category);
+      }
       formData.append('description', data.description || '');
       formData.append('tags', data.tags || '');
       formData.append('is_active', data.is_active.toString());
       formData.append('format_options', data.format_options);
+      formData.append('series_id', data.series_id);
+      formData.append('episode_number', data.episode_number.toString());
       
-      if (data.episode_number) {
-        formData.append('episode_number', data.episode_number.toString());
-      }
-      if (data.series_id) {
-        formData.append('series_id', data.series_id);
-      }
+      // Debug: Log what we're sending
+      console.log('FormData contents:');
+      formData.forEach((value, key) => {
+        console.log(key, '=', value);
+      });
 
       // Upload with progress tracking
       const xhr = new XMLHttpRequest();
@@ -348,19 +391,57 @@ export default function VideoUploadDialog({
                   </FormItem>
                 )}
               />
-              
-              {/* Series selection */}
+
+              {/* Category selection */}
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category (Optional)</FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        console.log('Category selected:', value);
+                        field.onChange(value);
+                      }} 
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categoryOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Category will be inherited from series if not specified. Current: {field.value || 'Will inherit from series'}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Series selection - now required */}
               <FormField
                 control={form.control}
                 name="series_id"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem>
                     <FormLabel>Series *</FormLabel>
                     <SeriesSelect
                       value={field.value}
                       onChange={(val) => field.onChange(val)}
                       onCreateNew={() => setSeriesDialogOpen(true)}
                     />
+                    <FormDescription>
+                      All videos must belong to a series. Create a new series if needed.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -371,17 +452,18 @@ export default function VideoUploadDialog({
                 name="episode_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Episode Number</FormLabel>
+                    <FormLabel>Episode Number *</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
                         placeholder="1" 
+                        min="1"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                       />
                     </FormControl>
                     <FormDescription>
-                      Only for series content
+                      Episode number within the selected series
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -498,6 +580,9 @@ export default function VideoUploadDialog({
               <Button 
                 type="submit" 
                 disabled={!selectedFile || isUploading || uploadStatus === 'success'}
+                onClick={() => {
+                  console.log('Current form values before submit:', form.getValues());
+                }}
               >
                 {isUploading ? 'Uploading...' : 'Upload Video'}
               </Button>

@@ -282,10 +282,10 @@ export default function Home() {
       <div className="bg-black pb-20">
         {/* Home rows */}
         {/* Watch Later Section - Only show if user has videos in watch later */}
-        {isAuthenticated && watchLater.length > 0 && (
+        {isAuthenticated && Array.isArray(watchLater) && watchLater.length > 0 && (
           <NetflixRow
             title="Your Watch Later"
-            videos={watchLater.map(item => item.video)}
+            videos={watchLater.map((item: any) => item.video)}
             onVideoClick={handleMoreInfo}
           />
         )}
@@ -379,6 +379,27 @@ export default function Home() {
         isOpen={isVideoPlayerOpen}
         onClose={handleCloseVideoPlayer}
         onVideoChange={setVideoForPlayer}
+        allVideos={enhancedVideos}
+        onNext={() => {
+          // Find current video index and get next video
+          if (videoForPlayer && enhancedVideos.length > 0) {
+            const currentIndex = enhancedVideos.findIndex(v => v.id === videoForPlayer.id);
+            const nextIndex = (currentIndex + 1) % enhancedVideos.length;
+            const nextVideo = enhancedVideos[nextIndex];
+            console.log('Home onNext: Moving from', videoForPlayer.title, 'to', nextVideo.title);
+            setVideoForPlayer(nextVideo);
+          }
+        }}
+        onPrevious={() => {
+          // Find current video index and get previous video
+          if (videoForPlayer && enhancedVideos.length > 0) {
+            const currentIndex = enhancedVideos.findIndex(v => v.id === videoForPlayer.id);
+            const prevIndex = currentIndex <= 0 ? enhancedVideos.length - 1 : currentIndex - 1;
+            const prevVideo = enhancedVideos[prevIndex];
+            console.log('Home onPrevious: Moving from', videoForPlayer.title, 'to', prevVideo.title);
+            setVideoForPlayer(prevVideo);
+          }
+        }}
       />
 
       <style dangerouslySetInnerHTML={{
