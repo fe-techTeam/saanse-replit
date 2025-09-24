@@ -2,7 +2,7 @@ name: 🚀 SAANSE CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop, staging]
+    branches: [main, dev, staging]
     paths-ignore:
       - '**.md'
       - 'docs/**'

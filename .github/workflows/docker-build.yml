@@ -2,7 +2,7 @@ name: 🐳 Docker Build & Push
 
 on:
   push:
-    branches: [main, develop, staging]
+    branches: [main, dev, staging]
     paths:
       - 'Dockerfile'
       - 'docker-compose.yml'
