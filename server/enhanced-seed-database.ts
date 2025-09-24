@@ -323,7 +323,7 @@ async function enhancedSeedDatabase() {
     const allVideoData = [...videoData, ...additionalVideoData];
 
     for (const video of allVideoData) {
-      if (video.contentType === "series" && video.seriesId) {
+      if (video.seriesId) {
         // Find the corresponding series ID
         const seriesTitle = getSeriesTitleFromId(video.seriesId);
         const actualSeriesId = createdSeries[seriesTitle];

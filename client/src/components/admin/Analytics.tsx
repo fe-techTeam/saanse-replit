@@ -18,7 +18,7 @@ interface User {
   id: string;
   email: string;
   displayName?: string;
-  createdAt: string;
+  created_at: string;
   lastLoginAt?: string;
 }
 
@@ -78,12 +78,12 @@ export default function Analytics() {
     
     // Recent videos
     const recentVideos = [...videos]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5);
     
     // Recent users
     const recentUsers = [...users]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5);
     
     // Engagement metrics
@@ -95,11 +95,11 @@ export default function Analytics() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const recentVideosCount = videos.filter(v => 
-      new Date(v.createdAt) > thirtyDaysAgo
+      new Date(v.created_at) > thirtyDaysAgo
     ).length;
     
     const recentUsersCount = users.filter(u => 
-      new Date(u.createdAt) > thirtyDaysAgo
+      new Date(u.created_at) > thirtyDaysAgo
     ).length;
 
     return {
@@ -153,7 +153,7 @@ export default function Analytics() {
           <CardContent>
             <div className="text-2xl font-bold">{data.totalVideos}</div>
             <p className="text-xs text-muted-foreground">
-              {data.recentVideosCount} added this month
+              {data.recentVideos.length} added this month
             </p>
           </CardContent>
         </Card>
@@ -196,7 +196,7 @@ export default function Analytics() {
           <CardContent>
             <div className="text-2xl font-bold">{data.totalUsers}</div>
             <p className="text-xs text-muted-foreground">
-              {data.recentUsersCount} joined this month
+              {data.recentUsers.length} joined this month
             </p>
           </CardContent>
         </Card>
@@ -285,14 +285,14 @@ export default function Analytics() {
               {data.recentVideos.map((video) => (
                 <div key={video.id} className="flex items-center space-x-4">
                   <img
-                    src={video.thumbnailUrl}
+                    src={video.thumbnail_url}
                     alt={video.title}
                     className="w-12 h-8 object-cover rounded"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{video.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      Added {new Date(video.createdAt).toLocaleDateString()}
+                      Added {new Date(video.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="text-right">
@@ -333,7 +333,7 @@ export default function Analytics() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {new Date(user.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>

@@ -122,7 +122,7 @@ export function SearchModal({ isOpen, onClose, onVideoClick }: SearchModalProps)
               onClick={() => onVideoClick(video)}
             >
               <img
-                src={video.thumbnailUrl}
+                src={video.thumbnail_url}
                 alt={video.title}
                 className="w-20 h-16 object-cover rounded"
                 loading="lazy"

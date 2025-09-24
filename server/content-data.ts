@@ -4,6 +4,7 @@ import type { InsertVideo, InsertSeries } from "@shared/schema";
 export const seriesData: InsertSeries[] = [
   {
     title: "श्रीराम जीवन कथा - The Life of Lord Rama",
+    slug: "shri-ram-jeevan-katha",
     description: "Complete life story of Lord Rama from birth to coronation, covering all major events and teachings.",
     category: "Ramayana",
     thumbnailUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400",
@@ -12,6 +13,7 @@ export const seriesData: InsertSeries[] = [
   },
   {
     title: "कृष्ण लीला - Divine Play of Lord Krishna",
+    slug: "krishna-leela",
     description: "Complete Krishna Leela from birth to departure, including all divine pastimes and teachings.",
     category: "Krishna",
     thumbnailUrl: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&h=400",
@@ -20,6 +22,7 @@ export const seriesData: InsertSeries[] = [
   },
   {
     title: "महाभारत महाकाव्य - The Great Epic",
+    slug: "mahabharat-mahakavya",
     description: "Complete Mahabharata story from the beginning to the end, covering all characters and events.",
     category: "Mahabharata",
     thumbnailUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400",
@@ -28,6 +31,7 @@ export const seriesData: InsertSeries[] = [
   },
   {
     title: "शिव महिमा - Glory of Lord Shiva",
+    slug: "shiv-mahima",
     description: "Complete stories and teachings of Lord Shiva, covering all aspects of his divine nature.",
     category: "Shiva",
     thumbnailUrl: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&h=400",
@@ -36,6 +40,7 @@ export const seriesData: InsertSeries[] = [
   },
   {
     title: "हनुमान जी की कथाएं - Stories of Hanuman",
+    slug: "hanuman-kathayein",
     description: "Complete life and stories of Lord Hanuman, the greatest devotee of Lord Rama.",
     category: "Hanuman",
     thumbnailUrl: "https://images.unsplash.com/photo-1599839575945-a9e5af0c3fa5?w=600&h=400",
@@ -44,6 +49,7 @@ export const seriesData: InsertSeries[] = [
   },
   {
     title: "गणेश जी की कथाएं - Stories of Lord Ganesha",
+    slug: "ganesh-kathayein",
     description: "Complete stories and significance of Lord Ganesha, the remover of obstacles.",
     category: "Ganesha",
     thumbnailUrl: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&h=400",
@@ -52,6 +58,7 @@ export const seriesData: InsertSeries[] = [
   },
   {
     title: "देवी महिमा - Glory of Divine Mother",
+    slug: "devi-mahima",
     description: "Complete stories and forms of Divine Mother, covering all goddesses and their significance.",
     category: "Devi",
     thumbnailUrl: "https://images.unsplash.com/photo-1583391733956-6c78276477e5?w=600&h=400",
@@ -67,7 +74,7 @@ export const videoData: InsertVideo[] = [
     title: "श्रीराम जन्म - The Divine Avatar",
     description: "Experience the divine birth of Lord Rama through stunning visuals and devotional music. A cinematic masterpiece that brings ancient scriptures to life.",
     category: "Ramayana",
-    duration: 180,
+    duration: "180",
     thumbnailUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400",
     videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
     tags: ["rama", "birth", "ayodhya", "divine", "राम", "जन्म"],
@@ -79,7 +86,7 @@ export const videoData: InsertVideo[] = [
     title: "सीता स्वयंवर - The Divine Union",
     description: "Witness the legendary bow-breaking ceremony and the destined union of Rama and Sita in this breathtaking episode.",
     category: "Ramayana", 
-    duration: 165,
+    duration: "165",
     thumbnailUrl: "https://images.unsplash.com/photo-1583391733956-6c78276477e5?w=600&h=400",
     videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
     tags: ["sita", "swayamvar", "bow", "marriage", "सीता", "स्वयंवर"],
@@ -375,7 +382,7 @@ export const videoData: InsertVideo[] = [
     title: "कर्म का सिद्धांत - Law of Karma Explained",
     description: "Understanding the fundamental law of karma and its impact on our lives.",
     category: "Explained",
-    duration: 189,
+    duration: "189",
     thumbnailUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400",
     videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
     tags: ["karma", "law", "philosophy", "कर्म", "सिद्धांत"],
@@ -385,7 +392,7 @@ export const videoData: InsertVideo[] = [
     title: "धर्म और अधर्म - Righteousness vs Unrighteousness",
     description: "The eternal conflict between dharma and adharma explained through stories.",
     category: "Explained",
-    duration: 167,
+    duration: "167",
     thumbnailUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400",
     videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
     tags: ["dharma", "righteousness", "morals", "धर्म", "अधर्म"],
@@ -395,7 +402,7 @@ export const videoData: InsertVideo[] = [
     title: "मोक्ष का मार्ग - Path to Liberation",
     description: "The four paths to moksha: karma, bhakti, raja, and gyana yoga explained.",
     category: "Explained",
-    duration: 198,
+    duration: "198",
     thumbnailUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400",
     videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
     tags: ["moksha", "liberation", "yoga", "मोक्ष", "मार्ग"],

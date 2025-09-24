@@ -29,8 +29,8 @@ export function WatchLaterButton({
 
   // Use cached data to determine if video is in watch later
   const isVideoInWatchLater = useMemo(() => {
-    if (!watchLater || !video?.id) return false;
-    return watchLater.some(item => item.videoId === video.id);
+    if (!watchLater || !Array.isArray(watchLater) || !video?.id) return false;
+    return watchLater.some((item: any) => item.videoId === video.id);
   }, [watchLater, video?.id]);
 
   // Update local state when cached data changes

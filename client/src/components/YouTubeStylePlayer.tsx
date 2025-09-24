@@ -1426,7 +1426,7 @@ export function YouTubeStylePlayer({
           },
           staleTime: 5 * 60 * 1000, // 5 minutes
         });
-        console.log('Fetched series videos:', seriesVideos?.length);
+        console.log('Fetched series videos:', Array.isArray(seriesVideos) ? seriesVideos.length : 0);
       } catch (error) {
         console.error('Failed to fetch series videos:', error);
         return null;
@@ -1601,10 +1601,10 @@ export function YouTubeStylePlayer({
           tabIndex={0}
         >
           {/* Add subtitle tracks here when available */}
-          {video?.subtitle_url && (
+          {video?.subtitleUrl && (
             <track
               kind="subtitles"
-              src={video.subtitle_url}
+              src={video.subtitleUrl}
               srcLang="hi"
               label="Hindi"
               default={playerState.showSubtitles}
@@ -1663,7 +1663,7 @@ export function YouTubeStylePlayer({
                     {video?.series_id && playerState.currentPlaylist.length > 1 && (
                       <p className="text-gray-300 text-sm">
                         Episode {playerState.currentPlaylistIndex + 1} of {playerState.currentPlaylist.length}
-                        {video?.series_name && ` • ${video.series_name}`}
+                        {video?.seriesName && ` • ${video.seriesName}`}
                       </p>
                     )}
                   </div>

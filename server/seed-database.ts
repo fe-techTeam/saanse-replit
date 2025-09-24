@@ -21,7 +21,7 @@ async function seedDatabase() {
     let seriesCount = 0;
 
     for (const video of videoData) {
-      if (video.contentType === "series" && video.seriesId) {
+      if (video.seriesId) {
         // Find the corresponding series ID
         const seriesTitle = getSeriesTitleFromId(video.seriesId);
         const actualSeriesId = createdSeries[seriesTitle];

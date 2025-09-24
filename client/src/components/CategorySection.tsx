@@ -88,7 +88,7 @@ export function CategorySection({
               onClick={() => onVideoClick(video)}
             >
               <img 
-                src={video.thumbnailUrl} 
+                src={video.thumbnail_url} 
                 alt={video.title}
                 className="w-full h-24 object-cover"
                 loading="lazy"

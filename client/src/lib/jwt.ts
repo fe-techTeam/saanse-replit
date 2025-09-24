@@ -69,5 +69,5 @@ export const getBearerToken = (): string | null => {
 // Create authorization headers for API requests
 export const getAuthHeaders = (): Record<string, string> => {
   const bearerToken = getBearerToken();
-  return bearerToken ? { 'Authorization': bearerToken } : {};
+  return bearerToken ? { 'Authorization': bearerToken, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 };

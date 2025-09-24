@@ -330,8 +330,8 @@ export class SupabaseStorage implements IStorage {
       
       // Count shared tags if available
       if (tags && tags.length > 0) {
-        const sharedTagsA = (a.tags || []).filter(tag => tags.includes(tag)).length;
-        const sharedTagsB = (b.tags || []).filter(tag => tags.includes(tag)).length;
+        const sharedTagsA = (a.tags || []).filter((tag: string) => tags.includes(tag)).length;
+        const sharedTagsB = (b.tags || []).filter((tag: string) => tags.includes(tag)).length;
         scoreA += sharedTagsA * 100;
         scoreB += sharedTagsB * 100;
       }
@@ -542,7 +542,7 @@ export class SupabaseStorage implements IStorage {
     const validatedUser = insertUserSchema.parse(user);
     
     // Map camelCase to snake_case for database
-    const dbUser = {
+    const dbUser: any = {
       supabase_uid: validatedUser.supabaseUid,
       email: validatedUser.email, // Required until migration is complete
       display_name: validatedUser.displayName,

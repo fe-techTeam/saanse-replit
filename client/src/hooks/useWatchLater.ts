@@ -45,7 +45,7 @@ export function useWatchLater() {
     ...getSafariQueryConfig(),
     // Fallback for non-Safari browsers
     staleTime: isSafari() ? undefined : 5 * 60 * 1000,
-    cacheTime: isSafari() ? undefined : 10 * 60 * 1000,
+    gcTime: isSafari() ? undefined : 10 * 60 * 1000,
     retry: isSafari() ? undefined : 1,
   });
 

@@ -14,6 +14,8 @@ export interface VideoType {
   series_id?: string;
   episode_number?: number;
   created_at: string;
+  subtitleUrl?: string;
+  seriesName?: string;
 }
 
 export interface SeriesType {

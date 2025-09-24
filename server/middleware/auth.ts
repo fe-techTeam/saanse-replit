@@ -128,7 +128,10 @@ export const authenticateJWT = async (req: AuthenticatedRequest, res: Response, 
     }
 
     // Attach user data to request
-    req.user = user;
+    req.user = {
+      id: user.id,
+      email: user.email || undefined,
+    };
     req.dbUser = dbUser;
     req.authType = 'supabase';
     
@@ -188,7 +191,10 @@ export const optionalAuth = async (req: AuthenticatedRequest, res: Response, nex
           // Continue anyway, the user might already exist
         }
       }
-      req.user = user;
+      req.user = {
+        id: user.id,
+        email: user.email || undefined,
+      };
       req.dbUser = dbUser;
       req.authType = 'supabase';
     }

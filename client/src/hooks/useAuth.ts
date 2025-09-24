@@ -457,8 +457,7 @@ export function useAuth() {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { data, error } = await signUpWithEmail(email, password);
-      if (error) throw error;
+      const data = await signUpWithEmail(email, password);
       return !!data.user;
     } catch (error) {
       console.error("Sign up failed:", error);
