@@ -1,0 +1,276 @@
+name: 🐳 Docker Build & Push
+
+on:
+  push:
+    branches: [main, develop, staging]
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'package*.json'
+      - 'server/**'
+      - 'client/**'
+      - 'shared/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'package*.json'
+      - 'server/**'
+      - 'client/**'
+      - 'shared/**'
+  workflow_call:
+    inputs:
+      push-image:
+        description: 'Whether to push the built image'
+        required: false
+        type: boolean
+        default: true
+      platforms:
+        description: 'Target platforms for build'
+        required: false
+        type: string
+        default: 'linux/amd64,linux/arm64'
+    outputs:
+      image-tag:
+        description: 'Built image tag'
+        value: ${{ jobs.build.outputs.image-tag }}
+      image-digest:
+        description: 'Image digest'
+        value: ${{ jobs.build.outputs.image-digest }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: 🔨 Build Multi-Platform Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
+          driver-opts: |
+            network=host
+            image=moby/buildkit:buildx-stable-1
+
+      - name: 🔑 Login to Container Registry
+        if: github.event_name != 'pull_request' && (inputs.push-image || inputs.push-image == null)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD-HHmmss'}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+          labels: |
+            org.opencontainers.image.title=SAANSE Platform
+            org.opencontainers.image.description=Streaming and content management platform
+            org.opencontainers.image.vendor=SAANSE Team
+            org.opencontainers.image.licenses=MIT
+
+      - name: 🎯 Setup Build Cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: 🔨 Build and Push Docker Image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ inputs.platforms || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' && (inputs.push-image || inputs.push-image == null) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            COMMIT_SHA=${{ github.sha }}
+            BRANCH_NAME=${{ github.ref_name }}
+          provenance: true
+          sbom: true
+          secrets: |
+            GIT_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📋 Export Digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: 📦 Upload Digest
+        uses: actions/upload-artifact@v3
+        with:
+          name: digests
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # ============================================================================
+  # IMAGE TESTING & VALIDATION
+  # ============================================================================
+  test-image:
+    name: 🧪 Test Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: saanse_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏃 Run Image Tests
+        run: |
+          # Pull the built image
+          IMAGE_TAG=$(echo "${{ needs.build.outputs.image-tag }}" | head -n1)
+          docker pull $IMAGE_TAG
+          
+          # Run container for testing
+          docker run -d --name test-container \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e DATABASE_URL=postgresql://test_user:test_password@localhost:5432/saanse_test \
+            $IMAGE_TAG
+          
+          # Wait for container to start
+          sleep 10
+          
+          # Test health endpoint
+          curl -f http://localhost:3000/api/health || exit 1
+          
+          # Test container logs
+          docker logs test-container
+          
+          # Cleanup
+          docker stop test-container
+          docker rm test-container
+
+      - name: 🔍 Image Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image-tag }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  # ============================================================================
+  # MULTI-ARCHITECTURE BUILD MANIFEST
+  # ============================================================================
+  manifest:
+    name: 📋 Create Multi-Arch Manifest
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request' && (inputs.push-image || inputs.push-image == null)
+
+    steps:
+      - name: 📥 Download Digests
+        uses: actions/download-artifact@v3
+        with:
+          name: digests
+          path: /tmp/digests
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: 📋 Create Manifest List and Push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: 🔍 Inspect Image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+  # ============================================================================
+  # CLEANUP
+  # ============================================================================
+  cleanup:
+    name: 🧹 Cleanup Build Artifacts
+    runs-on: ubuntu-latest
+    needs: [build, test-image, manifest]
+    if: always()
+
+    steps:
+      - name: 🧹 Clean up Docker Build Cache
+        run: |
+          docker buildx prune -f --filter until=24h
+          docker system prune -f
+
+      - name: 📊 Report Build Stats
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "## 🐳 Docker Build Report" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ needs.build.outputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Digest**: ${{ needs.build.outputs.image-digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platforms**: ${{ inputs.platforms || 'linux/amd64,linux/arm64' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Time**: $(date)" >> $GITHUB_STEP_SUMMARY

@@ -22,6 +22,16 @@ function getFrontendUrl(path: string = ''): string {
 }
 
 export async function registerRoutes(app: Express): Promise<void> {
+  // Health check endpoint for Kubernetes probes
+  app.get("/api/health", (req, res) => {
+    res.status(200).json({ 
+      status: "healthy", 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
   // Videos
   app.get("/api/videos", async (req, res) => {
     try {

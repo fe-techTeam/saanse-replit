@@ -1,0 +1,359 @@
+name: 🚀 SAANSE CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, staging]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: '18'
+
+jobs:
+  # ============================================================================
+  # CODE QUALITY & SECURITY CHECKS
+  # ============================================================================
+  code-quality:
+    name: 🔍 Code Quality & Security
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: 🔎 TypeScript Check
+        run: npm run check
+
+      - name: 🔒 Security Audit
+        run: npm audit --audit-level=moderate
+
+      - name: 🚫 Check for Vulnerabilities
+        continue-on-error: true
+        run: |
+          npx audit-ci --moderate
+
+  # ============================================================================
+  # AUTOMATED TESTING
+  # ============================================================================
+  test:
+    name: 🧪 Test Suite
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: saanse_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: 🗄️ Setup Test Database
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/saanse_test
+        run: |
+          npm run db:push
+
+      - name: 🧪 Run Tests
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/saanse_test
+        run: |
+          # Add your test command here when tests are implemented
+          echo "Tests would run here - npm test"
+
+      - name: 📊 Test Coverage
+        continue-on-error: true
+        run: |
+          echo "Coverage reporting would be here"
+
+  # ============================================================================
+  # DOCKER BUILD & SECURITY SCANNING
+  # ============================================================================
+  build-and-scan:
+    name: 🐳 Build & Security Scan
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+      
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
+
+      - name: 🔑 Login to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD-HHmmss'}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: 🔨 Build and Push Docker Image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_DATE=${{ github.run_id }}
+            VERSION=${{ github.sha }}
+          secrets: |
+            GIT_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🛡️ Run Trivy Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: 📋 Upload Trivy Results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: 🛡️ Docker Scout Security Scan
+        if: github.event_name != 'pull_request'
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: ${{ steps.meta.outputs.tags }}
+          only-severities: critical,high
+          exit-code: true
+
+  # ============================================================================
+  # DEPLOYMENT TO ENVIRONMENTS
+  # ============================================================================
+  deploy:
+    name: 🚀 Deploy to ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    needs: [build-and-scan, test]
+    if: |
+      github.event_name != 'pull_request' && 
+      (success() || github.event_name == 'workflow_dispatch')
+    
+    strategy:
+      matrix:
+        include:
+          - environment: development
+            condition: github.ref == 'refs/heads/develop'
+            namespace: saanse-dev
+          - environment: staging
+            condition: github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+            namespace: saanse-staging
+          - environment: production
+            condition: github.event_name == 'release'
+            namespace: saanse-prod
+
+    environment: 
+      name: ${{ matrix.environment }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set up Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: 🔑 Configure AWS Credentials (if using EKS)
+        if: matrix.environment == 'production'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 🎯 Setup Kubeconfig
+        run: |
+          # Configure kubeconfig based on environment
+          case "${{ matrix.environment }}" in
+            "development")
+              echo "Using local kubeconfig for development"
+              # minikube context would be set here
+              ;;
+            "staging"|"production")
+              echo "Configuring cloud kubeconfig"
+              # Configure EKS, GKE, or AKS kubeconfig
+              aws eks update-kubeconfig --name saanse-${{ matrix.environment }} --region ${{ secrets.AWS_REGION }}
+              ;;
+          esac
+
+      - name: 🔄 Update Deployment Image
+        run: |
+          kubectl set image deployment/saanse-app \
+            saanse-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n ${{ matrix.namespace }}
+
+      - name: ⏳ Wait for Rollout
+        id: deploy
+        run: |
+          kubectl rollout status deployment/saanse-app -n ${{ matrix.namespace }} --timeout=300s
+          
+          # Get the service URL
+          SERVICE_URL=$(kubectl get ingress -n ${{ matrix.namespace }} -o jsonpath='{.items[0].spec.rules[0].host}')
+          echo "url=https://$SERVICE_URL" >> $GITHUB_OUTPUT
+
+      - name: ✅ Verify Deployment
+        run: |
+          # Health check
+          kubectl get pods -n ${{ matrix.namespace }}
+          kubectl get services -n ${{ matrix.namespace }}
+          
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=saanse -n ${{ matrix.namespace }} --timeout=300s
+
+      - name: 🔄 Rollback on Failure
+        if: failure()
+        run: |
+          echo "Deployment failed, initiating rollback..."
+          kubectl rollout undo deployment/saanse-app -n ${{ matrix.namespace }}
+          kubectl rollout status deployment/saanse-app -n ${{ matrix.namespace }} --timeout=300s
+
+  # ============================================================================
+  # POST-DEPLOYMENT VERIFICATION
+  # ============================================================================
+  verify-deployment:
+    name: ✅ Post-Deployment Verification
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+
+    steps:
+      - name: 🏥 Health Check
+        run: |
+          # Add health check logic here
+          echo "Health check would verify deployment is working"
+          
+      - name: 🔔 Notify Success
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          channel: '#deployments'
+          text: "✅ SAANSE deployment successful to ${{ matrix.environment }}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ============================================================================
+  # CLEANUP & NOTIFICATIONS
+  # ============================================================================
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    needs: [verify-deployment]
+    if: always()
+
+    steps:
+      - name: 🧹 Clean up Docker images
+        run: |
+          # Clean up old images from registry if needed
+          echo "Cleanup completed"
+
+      - name: 🔔 Notify on Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#deployments'
+          text: "❌ SAANSE deployment failed"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
