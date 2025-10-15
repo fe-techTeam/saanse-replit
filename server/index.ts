@@ -35,8 +35,12 @@ if (missingVars.length > 0) {
 }
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Increase timeout and payload limits for video uploads
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ extended: false, limit: '150mb' }));
+
+// Server timeout will be set on the HTTP server instance
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -94,6 +98,11 @@ app.use((req, res, next) => {
   if (NODE_ENV === "development") {
     const server = createServer(app);
     await setupVite(app, server);
+    // Set server timeouts for large file uploads
+    server.timeout = 600000; // 10 minutes
+    server.keepAliveTimeout = 650000; // Slightly longer than timeout
+    server.headersTimeout = 660000; // Slightly longer than keepAliveTimeout
+    
     server.listen({
       port: port,
       host: host,

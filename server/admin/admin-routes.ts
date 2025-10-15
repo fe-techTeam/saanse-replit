@@ -195,7 +195,35 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
   });
 
   // Video upload endpoint with Cloudinary integration
-  app.post("/api/admin/videos/upload", adminAuthMiddleware, upload.single('video'), async (req, res) => {
+  app.post("/api/admin/videos/upload", adminAuthMiddleware, (req, res, next) => {
+    // Set timeout for this specific route to 10 minutes
+    req.setTimeout(600000);
+    res.setTimeout(600000);
+    
+    // Handle multer upload with custom error handling
+    upload.single('video')(req, res, (err) => {
+      if (err) {
+        console.error('Multer upload error:', err);
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ 
+            error: 'File too large', 
+            details: 'Maximum file size is 500MB' 
+          });
+        }
+        if (err.code === 'INVALID_FILE_TYPE') {
+          return res.status(400).json({ 
+            error: 'Invalid file type', 
+            details: 'Only video files are allowed' 
+          });
+        }
+        return res.status(500).json({ 
+          error: 'Upload failed', 
+          details: err.message 
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No video file provided" });
@@ -252,35 +280,114 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         console.log('Using fallback category: general');
       }
 
-      // Minimal Cloudinary upload configuration - no transformations at all
+      // Enhanced Cloudinary upload configuration with eager transformations
       const uploadOptions: any = {
         folder: 'mythosstream-videos',
         resource_type: 'video',
+        // Pre-generate streaming formats during upload
+        eager: [
+          // HLS streaming formats
+          { format: 'm3u8' }, // Generate HLS manifest
+          // DASH streaming format
+          { format: 'mpd' }, // Generate DASH manifest
+          // MP4 variants for fallback
+          { 
+            width: 1280, 
+            height: 720, 
+            crop: 'limit', 
+            quality: 'auto:good',
+            format: 'mp4',
+            video_codec: 'h264',
+            audio_codec: 'aac'
+          },
+          { 
+            width: 854, 
+            height: 480, 
+            crop: 'limit', 
+            quality: 'auto:good',
+            format: 'mp4',
+            video_codec: 'h264',
+            audio_codec: 'aac'
+          },
+          { 
+            width: 640, 
+            height: 360, 
+            crop: 'limit', 
+            quality: 'auto:good',
+            format: 'mp4',
+            video_codec: 'h264',
+            audio_codec: 'aac'
+          },
+          // WebM variants for modern browsers
+          { 
+            width: 1280, 
+            height: 720, 
+            crop: 'limit', 
+            quality: 'auto:good',
+            format: 'webm',
+            video_codec: 'vp9',
+            audio_codec: 'vorbis'
+          },
+          { 
+            width: 854, 
+            height: 480, 
+            crop: 'limit', 
+            quality: 'auto:good',
+            format: 'webm',
+            video_codec: 'vp9',
+            audio_codec: 'vorbis'
+          }
+        ],
+        eager_async: true, // Process transformations asynchronously for faster upload response
+        // Webhook URL for transformation completion notifications
+        eager_notification_url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/admin/cloudinary/webhook`
       };
 
-      // Upload to Cloudinary
-      const cloudinaryResult = await uploadVideoToCloudinary(req.file, uploadOptions);
+      console.log('Starting Cloudinary upload for file:', req.file?.originalname, 'size:', req.file?.size);
+      
+      // Upload to Cloudinary with timeout handling
+      const cloudinaryResult = await Promise.race([
+        uploadVideoToCloudinary(req.file, uploadOptions),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Cloudinary upload timeout after 8 minutes')), 480000)
+        )
+      ]) as any;
 
       console.log('Cloudinary upload successful:', cloudinaryResult.public_id);
 
-      // Generate streaming URLs
-      const streamingUrls = getVideoStreamingUrls(cloudinaryResult.public_id);
+      // Generate streaming URLs (using eager transformations when available)
+      const streamingUrls = getVideoStreamingUrls(cloudinaryResult.public_id, cloudinaryResult);
+
+      // Prepare cloudinary metadata
+      const cloudinaryMeta = {
+        public_id: cloudinaryResult.public_id,
+        duration: cloudinaryResult.duration,
+        width: cloudinaryResult.width,
+        height: cloudinaryResult.height,
+        format: cloudinaryResult.format,
+        bytes: cloudinaryResult.bytes,
+        bit_rate: cloudinaryResult.bit_rate,
+        frame_rate: cloudinaryResult.frame_rate,
+        video_codec: cloudinaryResult.video_codec,
+        audio_codec: cloudinaryResult.audio_codec,
+      };
 
       // Prepare video data for database (using correct field names for current schema)
       const videoData = {
         title,
         description: description || '',
         category: finalCategory, // Include category for database constraint
-        duration: cloudinaryResult.duration ? cloudinaryResult.duration.toString() : '0',
-        thumbnailUrl: streamingUrls.thumbnail,
+        duration: cloudinaryResult.duration ? cloudinaryResult.duration : 0,
+        thumbnailUrl: streamingUrls.thumbnail || cloudinaryResult.secure_url.replace(/\.(mp4|mov|avi|webm)$/, '.jpg'),
         videoUrl: cloudinaryResult.secure_url,
         tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map((t: string) => t.trim())) : [],
         isActive: is_active === true || is_active === 'true',
         seriesId: series_id, // Required field
         episodeNumber: parseInt(episode_number), // Required field
-        // Store Cloudinary metadata
+        // Store Cloudinary metadata and streaming URLs
         cloudinaryPublicId: cloudinaryResult.public_id,
         streamingUrls: streamingUrls,
+        cloudinaryMeta: cloudinaryMeta,
       };
 
       // Create video in database
@@ -296,17 +403,37 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
           height: cloudinaryResult.height,
           format: cloudinaryResult.format,
           bytes: cloudinaryResult.bytes,
+          eager_transformations: cloudinaryResult.eager?.length || 0,
         },
         streaming_urls: streamingUrls,
-        message: 'Video uploaded successfully'
+        message: 'Video uploaded successfully. Streaming formats are being generated.',
+        info: {
+          hls_available: !!streamingUrls.hls,
+          dash_available: !!streamingUrls.dash,
+          eager_processing: cloudinaryResult.eager?.length > 0 ? 'async' : 'on-demand'
+        }
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Video upload error:", error);
-      res.status(500).json({ 
-        error: "Failed to upload video", 
-        details: error.message 
-      });
+      
+      // Handle specific error types
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ 
+          error: "Upload timeout", 
+          details: "Video upload took too long. Please try with a smaller file or check your internet connection." 
+        });
+      } else if (error.message?.includes('File too large')) {
+        res.status(413).json({ 
+          error: "File too large", 
+          details: "Maximum file size is 500MB" 
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Failed to upload video", 
+          details: error.message 
+        });
+      }
     }
   });
 
@@ -347,6 +474,53 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       res.json(video);
     } catch (error) {
       res.status(500).json({ error: "Failed to update video" });
+    }
+  });
+
+  // Update video streaming URLs endpoint
+  app.patch("/api/admin/videos/:id/streaming", adminAuthMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { streaming_urls, cloudinary_meta, cloudinary_public_id } = req.body;
+
+      // Validate required fields
+      if (!streaming_urls) {
+        return res.status(400).json({ error: "Streaming URLs are required" });
+      }
+
+      // Prepare update data
+      const updateData: any = {
+        streamingUrls: streaming_urls,
+      };
+
+      if (cloudinary_meta) {
+        updateData.cloudinaryMeta = cloudinary_meta;
+      }
+
+      if (cloudinary_public_id) {
+        updateData.cloudinaryPublicId = cloudinary_public_id;
+      }
+
+      // Update the video with streaming URLs and metadata
+      const video = await storage.updateVideo(id, updateData);
+      
+      if (!video) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+
+      console.log(`Successfully updated streaming URLs for video ${id}`);
+      
+      res.json({ 
+        success: true, 
+        video,
+        message: "Streaming URLs updated successfully" 
+      });
+    } catch (error) {
+      console.error("Failed to update streaming URLs:", error);
+      res.status(500).json({ 
+        error: "Failed to update streaming URLs",
+        details: error.message 
+      });
     }
   });
 
@@ -670,6 +844,32 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       res.json(data);
     } catch (error) {
       res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  // Cloudinary webhook for eager transformation completion
+  app.post("/api/admin/cloudinary/webhook", async (req, res) => {
+    try {
+      console.log('📹 Cloudinary webhook received:', req.body);
+      
+      const { public_id, eager } = req.body;
+      
+      if (public_id && eager && eager.length > 0) {
+        console.log(`✅ Eager transformations completed for: ${public_id}`);
+        console.log(`   Generated ${eager.length} transformation(s)`);
+        
+        // Optional: Update database with completed transformation URLs
+        // This could be useful for updating streaming URLs after async processing
+        // const updatedStreamingUrls = getVideoStreamingUrls(public_id, req.body);
+        // await storage.updateVideoByPublicId(public_id, { streamingUrls: updatedStreamingUrls });
+      }
+      
+      // Always respond with 200 to acknowledge receipt
+      res.status(200).json({ success: true });
+      
+    } catch (error) {
+      console.error('Cloudinary webhook error:', error);
+      res.status(200).json({ success: true }); // Still acknowledge to prevent retries
     }
   });
 }

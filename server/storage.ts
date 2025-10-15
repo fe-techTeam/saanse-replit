@@ -178,13 +178,18 @@ export class SupabaseStorage implements IStorage {
     return {
       title: video.title?.trim(),
       description: video.description?.trim(),
+      category: video.category?.trim(),
       duration: video.duration,
       thumbnail_url: (video.thumbnailUrl || video.thumbnail_url)?.trim(),
       video_url: (video.videoUrl || video.video_url)?.trim(),
       tags: video.tags || [],
       series_id: (video.seriesId || video.series_id)?.trim(),
       episode_number: video.episodeNumber ?? video.episode_number,
-      is_active: video.isActive !== undefined ? video.isActive : (video.is_active !== undefined ? video.is_active : true)
+      is_active: video.isActive !== undefined ? video.isActive : (video.is_active !== undefined ? video.is_active : true),
+      // Handle new streaming fields
+      streaming_urls: video.streamingUrls || video.streaming_urls || {},
+      cloudinary_meta: video.cloudinaryMeta || video.cloudinary_meta || {},
+      cloudinary_public_id: (video.cloudinaryPublicId || video.cloudinary_public_id)?.trim(),
     };
   }
 
