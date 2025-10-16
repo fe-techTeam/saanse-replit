@@ -84,7 +84,13 @@ export function MoreInfoDialog({
                 <Button 
                   size="lg" 
                   className="bg-dharma-red hover:bg-dharma-red-dark text-white font-semibold px-6 py-2"
-                  onClick={() => handlePlayEpisode(video)}
+                  onClick={() => {
+                    // Play the first episode in the series if available, otherwise play the current video
+                    const firstEpisode = episodeVideos && episodeVideos.length > 0 
+                      ? episodeVideos.sort((a, b) => (a.episode_number || 0) - (b.episode_number || 0))[0]
+                      : video;
+                    handlePlayEpisode(firstEpisode);
+                  }}
                 >
                   <Play className="w-5 h-5 mr-2 fill-white" />
                   Play
@@ -196,14 +202,14 @@ export function MoreInfoDialog({
                     ) : episodeVideos && episodeVideos.length > 0 ? (
                       episodeVideos
                         .sort((a, b) => (a.episode_number || 0) - (b.episode_number || 0))
-                        .map((episode) => (
+                        .map((episode, index) => (
                           <div
                             key={episode.id}
                             className="flex items-start gap-4 p-3 rounded-lg hover:bg-dharma-gray/20 cursor-pointer transition-colors group"
                             onClick={() => handlePlayEpisode(episode)}
                           >
                             <div className="text-white font-bold text-lg min-w-[2rem] text-center">
-                              {episode.episode_number}
+                              {index + 1}
                             </div>
                             
                             <div className="relative flex-shrink-0">

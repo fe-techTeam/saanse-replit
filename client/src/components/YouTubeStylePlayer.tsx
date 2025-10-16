@@ -43,6 +43,7 @@ interface PlayerState {
   volume: number;
   isMuted: boolean;
   isFullscreen: boolean;
+  isPageFullscreen: boolean; // Default fullscreen (fills viewport)
   showControls: boolean;
   playbackRate: number;
   isSeekBarHovered: boolean;
@@ -66,6 +67,7 @@ type PlayerAction =
   | { type: 'SET_VOLUME'; payload: number }
   | { type: 'SET_MUTED'; payload: boolean }
   | { type: 'SET_FULLSCREEN'; payload: boolean }
+  | { type: 'SET_PAGE_FULLSCREEN'; payload: boolean }
   | { type: 'SET_SHOW_CONTROLS'; payload: boolean }
   | { type: 'SET_PLAYBACK_RATE'; payload: number }
   | { type: 'SET_SEEKBAR_HOVERED'; payload: boolean }
@@ -88,7 +90,8 @@ const initialPlayerState: PlayerState = {
   duration: 0,
   volume: 1,
   isMuted: false,
-  isFullscreen: true,
+  isFullscreen: false, // Browser fullscreen (Fullscreen API)
+  isPageFullscreen: true, // Default page fullscreen (fills viewport)
   showControls: true,
   playbackRate: 1,
   isSeekBarHovered: false,
@@ -119,6 +122,8 @@ function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
       return { ...state, isMuted: action.payload };
     case 'SET_FULLSCREEN':
       return { ...state, isFullscreen: action.payload };
+    case 'SET_PAGE_FULLSCREEN':
+      return { ...state, isPageFullscreen: action.payload };
     case 'SET_SHOW_CONTROLS':
       return { ...state, showControls: action.payload };
     case 'SET_PLAYBACK_RATE':
@@ -259,7 +264,8 @@ export function YouTubeStylePlayer({
       dispatch({ type: 'SET_PLAYING', payload: false });
       dispatch({ type: 'SET_ERROR', payload: null });
       dispatch({ type: 'SET_SHOW_CONTROLS', payload: true });
-      dispatch({ type: 'SET_FULLSCREEN', payload: true });
+      dispatch({ type: 'SET_PAGE_FULLSCREEN', payload: true }); // Start in page fullscreen
+      dispatch({ type: 'SET_FULLSCREEN', payload: false }); // Not in browser fullscreen
       dispatch({ type: 'SET_CAN_PLAY', payload: false });
       dispatch({ type: 'SET_HAS_ATTEMPTED_PLAY', payload: false });
       dispatch({ type: 'SET_PLAYBACK_ERROR', payload: null });
@@ -915,11 +921,11 @@ export function YouTubeStylePlayer({
           break;
         case 'Escape':
           e.preventDefault();
-          if (playerState.isFullscreen) {
-            // First escape: exit fullscreen
+          if (document.fullscreenElement) {
+            // First escape: exit browser fullscreen (back to page fullscreen)
             toggleFullscreen();
-          } else {
-            // Second escape: close player
+          } else if (playerState.isPageFullscreen) {
+            // Second escape: close player completely
             handleClose();
           }
           break;
@@ -1153,8 +1159,9 @@ export function YouTubeStylePlayer({
     if (!container) return;
 
     try {
-      if (!playerState.isFullscreen && !document.fullscreenElement) {
-        // Enter fullscreen
+      if (!document.fullscreenElement) {
+        // Enter browser fullscreen (from page fullscreen)
+        console.log('Entering browser fullscreen mode');
         if (container.requestFullscreen) {
           await container.requestFullscreen();
         } else if ((container as any).webkitRequestFullscreen) {
@@ -1163,8 +1170,9 @@ export function YouTubeStylePlayer({
           await (container as any).msRequestFullscreen();
         }
         // State will be updated by fullscreenchange event
-      } else if (document.fullscreenElement) {
-        // Exit fullscreen
+      } else {
+        // Exit browser fullscreen (back to page fullscreen)
+        console.log('Exiting browser fullscreen mode');
         if (document.exitFullscreen) {
           await document.exitFullscreen();
         } else if ((document as any).webkitExitFullscreen) {
@@ -1180,7 +1188,7 @@ export function YouTubeStylePlayer({
       const isActuallyFullscreen = !!document.fullscreenElement;
       dispatch({ type: 'SET_FULLSCREEN', payload: isActuallyFullscreen });
     }
-  }, [playerState.isFullscreen]);
+  }, []);
 
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const videoEl = videoRef.current;
@@ -2054,9 +2062,9 @@ export function YouTubeStylePlayer({
                     size="icon"
                     className="text-white hover:bg-white hover:bg-opacity-20 transition-all duration-200"
                     onClick={toggleFullscreen}
-                    title={playerState.isFullscreen ? "Exit Fullscreen (F)" : "Enter Fullscreen (F)"}
+                    title={document.fullscreenElement ? "Exit Browser Fullscreen (F)" : "Enter Browser Fullscreen (F)"}
                   >
-                    {playerState.isFullscreen ? (
+                    {document.fullscreenElement ? (
                       <Minimize className="w-5 h-5" />
                     ) : (
                       <Maximize className="w-5 h-5" />
