@@ -47,13 +47,13 @@ export const series = pgTable("series", {
   description: text("description"),
   // Category is retained in DB but optional & hidden from UI
   category: text("category"),
-  thumbnailUrl: text("thumbnail_url").notNull(),
-  bannerUrl: text("banner_url"),
+  thumbnail_url: text("thumbnail_url").notNull(),
+  banner_url: text("banner_url"),
   status: text("status").notNull().default('draft'), // draft | published | archived
-  totalEpisodes: integer("total_episodes").default(0).notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  total_episodes: integer("total_episodes").default(0).notNull(),
+  is_active: boolean("is_active").default(true).notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const playlists = pgTable("playlists", {
@@ -132,9 +132,9 @@ export const insertVideoSchema = createInsertSchema(videos).omit({
 
 export const insertSeriesSchema = createInsertSchema(series).omit({
   id: true,
-  totalEpisodes: true,
-  createdAt: true,
-  updatedAt: true,
+  total_episodes: true,
+  created_at: true,
+  updated_at: true,
 });
 
 export const insertPlaylistSchema = createInsertSchema(playlists).omit({

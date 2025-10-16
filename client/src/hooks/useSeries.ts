@@ -11,7 +11,7 @@ export function useSeries() {
       console.log("Series API response:", data);
       return Array.isArray(data) ? data : [];
     },
-    staleTime: 60_000,
+    staleTime: 10_000, // 10 seconds
     retry: 1,
   });
 }
@@ -21,7 +21,7 @@ export function useSeriesById(seriesId: string, enabled = true) {
     queryKey: ["/api/series", seriesId],
     queryFn: () => apiClient.get<SeriesType>(`/api/series/${seriesId}`),
     enabled: enabled && !!seriesId,
-    staleTime: 60_000,
+    staleTime: 10_000, // 10 seconds
     retry: 1,
   });
 }

@@ -35,6 +35,9 @@ export interface IStorage {
   updateSeries(id: string, updates: Partial<InsertSeries>): Promise<Series | null>;
   deleteSeries(id: string): Promise<boolean>;
   getVideosBySeries(seriesId: string): Promise<Video[]>;
+  getAllVideosBySeries(seriesId: string): Promise<Video[]>;
+  shiftEpisodesForInsert(seriesId: string, insertEpisodeNumber: number): Promise<void>;
+  renumberEpisodesAfterDeletion(seriesId: string, deletedEpisodeNumber: number): Promise<void>;
 
   // User operations
   getUsers(): Promise<User[]>;
@@ -178,13 +181,19 @@ export class SupabaseStorage implements IStorage {
     return {
       title: video.title?.trim(),
       description: video.description?.trim(),
+      category: video.category?.trim(),
       duration: video.duration,
       thumbnail_url: (video.thumbnailUrl || video.thumbnail_url)?.trim(),
       video_url: (video.videoUrl || video.video_url)?.trim(),
       tags: video.tags || [],
       series_id: (video.seriesId || video.series_id)?.trim(),
       episode_number: video.episodeNumber ?? video.episode_number,
-      is_active: video.isActive !== undefined ? video.isActive : (video.is_active !== undefined ? video.is_active : true)
+      is_active: video.isActive !== undefined ? video.isActive : (video.is_active !== undefined ? video.is_active : true),
+      content_type: video.content_type || 'standalone', // Add content_type field
+      // Handle new streaming fields
+      streaming_urls: video.streamingUrls || video.streaming_urls || {},
+      cloudinary_meta: video.cloudinaryMeta || video.cloudinary_meta || {},
+      cloudinary_public_id: (video.cloudinaryPublicId || video.cloudinary_public_id)?.trim(),
     };
   }
 
@@ -194,6 +203,20 @@ export class SupabaseStorage implements IStorage {
     // Transform camelCase fields to snake_case for database
     const transformedVideo = this.transformVideoFields(video);
     console.log("Transformed video data:", transformedVideo);
+    
+    // If this is a series video, handle episode shifting
+    if (transformedVideo.series_id && transformedVideo.episode_number) {
+      console.log(`Calling shiftEpisodesForInsert for series ${transformedVideo.series_id}, episode ${transformedVideo.episode_number}`);
+      try {
+        await this.shiftEpisodesForInsert(transformedVideo.series_id, transformedVideo.episode_number);
+        console.log("Episode shifting completed successfully");
+      } catch (shiftError) {
+        console.error("Error during episode shifting:", shiftError);
+        throw shiftError;
+      }
+    } else {
+      console.log("No episode shifting needed (not a series video)");
+    }
     
     const { data, error } = await supabase
       .from('videos')
@@ -206,11 +229,34 @@ export class SupabaseStorage implements IStorage {
       throw error;
     }
     console.log("Video created successfully:", data);
+    
+    // Update series episode count if video has a series_id
+    if (data.series_id) {
+      try {
+        await this.updateSeriesEpisodeCount(data.series_id);
+        console.log(`Updated episode count for series ${data.series_id}`);
+      } catch (countError) {
+        console.error("Error updating series episode count:", countError);
+        // Don't throw error here as video creation was successful
+      }
+    }
+    
     return data;
   }
 
   async updateVideo(id: string, updates: Partial<InsertVideo>): Promise<Video | null> {
     console.log('updateVideo called with:', { id, updates });
+    
+    // Get the current video to check for series_id changes
+    const { data: currentVideo, error: fetchError } = await supabase
+      .from('videos')
+      .select('series_id')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching current video:', fetchError);
+    }
     
     const { data, error } = await supabase
       .from('videos')
@@ -225,16 +271,79 @@ export class SupabaseStorage implements IStorage {
       throw error;
     }
     console.log('updateVideo success:', data);
+    
+    // Update series episode counts for both old and new series
+    const seriesToUpdate = new Set<string>();
+    
+    // Add old series_id if it exists
+    if (currentVideo?.series_id) {
+      seriesToUpdate.add(currentVideo.series_id);
+    }
+    
+    // Add new series_id if it exists and is different
+    if (data.series_id && data.series_id !== currentVideo?.series_id) {
+      seriesToUpdate.add(data.series_id);
+    }
+    
+    // Update episode counts for affected series
+    for (const seriesId of seriesToUpdate) {
+      try {
+        await this.updateSeriesEpisodeCount(seriesId);
+        console.log(`Updated episode count for series ${seriesId}`);
+      } catch (countError) {
+        console.error(`Error updating series episode count for ${seriesId}:`, countError);
+        // Don't throw error here as video update was successful
+      }
+    }
+    
     return data;
   }
 
   async deleteVideo(id: string): Promise<boolean> {
+    // Get the current video to find its series_id and episode_number
+    const { data: currentVideo, error: fetchError } = await supabase
+      .from('videos')
+      .select('series_id, episode_number')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching current video for deletion:', fetchError);
+    }
+    
     const { error } = await supabase
       .from('videos')
       .update({ is_active: false })
       .eq('id', id);
 
     if (error) throw error;
+    
+    // If this was a series video, renumber remaining episodes
+    if (currentVideo?.series_id && currentVideo?.episode_number) {
+      console.log(`Video deletion detected: series_id=${currentVideo.series_id}, episode_number=${currentVideo.episode_number}`);
+      try {
+        console.log('Calling renumberEpisodesAfterDeletion...');
+        await this.renumberEpisodesAfterDeletion(currentVideo.series_id, currentVideo.episode_number);
+        console.log(`✅ Renumbered episodes after deletion in series ${currentVideo.series_id}`);
+      } catch (renumberError) {
+        console.error("❌ Error renumbering episodes after deletion:", renumberError);
+        // Don't throw error here as video deletion was successful
+      }
+    } else {
+      console.log('No series video detected, skipping renumbering');
+    }
+    
+    // Update series episode count if video had a series_id
+    if (currentVideo?.series_id) {
+      try {
+        await this.updateSeriesEpisodeCount(currentVideo.series_id);
+        console.log(`Updated episode count for series ${currentVideo.series_id} after video deletion`);
+      } catch (countError) {
+        console.error(`Error updating series episode count for ${currentVideo.series_id}:`, countError);
+        // Don't throw error here as video deletion was successful
+      }
+    }
+    
     return true;
   }
 
@@ -387,22 +496,22 @@ export class SupabaseStorage implements IStorage {
   }
 
   async createSeries(series: InsertSeries): Promise<Series> {
-    console.log("Creating series with data:", series);
-    const validatedSeries = insertSeriesSchema.parse(series);
-    console.log("Validated series:", validatedSeries);
+    const seriesWithDefaults = {
+      ...series,
+      thumbnail_url: series.thumbnail_url || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400'
+    };
     
-    // Transform camelCase to snake_case for database
+    const validatedSeries = insertSeriesSchema.parse(seriesWithDefaults);
+    
     const dbSeries = {
       title: validatedSeries.title,
       slug: validatedSeries.slug,
       description: validatedSeries.description,
       category: validatedSeries.category || 'general',
-      thumbnail_url: validatedSeries.thumbnailUrl,
-      banner_url: validatedSeries.bannerUrl,
+      thumbnail_url: validatedSeries.thumbnail_url || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+      banner_url: validatedSeries.banner_url,
       status: validatedSeries.status || 'draft',
     };
-    
-    console.log("DB series payload:", dbSeries);
     
     const { data, error } = await supabase
       .from('series')
@@ -411,10 +520,9 @@ export class SupabaseStorage implements IStorage {
       .single();
 
     if (error) {
-      console.error("Supabase series insert error:", error);
+      console.error("Error creating series:", error.message);
       throw error;
     }
-    console.log("Series created successfully:", data);
     return data;
   }
 
@@ -453,6 +561,213 @@ export class SupabaseStorage implements IStorage {
 
     if (error) throw error;
     return data || [];
+  }
+
+  async getAllVideosBySeries(seriesId: string): Promise<Video[]> {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('series_id', seriesId)
+      .order('episode_number', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async shiftEpisodesForInsert(seriesId: string, insertEpisodeNumber: number): Promise<void> {
+    console.log(`Shifting episodes for series ${seriesId} to insert at episode ${insertEpisodeNumber}`);
+    
+    // Get all videos in the series (active and inactive) to check for conflicts
+    const { data: allVideos, error: fetchError } = await supabase
+      .from('videos')
+      .select('id, episode_number, is_active')
+      .eq('series_id', seriesId)
+      .order('episode_number', { ascending: true });
+
+    if (fetchError) {
+      console.error('Error fetching videos for shifting:', fetchError);
+      throw fetchError;
+    }
+
+    if (!allVideos || allVideos.length === 0) {
+      console.log('No videos found, no shifting needed');
+      return;
+    }
+
+    // Check if the target episode number already exists
+    const existingVideo = allVideos.find(v => v.episode_number === insertEpisodeNumber);
+    if (existingVideo) {
+      console.log(`Episode ${insertEpisodeNumber} already exists, shifting all episodes >= ${insertEpisodeNumber}`);
+      
+      // Get all videos that need to be shifted (episode_number >= insertEpisodeNumber)
+      const videosToShift = allVideos.filter(v => v.episode_number >= insertEpisodeNumber);
+      
+      if (videosToShift.length === 0) {
+        console.log('No videos need to be shifted');
+        return;
+      }
+
+      console.log(`Found ${videosToShift.length} videos to shift`);
+
+      // Shift videos by incrementing their episode numbers
+      // Process in reverse order to avoid conflicts
+      for (let i = videosToShift.length - 1; i >= 0; i--) {
+        const video = videosToShift[i];
+        const newEpisodeNumber = video.episode_number + 1;
+        console.log(`Shifting video ${video.id} from episode ${video.episode_number} to ${newEpisodeNumber}`);
+        
+        const { error: updateError } = await supabase
+          .from('videos')
+          .update({ episode_number: newEpisodeNumber })
+          .eq('id', video.id);
+
+        if (updateError) {
+          console.error(`Error shifting video ${video.id}:`, updateError);
+          throw updateError;
+        }
+      }
+    } else {
+      console.log(`Episode ${insertEpisodeNumber} is available, no shifting needed`);
+    }
+
+    console.log('Episode shifting completed successfully');
+  }
+
+  async renumberEpisodesAfterDeletion(seriesId: string, deletedEpisodeNumber: number): Promise<void> {
+    console.log(`Renumbering episodes for series ${seriesId} after deleting episode ${deletedEpisodeNumber}`);
+    
+    // Get all active videos in the series, ordered by creation date to maintain proper order
+    const { data: activeVideos, error: fetchError } = await supabase
+      .from('videos')
+      .select('id, title, episode_number, created_at')
+      .eq('series_id', seriesId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (fetchError) {
+      console.error('Error fetching active videos for renumbering:', fetchError);
+      throw fetchError;
+    }
+
+    if (!activeVideos || activeVideos.length === 0) {
+      console.log('No active videos found, no renumbering needed');
+      return;
+    }
+
+    console.log(`Found ${activeVideos.length} active videos to renumber`);
+
+    // Step 1: Move ALL videos in this series to very high temporary positions to avoid conflicts
+    console.log('Step 1: Moving ALL videos to temporary positions...');
+    
+    const { data: allVideosInSeries } = await supabase
+      .from('videos')
+      .select('id, title, episode_number, is_active')
+      .eq('series_id', seriesId)
+      .order('episode_number', { ascending: true });
+
+    if (allVideosInSeries && allVideosInSeries.length > 0) {
+      console.log(`Found ${allVideosInSeries.length} total videos in series`);
+      
+      for (let i = 0; i < allVideosInSeries.length; i++) {
+        const video = allVideosInSeries[i];
+        const tempEpisodeNumber = 80000 + i; // Use very high numbers to avoid conflicts
+        
+        console.log(`  Moving ${video.title}: Ep ${video.episode_number} -> Ep ${tempEpisodeNumber} (temp)`);
+        
+        const { error: updateError } = await supabase
+          .from('videos')
+          .update({ episode_number: tempEpisodeNumber })
+          .eq('id', video.id);
+
+        if (updateError) {
+          console.error(`    Error moving video ${video.id}:`, updateError);
+          throw updateError;
+        }
+      }
+    }
+
+    // Step 2: Move active videos to their final sequential positions (1, 2, 3, etc.)
+    console.log('Step 2: Moving active videos to final sequential positions...');
+    for (let i = 0; i < activeVideos.length; i++) {
+      const video = activeVideos[i];
+      const finalEpisodeNumber = i + 1;
+      
+      console.log(`  Finalizing ${video.title}: Ep ${video.episode_number} -> Ep ${finalEpisodeNumber}`);
+      
+      const { error: updateError } = await supabase
+        .from('videos')
+        .update({ episode_number: finalEpisodeNumber })
+        .eq('id', video.id);
+
+      if (updateError) {
+        console.error(`    Error finalizing video ${video.id}:`, updateError);
+        throw updateError;
+      }
+    }
+
+    console.log('Episode renumbering completed successfully');
+  }
+
+  async renumberEpisodesInSeries(seriesId: string): Promise<void> {
+    console.log(`Renumbering episodes in series ${seriesId} to be sequential starting from 1`);
+    
+    // Get all active videos in the series, ordered by creation date
+    const { data: videos, error: fetchError } = await supabase
+      .from('videos')
+      .select('id, title, episode_number, created_at')
+      .eq('series_id', seriesId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (fetchError) {
+      console.error('Error fetching videos for renumbering:', fetchError);
+      throw fetchError;
+    }
+
+    if (!videos || videos.length === 0) {
+      console.log('No active videos found, no renumbering needed');
+      return;
+    }
+
+    console.log(`Found ${videos.length} active videos to renumber`);
+
+    // First, set all episode numbers to temporary negative values to avoid conflicts
+    console.log('Setting temporary episode numbers to avoid conflicts...');
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      const tempEpisodeNumber = -(i + 10000); // Use large negative numbers as temp values
+      
+      const { error: tempError } = await supabase
+        .from('videos')
+        .update({ episode_number: tempEpisodeNumber })
+        .eq('id', video.id);
+
+      if (tempError) {
+        console.error(`Error setting temp episode number for video ${video.id}:`, tempError);
+        throw tempError;
+      }
+    }
+
+    // Now set the proper sequential episode numbers
+    console.log('Setting proper sequential episode numbers...');
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      const newEpisodeNumber = i + 1;
+      
+      console.log(`Renumbering video ${video.id} from temp to episode ${newEpisodeNumber}: ${video.title}`);
+      
+      const { error: updateError } = await supabase
+        .from('videos')
+        .update({ episode_number: newEpisodeNumber })
+        .eq('id', video.id);
+
+      if (updateError) {
+        console.error(`Error renumbering video ${video.id}:`, updateError);
+        throw updateError;
+      }
+    }
+
+    console.log(`Successfully renumbered ${videos.length} episodes to be sequential (1, 2, 3, ...)`);
   }
 
   async updateSeriesEpisodeCount(seriesId: string): Promise<void> {
