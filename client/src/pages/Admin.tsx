@@ -7,7 +7,6 @@ import VideoManager from "../components/admin/VideoManager";
 import UserManager from "../components/admin/UserManager";
 import Analytics from "../components/admin/Analytics";
 import Settings from "../components/admin/Settings";
-import AdminSeriesList from "./admin/AdminSeriesList";
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -70,7 +69,7 @@ export default function Admin() {
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
         <Route path="/admin/videos" component={() => <VideoManager />} />
-        <Route path="/admin/series" component={AdminSeriesList} />
+        <Route path="/admin/series" component={() => <div>Series Management</div>} />
         <Route path="/admin/users" component={() => <UserManager />} />
         <Route path="/admin/admins" component={() => <div>Admins Management</div>} />
         <Route path="/admin/analytics" component={() => <Analytics />} />

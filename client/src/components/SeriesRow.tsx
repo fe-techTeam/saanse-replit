@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Play, Plus, ThumbsUp, ChevronDown, RefreshCw } from "lucide-react";
-import { useSeriesWithCounts } from "@/hooks/useSeriesWithCounts";
-import { useQueryClient } from "@tanstack/react-query";
+import { Play, Plus, ThumbsUp, ChevronDown } from "lucide-react";
+import { useSeries } from "@/hooks/useSeries";
 import type { SeriesType } from "@/types/video";
 
 interface SeriesRowProps {
@@ -9,9 +8,8 @@ interface SeriesRowProps {
 }
 
 export function SeriesRow({ onSeriesClick }: SeriesRowProps) {
-  const { data: series = [], isLoading, refetch } = useSeriesWithCounts();
+  const { data: series = [], isLoading } = useSeries();
   const [hoveredSeries, setHoveredSeries] = useState<string | null>(null);
-  const queryClient = useQueryClient();
 
   if (isLoading) return <p className="px-4">Loading series...</p>;
 
@@ -20,29 +18,12 @@ export function SeriesRow({ onSeriesClick }: SeriesRowProps) {
     onSeriesClick?.(s);
   };
 
-  const handleRefresh = () => {
-    // Invalidate and refetch all series-related caches
-    queryClient.invalidateQueries({ queryKey: ["series"] });
-    queryClient.invalidateQueries({ queryKey: ["series-with-counts"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-    refetch();
-  };
-
   return (
     <div className="mb-8">
       {/* Section Title */}
-      <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-        <h2 className="text-xl font-semibold text-white">
-          Series
-        </h2>
-        <button
-          onClick={handleRefresh}
-          className="text-gray-400 hover:text-white transition-colors"
-          title="Refresh series data"
-        >
-          <RefreshCw className="w-5 h-5" />
-        </button>
-      </div>
+      <h2 className="text-xl font-semibold text-white mb-4 px-4 md:px-12 lg:px-16">
+        Series
+      </h2>
       
       {/* Series Row */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16">
@@ -122,9 +103,7 @@ export function SeriesRow({ onSeriesClick }: SeriesRowProps) {
                     {/* Title and Info */}
                     <div>
                       <h3 className="text-white font-medium text-sm line-clamp-1">{s.title}</h3>
-                      <p className="text-green-400 text-xs font-medium">
-                        {(s as any).actual_episode_count || s.total_episodes} Episodes
-                      </p>
+                      <p className="text-green-400 text-xs font-medium">{s.total_episodes} Episodes</p>
                     </div>
                   </div>
                 </div>

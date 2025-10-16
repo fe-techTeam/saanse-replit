@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,9 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useSeries } from "@/hooks/useSeries";
-import { useAllSeriesVideos } from "@/hooks/useAllSeriesVideos";
-import type { VideoType, SeriesType } from "@/types/video";
+import type { VideoType } from "@/types/video";
 
 const categories = [
   "Ramayana", "Mahabharata", "Krishna", "Shiva", "Bhajans", "Explained",
@@ -29,25 +27,7 @@ const videoFormSchema = z.object({
   is_active: z.boolean().default(true),
   content_type: z.enum(['standalone', 'series']).default('standalone'),
   series_id: z.string().optional(),
-  episode_number: z.number().min(1, "Episode number must be at least 1").optional(),
-}).refine((data) => {
-  // If content_type is 'series', series_id is required
-  if (data.content_type === 'series' && !data.series_id) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Series is required when content type is 'Part of Series'",
-  path: ["series_id"],
-}).refine((data) => {
-  // If content_type is 'series', episode_number is required
-  if (data.content_type === 'series' && (!data.episode_number || data.episode_number < 1)) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Episode number is required and must be at least 1 for series content",
-  path: ["episode_number"],
+  episode_number: z.number().optional(),
 });
 
 type VideoFormData = z.infer<typeof videoFormSchema>;
@@ -67,16 +47,6 @@ export default function VideoFormDialog({
   onSubmit,
   isLoading = false
 }: VideoFormDialogProps) {
-  const { data: series = [] } = useSeries();
-  const [selectedSeriesId, setSelectedSeriesId] = useState<string>("");
-  
-  // Fetch ALL videos for the selected series to determine next episode number
-  // This includes both active and inactive videos to avoid database constraint violations
-  const { data: seriesVideos = [], isLoading: isLoadingVideos, error: videosError } = useAllSeriesVideos(
-    selectedSeriesId, 
-    !!selectedSeriesId
-  );
-
   const form = useForm<VideoFormData>({
     resolver: zodResolver(videoFormSchema),
     defaultValues: {
@@ -97,8 +67,6 @@ export default function VideoFormDialog({
   // Reset form when video changes
   useEffect(() => {
     if (video) {
-      const seriesId = video.series_id || "";
-      setSelectedSeriesId(seriesId);
       form.reset({
         title: video.title,
         description: video.description || "",
@@ -109,11 +77,10 @@ export default function VideoFormDialog({
         tags: video.tags?.join(", ") || "",
         is_active: video.is_active ?? true,
         content_type: video.content_type || 'standalone',
-        series_id: seriesId,
+        series_id: video.series_id || "",
         episode_number: video.episode_number,
       });
     } else {
-      setSelectedSeriesId("");
       form.reset({
         title: "",
         description: "",
@@ -130,65 +97,11 @@ export default function VideoFormDialog({
     }
   }, [video, form]);
 
-  // Handle series selection change
-  const handleSeriesChange = (seriesId: string) => {
-    setSelectedSeriesId(seriesId);
-    form.setValue("series_id", seriesId);
-    
-    // Don't auto-fill episode number - let user choose
-    // Clear episode number when series changes
-    form.setValue("episode_number", undefined);
-  };
-
-  // Get available episode numbers for selection
-  const getAvailableEpisodeNumbers = (seriesId: string): number[] => {
-    // Ensure seriesVideos is an array
-    if (!Array.isArray(seriesVideos) || seriesVideos.length === 0) {
-      return [1];
-    }
-    
-    // Get active videos only to determine the current sequence
-    const activeVideos = seriesVideos.filter(v => v.is_active);
-    const activeEpisodeNumbers = activeVideos.map(v => v.episode_number || 0);
-    
-    // Find the highest active episode number
-    const maxActiveEpisode = activeEpisodeNumbers.length > 0 ? Math.max(...activeEpisodeNumbers) : 0;
-    
-    // For episode selection, allow inserting at any position in the current sequence
-    // plus one position at the end
-    const availableEpisodes = [];
-    for (let i = 1; i <= maxActiveEpisode + 1; i++) {
-      availableEpisodes.push(i);
-    }
-    
-    return availableEpisodes;
-  };
-
-  // Watch content_type changes to handle series selection
-  const contentType = form.watch("content_type");
-  
-  useEffect(() => {
-    if (contentType === 'standalone') {
-      form.setValue("series_id", "");
-      form.setValue("episode_number", undefined);
-      setSelectedSeriesId("");
-    }
-  }, [contentType, form]);
-
   const handleSubmit = (data: VideoFormData) => {
-    // Transform snake_case field names to camelCase as expected by the API
     const formattedData = {
-      title: data.title,
-      description: data.description,
-      category: data.category,
-      duration: Number(data.duration),
-      thumbnailUrl: data.thumbnail_url, // snake_case to camelCase
-      videoUrl: data.video_url, // snake_case to camelCase
+      ...data,
       tags: data.tags ? data.tags.split(",").map(tag => tag.trim()).filter(Boolean) : [],
-      isActive: data.is_active, // snake_case to camelCase
-      content_type: data.content_type,
-      seriesId: data.series_id, // snake_case to camelCase
-      episodeNumber: data.episode_number, // snake_case to camelCase
+      duration: Number(data.duration),
     };
     onSubmit(formattedData as any);
   };
@@ -351,79 +264,27 @@ export default function VideoFormDialog({
                 )}
               />
               
-              {contentType === 'series' && (
-                <FormField
-                  control={form.control}
-                  name="series_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Series</FormLabel>
-                      <Select onValueChange={handleSeriesChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a series" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {series.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Choose which series this video belongs to
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-              
-              {contentType === 'series' && (
-                <FormField
-                  control={form.control}
-                  name="episode_number"
-                  render={({ field }) => {
-                    const availableEpisodes = selectedSeriesId ? getAvailableEpisodeNumbers(selectedSeriesId) : [1];
-                    
-                    return (
-                      <FormItem>
-                        <FormLabel>Episode Number</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select episode number" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableEpisodes.map(episodeNum => (
-                              <SelectItem key={episodeNum} value={episodeNum.toString()}>
-                                Episode {episodeNum}
-                                {episodeNum === availableEpisodes[availableEpisodes.length - 1] && " (New)"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          {isLoadingVideos 
-                            ? "Loading series data..."
-                            : videosError
-                              ? "Error loading series data, using fallback logic"
-                              : selectedSeriesId && Array.isArray(seriesVideos) && seriesVideos.length > 0 
-                                ? `Choose where to insert this video. Existing episodes will be shifted.`
-                                : selectedSeriesId 
-                                  ? "This will be the first episode in the series"
-                                  : "Select a series first"
-                          }
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-              )}
+              <FormField
+                control={form.control}
+                name="episode_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Episode Number (if series)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="1" 
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Only required for series content
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <FormField
                 control={form.control}

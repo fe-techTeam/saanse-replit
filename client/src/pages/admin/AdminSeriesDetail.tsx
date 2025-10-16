@@ -37,7 +37,7 @@ function SortableVideoItem({ video }: { video: any }) {
       </div>
       <img src={video.thumbnail_url} alt={video.title} className="w-24 h-14 object-cover rounded" />
       <div className="flex-1">
-        <p className="font-semibold text-gray-900">Ep {video.episode_number}: {video.title}</p>
+        <p className="font-semibold">Ep {video.episode_number}: {video.title}</p>
         <p className="text-sm text-gray-500">{video.description?.substring(0, 100)}...</p>
       </div>
     </div>

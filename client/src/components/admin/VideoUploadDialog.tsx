@@ -92,10 +92,10 @@ export default function VideoUploadDialog({
         return;
       }
 
-      // Validate file size (500MB limit)
-      const maxSize = 500 * 1024 * 1024; // 500MB
+      // Validate file size (100MB limit)
+      const maxSize = 100 * 1024 * 1024; // 100MB
       if (file.size > maxSize) {
-        alert('File size must be less than 500MB');
+        alert('File size must be less than 100MB');
         return;
       }
 
@@ -128,94 +128,6 @@ export default function VideoUploadDialog({
       return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const processStreamingUrls = async (uploadResult: any) => {
-    try {
-      const { video, cloudinary } = uploadResult;
-      
-      if (!video?.id || !cloudinary?.public_id) {
-        throw new Error('Missing video ID or Cloudinary public ID');
-      }
-
-      // Build streaming URLs based on Cloudinary public_id
-      const publicId = cloudinary.public_id;
-      const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || 'your-cloud-name';
-      
-      const streamingUrls = {
-        // Original video URL
-        original: `https://res.cloudinary.com/${cloudName}/video/upload/${publicId}.${cloudinary.format || 'mp4'}`,
-        
-        // HLS streaming URL - adaptive bitrate streaming
-        hls: `https://res.cloudinary.com/${cloudName}/video/upload/sp_auto/f_m3u8/${publicId}.m3u8`,
-        
-        // DASH streaming URL - for browser compatibility
-        dash: `https://res.cloudinary.com/${cloudName}/video/upload/sp_auto/f_mpd/${publicId}.mpd`,
-        
-        // MP4 variants with different qualities
-        mp4_720p: `https://res.cloudinary.com/${cloudName}/video/upload/q_auto:good,w_1280,h_720,c_limit,f_mp4/${publicId}.mp4`,
-        mp4_480p: `https://res.cloudinary.com/${cloudName}/video/upload/q_auto:good,w_854,h_480,c_limit,f_mp4/${publicId}.mp4`,
-        mp4_360p: `https://res.cloudinary.com/${cloudName}/video/upload/q_auto:good,w_640,h_360,c_limit,f_mp4/${publicId}.mp4`,
-        
-        // WebM variants for Chrome/Firefox optimization
-        webm_720p: `https://res.cloudinary.com/${cloudName}/video/upload/q_auto:good,w_1280,h_720,c_limit,f_webm/${publicId}.webm`,
-        webm_480p: `https://res.cloudinary.com/${cloudName}/video/upload/q_auto:good,w_854,h_480,c_limit,f_webm/${publicId}.webm`,
-        
-        // Smooth streaming for Microsoft Edge/IE compatibility
-        smooth: `https://res.cloudinary.com/${cloudName}/video/upload/sp_auto/f_ism/${publicId}.ism/Manifest`,
-        
-        // Thumbnail URL
-        thumbnail: `https://res.cloudinary.com/${cloudName}/video/upload/so_0,w_400,h_300,c_fill,f_jpg/${publicId}.jpg`
-      };
-
-      // Prepare cloudinary metadata
-      const cloudinaryMeta = {
-        public_id: cloudinary.public_id,
-        duration: cloudinary.duration,
-        width: cloudinary.width,
-        height: cloudinary.height,
-        format: cloudinary.format,
-        bytes: cloudinary.bytes,
-        bit_rate: cloudinary.bit_rate,
-        frame_rate: cloudinary.frame_rate,
-        video_codec: cloudinary.video_codec,
-        audio_codec: cloudinary.audio_codec,
-      };
-
-      // Get admin credentials for API call
-      const adminId = localStorage.getItem('adminId');
-      const adminToken = localStorage.getItem('adminToken');
-      
-      if (!adminId || !adminToken) {
-        throw new Error('Admin authentication required');
-      }
-
-      // Update video with streaming URLs
-      const response = await fetch(`/api/admin/videos/${video.id}/streaming`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-id': adminId,
-          'x-admin-token': adminToken,
-        },
-        body: JSON.stringify({
-          streaming_urls: streamingUrls,
-          cloudinary_meta: cloudinaryMeta,
-          cloudinary_public_id: cloudinary.public_id,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.details || error.error || 'Failed to update streaming URLs');
-      }
-
-      console.log('Streaming URLs updated successfully');
-      
-    } catch (error) {
-      console.error('Error processing streaming URLs:', error);
-      throw error;
-    }
   };
 
   const handleUpload = async (data: VideoUploadData) => {
@@ -292,23 +204,9 @@ export default function VideoUploadDialog({
           }
         });
 
-        xhr.addEventListener('load', async () => {
+        xhr.addEventListener('load', () => {
           if (xhr.status === 201) {
             const result = JSON.parse(xhr.responseText);
-            console.log('Upload result received:', result);
-            
-            // Process streaming URLs from Cloudinary response
-            if (result.cloudinary && result.video) {
-              try {
-                setUploadStatus('processing');
-                await processStreamingUrls(result);
-                console.log('Streaming URLs processed successfully');
-              } catch (error) {
-                console.error('Failed to process streaming URLs:', error);
-                // Continue with success even if streaming URL processing fails
-              }
-            }
-            
             setUploadResult(result);
             setUploadStatus('success');
             setTimeout(() => {
@@ -318,32 +216,13 @@ export default function VideoUploadDialog({
             }, 2000);
             resolve(result);
           } else {
-            let errorMessage = 'Upload failed';
-            try {
-              const error = JSON.parse(xhr.responseText);
-              errorMessage = error.details || error.error || 'Upload failed';
-              
-              // Handle specific error types
-              if (xhr.status === 408) {
-                errorMessage = 'Upload timeout - please try with a smaller file or check your connection';
-              } else if (xhr.status === 413) {
-                errorMessage = 'File too large - maximum size is 500MB';
-              } else if (xhr.status === 400 && error.error?.includes('file type')) {
-                errorMessage = 'Invalid file type - only video files are allowed';
-              }
-            } catch (parseError) {
-              errorMessage = `Upload failed with status ${xhr.status}`;
-            }
-            throw new Error(errorMessage);
+            const error = JSON.parse(xhr.responseText);
+            throw new Error(error.details || error.error || 'Upload failed');
           }
         });
 
         xhr.addEventListener('error', () => {
-          reject(new Error('Network error - check your internet connection and try again'));
-        });
-
-        xhr.addEventListener('timeout', () => {
-          reject(new Error('Upload timeout - please try with a smaller file'));
+          reject(new Error('Upload failed'));
         });
 
         xhr.addEventListener('loadend', () => {
@@ -356,7 +235,6 @@ export default function VideoUploadDialog({
         });
 
         xhr.open('POST', '/api/admin/videos/upload');
-        xhr.timeout = 600000; // 10 minutes timeout
         xhr.setRequestHeader('x-admin-id', adminId);
         xhr.setRequestHeader('x-admin-token', adminToken);
         xhr.send(formData);
@@ -426,7 +304,7 @@ export default function VideoUploadDialog({
                       className="hidden"
                     />
                     <p className="text-sm text-gray-500">
-                      MP4, MOV, AVI, WebM up to 500MB
+                      MP4, MOV, AVI, WebM up to 100MB
                     </p>
                   </div>
                 </div>

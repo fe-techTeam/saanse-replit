@@ -73,6 +73,8 @@ class ApiClient {
     const { params, ...fetchOptions } = options;
     const url = this.buildUrl(endpoint, params);
     
+    console.log("API GET request to:", url);
+    
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -82,78 +84,58 @@ class ApiClient {
       ...fetchOptions,
     });
 
+    console.log("API response status:", response.status);
     return this.handleResponse<T>(response);
   }
 
   async post<T>(endpoint: string, data?: any, options: ApiOptions = {}): Promise<T> {
-    const { params, headers: optionHeaders, ...fetchOptions } = options;
+    const { params, ...fetchOptions } = options;
     const url = this.buildUrl(endpoint, params);
     
-    // Merge headers with Content-Type taking precedence
-    const headers = {
-      ...optionHeaders,
-      'Content-Type': 'application/json',
-    };
-    
     const response = await fetch(url, {
-      ...fetchOptions,
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...fetchOptions.headers,
+      },
       body: data ? JSON.stringify(data) : undefined,
+      ...fetchOptions,
     });
 
     return this.handleResponse<T>(response);
   }
 
   async put<T>(endpoint: string, data?: any, options: ApiOptions = {}): Promise<T> {
-    const { params, headers: optionHeaders, ...fetchOptions } = options;
+    const { params, ...fetchOptions } = options;
     const url = this.buildUrl(endpoint, params);
     
-    // Merge headers with Content-Type taking precedence
-    const headers = {
-      ...optionHeaders,
-      'Content-Type': 'application/json',
-    };
-    
     const response = await fetch(url, {
-      ...fetchOptions,
       method: 'PUT',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...fetchOptions.headers,
+      },
       body: data ? JSON.stringify(data) : undefined,
+      ...fetchOptions,
     });
 
     return this.handleResponse<T>(response);
   }
 
   async patch<T>(endpoint: string, data?: any, options: ApiOptions = {}): Promise<T> {
-    const { params, headers: optionHeaders, ...fetchOptions } = options;
+    const { params, ...fetchOptions } = options;
     const url = this.buildUrl(endpoint, params);
     
-    const headers = {
-      ...optionHeaders,
-      'Content-Type': 'application/json',
-    };
-    
     const response = await fetch(url, {
-      ...fetchOptions,
       method: 'PATCH',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...fetchOptions.headers,
+      },
       body: data ? JSON.stringify(data) : undefined,
+      ...fetchOptions,
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { message: errorText };
-      }
-      const error: any = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
-      error.response = { data: errorData, status: response.status };
-      throw error;
-    }
-    
+
     return this.handleResponse<T>(response);
   }
 

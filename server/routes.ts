@@ -251,27 +251,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-app.get("/api/series/:id/videos/all", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const videos = await storage.getAllVideosBySeries(id);
-    res.json(videos);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch all series videos" });
-  }
-});
-
-app.post("/api/series/:id/renumber-episodes", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await storage.renumberEpisodesInSeries(id);
-    res.json({ message: "Episodes renumbered successfully" });
-  } catch (error) {
-    console.error("Error renumbering episodes:", error);
-    res.status(500).json({ error: "Failed to renumber episodes" });
-  }
-});
-
   // Reorder episodes within a series
   app.patch("/api/series/:id/videos/reorder", async (req, res) => {
     console.log("=== REORDER ENDPOINT HIT ===");
@@ -350,17 +329,6 @@ app.post("/api/series/:id/renumber-episodes", async (req, res) => {
       res.json({ message: "Episode counts updated successfully" });
     } catch (error) {
       res.status(500).json({ error: "Failed to update episode counts" });
-    }
-  });
-
-  // Update episode count for a specific series
-  app.post("/api/series/:id/update-count", async (req, res) => {
-    try {
-      const { id } = req.params;
-      await storage.updateSeriesEpisodeCount(id);
-      res.json({ message: "Episode count updated successfully" });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update episode count" });
     }
   });
 

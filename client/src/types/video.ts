@@ -14,31 +14,6 @@ export interface VideoType {
   series_id?: string;
   episode_number?: number;
   created_at: string;
-  streaming_urls?: {
-    hls?: string;
-    dash?: string;
-    smooth?: string;
-    mp4_720p?: string;
-    mp4_480p?: string;
-    mp4_360p?: string;
-    webm_720p?: string;
-    webm_480p?: string;
-    original?: string;
-    thumbnail?: string;
-  };
-  cloudinary_meta?: {
-    public_id?: string;
-    duration?: number;
-    width?: number;
-    height?: number;
-    format?: string;
-    bytes?: number;
-    bit_rate?: number;
-    frame_rate?: number;
-    video_codec?: string;
-    audio_codec?: string;
-  };
-  cloudinary_public_id?: string;
 }
 
 export interface SeriesType {

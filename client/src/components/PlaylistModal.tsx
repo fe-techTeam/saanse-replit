@@ -78,7 +78,7 @@ export function PlaylistModal({
                 <div className="space-y-3">
                   {episodeVideos
                     .sort((a, b) => (a.episode_number || 0) - (b.episode_number || 0))
-                    .map((episode, index) => {
+                    .map((episode) => {
                       const isCurrentEpisode = episode.id === currentVideo.id;
                       return (
                         <div
@@ -93,7 +93,7 @@ export function PlaylistModal({
                           <div className={`text-lg font-bold min-w-[2rem] text-center ${
                             isCurrentEpisode ? 'text-dharma-red' : 'text-white'
                           }`}>
-                            {index + 1}
+                            {episode.episode_number}
                           </div>
                           
                           <div className="relative flex-shrink-0">
