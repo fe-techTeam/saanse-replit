@@ -451,6 +451,7 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         videoUrl: videoData.videoUrl,
         tags: videoData.tags,
         isActive: videoData.isActive,
+        content_type: videoData.content_type || 'standalone', // Add content_type field
         seriesId: videoData.seriesId || null,
         episodeNumber: videoData.episodeNumber || null,
       };
