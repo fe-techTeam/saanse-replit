@@ -456,6 +456,7 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       };
       
       const video = await storage.createVideo(transformedData);
+      
       res.status(201).json(video);
     } catch (error) {
       console.error("Video creation error:", error);
@@ -467,10 +468,18 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     try {
       const { id } = req.params;
       const updates = req.body;
+      
+      // Get current video to check for series_id changes
+      const currentVideo = await storage.getVideoById(id);
+      if (!currentVideo) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+      
       const video = await storage.updateVideo(id, updates);
       if (!video) {
         return res.status(404).json({ error: "Video not found" });
       }
+      
       res.json(video);
     } catch (error) {
       res.status(500).json({ error: "Failed to update video" });
@@ -547,7 +556,7 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         }
       }
 
-      // Delete from database
+      // Delete from database (this will automatically update series episode count)
       const success = await storage.deleteVideo(id);
       if (!success) {
         return res.status(404).json({ error: "Video not found" });

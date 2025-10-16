@@ -121,7 +121,7 @@ export function MoreInfoDialog({
                     <span>{formatDate(video.created_at)}</span>
                     {series && (
                       <Badge variant="secondary" className="bg-dharma-gray/30 text-white">
-                        {series.total_episodes} Episodes
+                        {episodeVideos?.length || series.total_episodes} Episodes
                       </Badge>
                     )}
                     <div className="flex items-center gap-1">

@@ -7,5 +7,7 @@ export function useSeriesVideos(seriesId: string, enabled = true) {
     queryKey: ["/api/series", seriesId, "videos"],
     queryFn: () => apiClient.get<VideoType[]>(`/api/series/${seriesId}/videos`),
     enabled,
+    staleTime: 10_000, // 10 seconds
+    retry: 1,
   });
 }

@@ -322,6 +322,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Update episode count for a specific series
+  app.post("/api/series/:id/update-count", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.updateSeriesEpisodeCount(id);
+      res.json({ message: "Episode count updated successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update episode count" });
+    }
+  });
+
   // Users
   app.get("/api/users", authenticateJWT, async (req: AuthenticatedRequest, res) => {
     try {

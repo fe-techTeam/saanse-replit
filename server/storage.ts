@@ -211,11 +211,34 @@ export class SupabaseStorage implements IStorage {
       throw error;
     }
     console.log("Video created successfully:", data);
+    
+    // Update series episode count if video has a series_id
+    if (data.series_id) {
+      try {
+        await this.updateSeriesEpisodeCount(data.series_id);
+        console.log(`Updated episode count for series ${data.series_id}`);
+      } catch (countError) {
+        console.error("Error updating series episode count:", countError);
+        // Don't throw error here as video creation was successful
+      }
+    }
+    
     return data;
   }
 
   async updateVideo(id: string, updates: Partial<InsertVideo>): Promise<Video | null> {
     console.log('updateVideo called with:', { id, updates });
+    
+    // Get the current video to check for series_id changes
+    const { data: currentVideo, error: fetchError } = await supabase
+      .from('videos')
+      .select('series_id')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching current video:', fetchError);
+    }
     
     const { data, error } = await supabase
       .from('videos')
@@ -230,16 +253,64 @@ export class SupabaseStorage implements IStorage {
       throw error;
     }
     console.log('updateVideo success:', data);
+    
+    // Update series episode counts for both old and new series
+    const seriesToUpdate = new Set<string>();
+    
+    // Add old series_id if it exists
+    if (currentVideo?.series_id) {
+      seriesToUpdate.add(currentVideo.series_id);
+    }
+    
+    // Add new series_id if it exists and is different
+    if (data.series_id && data.series_id !== currentVideo?.series_id) {
+      seriesToUpdate.add(data.series_id);
+    }
+    
+    // Update episode counts for affected series
+    for (const seriesId of seriesToUpdate) {
+      try {
+        await this.updateSeriesEpisodeCount(seriesId);
+        console.log(`Updated episode count for series ${seriesId}`);
+      } catch (countError) {
+        console.error(`Error updating series episode count for ${seriesId}:`, countError);
+        // Don't throw error here as video update was successful
+      }
+    }
+    
     return data;
   }
 
   async deleteVideo(id: string): Promise<boolean> {
+    // Get the current video to find its series_id
+    const { data: currentVideo, error: fetchError } = await supabase
+      .from('videos')
+      .select('series_id')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching current video for deletion:', fetchError);
+    }
+    
     const { error } = await supabase
       .from('videos')
       .update({ is_active: false })
       .eq('id', id);
 
     if (error) throw error;
+    
+    // Update series episode count if video had a series_id
+    if (currentVideo?.series_id) {
+      try {
+        await this.updateSeriesEpisodeCount(currentVideo.series_id);
+        console.log(`Updated episode count for series ${currentVideo.series_id} after video deletion`);
+      } catch (countError) {
+        console.error(`Error updating series episode count for ${currentVideo.series_id}:`, countError);
+        // Don't throw error here as video deletion was successful
+      }
+    }
+    
     return true;
   }
 
