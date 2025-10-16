@@ -3,6 +3,12 @@ import { storage } from "../storage";
 import { AdminAuthService } from "./admin-auth";
 import { z } from "zod";
 import { upload, uploadVideoToCloudinary, getVideoStreamingUrls, deleteVideoFromCloudinary } from "../cloudinary";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // Admin authentication middleware
 const adminAuthMiddleware = async (req: any, res: any, next: any) => {
@@ -582,24 +588,58 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
 
   app.post("/api/admin/series", adminAuthMiddleware, async (req, res) => {
     try {
-      const seriesData = req.body;
+      const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
+
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const seriesData = {
+        title,
+        description: description || null,
+        category: category || 'Ramayana',
+        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
+        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+        banner_url: bannerUrl || null,
+        status: status || 'draft'
+      };
+
       const series = await storage.createSeries(seriesData);
       res.status(201).json(series);
     } catch (error) {
-      res.status(500).json({ error: "Failed to create series" });
+      console.error('Error creating series:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ error: "Failed to create series", details: error.message });
     }
   });
 
   app.patch("/api/admin/series/:id", adminAuthMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
-      const series = await storage.updateSeries(id, updates);
+      const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
+
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const updateData = {
+        title,
+        description: description || null,
+        category: category || 'Ramayana',
+        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
+        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+        banner_url: bannerUrl || null,
+        status: status || 'draft'
+      };
+
+      const series = await storage.updateSeries(id, updateData);
       if (!series) {
         return res.status(404).json({ error: "Series not found" });
       }
       res.json(series);
     } catch (error) {
+      console.error('Error updating series:', error);
       res.status(500).json({ error: "Failed to update series" });
     }
   });
@@ -880,6 +920,144 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Cloudinary webhook error:', error);
       res.status(200).json({ success: true }); // Still acknowledge to prevent retries
+    }
+  });
+
+  // Series CRUD endpoints
+  // GET /api/admin/series - Get all series
+  app.get('/api/admin/series', async (req, res) => {
+    try {
+      const { data: series, error } = await supabase
+        .from('series')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      res.json(series);
+    } catch (error) {
+      console.error('Error fetching series:', error);
+      res.status(500).json({ error: 'Failed to fetch series' });
+    }
+  });
+
+  // GET /api/admin/series/:id - Get single series
+  app.get('/api/admin/series/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { data: series, error } = await supabase
+        .from('series')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      res.json(series);
+    } catch (error) {
+      console.error('Error fetching series:', error);
+      res.status(500).json({ error: 'Failed to fetch series' });
+    }
+  });
+
+  // POST /api/admin/series - Create new series
+  app.post('/api/admin/series', async (req, res) => {
+    try {
+      const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
+
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const seriesData = {
+        title,
+        description: description || null,
+        category: category || 'Ramayana',
+        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
+        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+        banner_url: bannerUrl || null,
+        status: status || 'draft',
+        total_episodes: 0,
+        is_active: true
+      };
+
+      const { data: series, error } = await supabase
+        .from('series')
+        .insert([seriesData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.status(201).json(series);
+    } catch (error) {
+      console.error('Error creating series:', error);
+      res.status(500).json({ error: 'Failed to create series' });
+    }
+  });
+
+  // PATCH /api/admin/series/:id - Update series
+  app.patch('/api/admin/series/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
+
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const updateData = {
+        title,
+        description: description || null,
+        category: category || 'Ramayana',
+        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
+        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+        banner_url: bannerUrl || null,
+        status: status || 'draft',
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: series, error } = await supabase
+        .from('series')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(series);
+    } catch (error) {
+      console.error('Error updating series:', error);
+      res.status(500).json({ error: 'Failed to update series' });
+    }
+  });
+
+  // DELETE /api/admin/series/:id - Delete series
+  app.delete('/api/admin/series/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // First check if series has any videos
+      const { count: videoCount } = await supabase
+        .from('videos')
+        .select('*', { count: 'exact', head: true })
+        .eq('series_id', id)
+        .eq('is_active', true);
+
+      if (videoCount && videoCount > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete series with active videos. Please remove all videos first.' 
+        });
+      }
+
+      // Soft delete the series
+      const { error } = await supabase
+        .from('series')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting series:', error);
+      res.status(500).json({ error: 'Failed to delete series' });
     }
   });
 }

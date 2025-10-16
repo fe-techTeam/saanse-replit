@@ -497,17 +497,27 @@ export class SupabaseStorage implements IStorage {
 
   async createSeries(series: InsertSeries): Promise<Series> {
     console.log("Creating series with data:", series);
-    const validatedSeries = insertSeriesSchema.parse(series);
+    console.log("Series thumbnail_url:", series.thumbnail_url);
+    
+    // Ensure we have a valid thumbnail URL before validation
+    const seriesWithDefaults = {
+      ...series,
+      thumbnail_url: series.thumbnail_url || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400'
+    };
+    
+    console.log("Series with defaults:", seriesWithDefaults);
+    
+    const validatedSeries = insertSeriesSchema.parse(seriesWithDefaults);
     console.log("Validated series:", validatedSeries);
     
-    // Transform camelCase to snake_case for database
+    // The validated series already has snake_case field names from the schema
     const dbSeries = {
       title: validatedSeries.title,
       slug: validatedSeries.slug,
       description: validatedSeries.description,
       category: validatedSeries.category || 'general',
-      thumbnail_url: validatedSeries.thumbnailUrl,
-      banner_url: validatedSeries.bannerUrl,
+      thumbnail_url: validatedSeries.thumbnail_url || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+      banner_url: validatedSeries.banner_url,
       status: validatedSeries.status || 'draft',
     };
     
