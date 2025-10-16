@@ -128,17 +128,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
-      queryClient.invalidateQueries({ queryKey: ["series"] });
-      queryClient.invalidateQueries({ queryKey: ["series-with-counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      
-      // Force refetch of series data
-      queryClient.refetchQueries({ queryKey: ["series"] });
-      queryClient.refetchQueries({ queryKey: ["series-with-counts"] });
-      
       toast({
         title: "Success",
         description: "Video created successfully",
@@ -173,17 +163,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
-      queryClient.invalidateQueries({ queryKey: ["series"] });
-      queryClient.invalidateQueries({ queryKey: ["series-with-counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      
-      // Force refetch of series data
-      queryClient.refetchQueries({ queryKey: ["series"] });
-      queryClient.refetchQueries({ queryKey: ["series-with-counts"] });
-      
       toast({
         title: "Success",
         description: "Video updated successfully",
@@ -214,17 +194,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
       return response.ok;
     },
     onSuccess: () => {
-      // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
-      queryClient.invalidateQueries({ queryKey: ["series"] });
-      queryClient.invalidateQueries({ queryKey: ["series-with-counts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      
-      // Force refetch of series data
-      queryClient.refetchQueries({ queryKey: ["series"] });
-      queryClient.refetchQueries({ queryKey: ["series-with-counts"] });
-      
       toast({
         title: "Success",
         description: "Video deleted successfully",
@@ -264,9 +234,6 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
             }
           });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
-          queryClient.invalidateQueries({ queryKey: ["series"] });
-          queryClient.invalidateQueries({ queryKey: ["series-with-counts"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/series"] });
           setSelectedVideos([]);
         }
         break;
@@ -605,17 +572,7 @@ export default function VideoManager({ onVideoSelect }: VideoManagerProps) {
         open={isUploadDialogOpen}
         onOpenChange={setIsUploadDialogOpen}
         onSuccess={() => {
-          // Invalidate all relevant caches
           queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
-          queryClient.invalidateQueries({ queryKey: ["series"] });
-          queryClient.invalidateQueries({ queryKey: ["series-with-counts"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-          
-          // Force refetch of series data
-          queryClient.refetchQueries({ queryKey: ["series"] });
-          queryClient.refetchQueries({ queryKey: ["series-with-counts"] });
-          
           toast({
             title: "Success",
             description: "Video uploaded successfully!",

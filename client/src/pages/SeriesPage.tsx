@@ -22,7 +22,7 @@ export default function SeriesPage() {
           <div key={v.id} className="flex gap-4 items-center bg-dharma-dark-light p-3 rounded cursor-pointer" onClick={() => navigate(`/watch/${v.id}`)}>
             <img src={v.thumbnail_url} alt={v.title} className="w-32 h-18 object-cover rounded" />
             <div className="flex-1">
-              <p className="font-semibold text-white">Ep {v.episode_number}: {v.title}</p>
+              <p className="font-semibold">Ep {v.episode_number}: {v.title}</p>
               <p className="text-xs text-gray-400 line-clamp-2">{v.description}</p>
             </div>
             <Play className="w-6 h-6 text-dharma-gold" />
