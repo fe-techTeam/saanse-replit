@@ -582,6 +582,7 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       const series = await storage.getSeries();
       res.json(series);
     } catch (error) {
+      console.error('Error fetching series:', error);
       res.status(500).json({ error: "Failed to fetch series" });
     }
   });
@@ -595,21 +596,19 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       }
 
       const seriesData = {
-        title,
-        description: description || null,
-        category: category || 'Ramayana',
-        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
-        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
-        banner_url: bannerUrl || null,
+        title: title.trim(),
+        description: description?.trim() || null,
+        category: category?.trim() || 'Ramayana',
+        slug: slug?.trim() || title.toLowerCase().replace(/\s+/g, '-'),
+        thumbnail_url: thumbnailUrl?.trim() || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+        banner_url: bannerUrl?.trim() || null,
         status: status || 'draft'
       };
 
       const series = await storage.createSeries(seriesData);
       res.status(201).json(series);
-    } catch (error) {
-      console.error('Error creating series:', error);
-      console.error('Error details:', error.message);
-      console.error('Error stack:', error.stack);
+    } catch (error: any) {
+      console.error('Error creating series:', error.message);
       res.status(500).json({ error: "Failed to create series", details: error.message });
     }
   });
@@ -623,36 +622,50 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: 'Title is required' });
       }
 
-      const updateData = {
-        title,
-        description: description || null,
-        category: category || 'Ramayana',
-        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
-        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
-        banner_url: bannerUrl || null,
+      const updateData: any = {
+        title: title.trim(),
+        description: description?.trim() || null,
+        category: category?.trim() || 'Ramayana',
+        slug: slug?.trim() || title.toLowerCase().replace(/\s+/g, '-'),
+        thumbnail_url: thumbnailUrl?.trim() || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
         status: status || 'draft'
       };
+
+      if (bannerUrl !== undefined) {
+        updateData.banner_url = bannerUrl?.trim() || null;
+      }
 
       const series = await storage.updateSeries(id, updateData);
       if (!series) {
         return res.status(404).json({ error: "Series not found" });
       }
       res.json(series);
-    } catch (error) {
-      console.error('Error updating series:', error);
-      res.status(500).json({ error: "Failed to update series" });
+    } catch (error: any) {
+      console.error('Error updating series:', error.message);
+      res.status(500).json({ error: "Failed to update series", details: error.message });
     }
   });
 
   app.delete("/api/admin/series/:id", adminAuthMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Check if series has any videos
+      const videos = await storage.getVideosBySeries(id);
+      if (videos.length > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete series with videos. Please remove all videos first.',
+          videoCount: videos.length
+        });
+      }
+
       const success = await storage.deleteSeries(id);
       if (!success) {
         return res.status(404).json({ error: "Series not found" });
       }
       res.status(204).send();
     } catch (error) {
+      console.error('Error deleting series:', error);
       res.status(500).json({ error: "Failed to delete series" });
     }
   });
@@ -923,141 +936,5 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Series CRUD endpoints
-  // GET /api/admin/series - Get all series
-  app.get('/api/admin/series', async (req, res) => {
-    try {
-      const { data: series, error } = await supabase
-        .from('series')
-        .select('*')
-        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      res.json(series);
-    } catch (error) {
-      console.error('Error fetching series:', error);
-      res.status(500).json({ error: 'Failed to fetch series' });
-    }
-  });
-
-  // GET /api/admin/series/:id - Get single series
-  app.get('/api/admin/series/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { data: series, error } = await supabase
-        .from('series')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      res.json(series);
-    } catch (error) {
-      console.error('Error fetching series:', error);
-      res.status(500).json({ error: 'Failed to fetch series' });
-    }
-  });
-
-  // POST /api/admin/series - Create new series
-  app.post('/api/admin/series', async (req, res) => {
-    try {
-      const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
-
-      if (!title) {
-        return res.status(400).json({ error: 'Title is required' });
-      }
-
-      const seriesData = {
-        title,
-        description: description || null,
-        category: category || 'Ramayana',
-        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
-        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
-        banner_url: bannerUrl || null,
-        status: status || 'draft',
-        total_episodes: 0,
-        is_active: true
-      };
-
-      const { data: series, error } = await supabase
-        .from('series')
-        .insert([seriesData])
-        .select()
-        .single();
-
-      if (error) throw error;
-      res.status(201).json(series);
-    } catch (error) {
-      console.error('Error creating series:', error);
-      res.status(500).json({ error: 'Failed to create series' });
-    }
-  });
-
-  // PATCH /api/admin/series/:id - Update series
-  app.patch('/api/admin/series/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
-
-      if (!title) {
-        return res.status(400).json({ error: 'Title is required' });
-      }
-
-      const updateData = {
-        title,
-        description: description || null,
-        category: category || 'Ramayana',
-        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
-        thumbnail_url: thumbnailUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
-        banner_url: bannerUrl || null,
-        status: status || 'draft',
-        updated_at: new Date().toISOString()
-      };
-
-      const { data: series, error } = await supabase
-        .from('series')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      res.json(series);
-    } catch (error) {
-      console.error('Error updating series:', error);
-      res.status(500).json({ error: 'Failed to update series' });
-    }
-  });
-
-  // DELETE /api/admin/series/:id - Delete series
-  app.delete('/api/admin/series/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      // First check if series has any videos
-      const { count: videoCount } = await supabase
-        .from('videos')
-        .select('*', { count: 'exact', head: true })
-        .eq('series_id', id)
-        .eq('is_active', true);
-
-      if (videoCount && videoCount > 0) {
-        return res.status(400).json({ 
-          error: 'Cannot delete series with active videos. Please remove all videos first.' 
-        });
-      }
-
-      // Soft delete the series
-      const { error } = await supabase
-        .from('series')
-        .update({ is_active: false })
-        .eq('id', id);
-
-      if (error) throw error;
-      res.status(204).send();
-    } catch (error) {
-      console.error('Error deleting series:', error);
-      res.status(500).json({ error: 'Failed to delete series' });
-    }
-  });
 }
