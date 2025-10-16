@@ -591,15 +591,12 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     try {
       const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
 
-      console.log('Create series request body:', req.body);
-
       if (!title) {
         return res.status(400).json({ error: 'Title is required' });
       }
 
-      // Transform camelCase to snake_case for storage layer
       const seriesData = {
-        itle: title.trim(),
+        title: title.trim(),
         description: description?.trim() || null,
         category: category?.trim() || 'Ramayana',
         slug: slug?.trim() || title.toLowerCase().replace(/\s+/g, '-'),
@@ -608,90 +605,43 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         status: status || 'draft'
       };
 
-      console.log('Transformed series data:', seriesData);
-
       const series = await storage.createSeries(seriesData);
-      console.log('Series created successfully:', series);
       res.status(201).json(series);
     } catch (error: any) {
-      console.error('Error creating series:', error);
-      console.error('Error details:', error.message);
-      console.error('Error stack:', error.stack);
+      console.error('Error creating series:', error.message);
       res.status(500).json({ error: "Failed to create series", details: error.message });
     }
   });
 
-  // Test endpoint for debugging body parser
-  app.post("/api/admin/test-body", adminAuthMiddleware, async (req, res) => {
-    console.log('=== TEST BODY ENDPOINT ===');
-    console.log('req.body:', req.body);
-    console.log('req.headers:', req.headers);
-    res.json({ received: req.body });
-  });
-
   app.patch("/api/admin/series/:id", adminAuthMiddleware, async (req, res) => {
     try {
-      console.log('=== RAW REQUEST ===');
-      console.log('req.body:', req.body);
-      console.log('req.body type:', typeof req.body);
-      console.log('req.body keys:', Object.keys(req.body || {}));
-      console.log('req.body stringified:', JSON.stringify(req.body));
-      console.log('req.headers["content-type"]:', req.headers['content-type']);
-      console.log('req.method:', req.method);
-      
       const { id } = req.params;
-      
-      // Access body properties directly
-      const bodyTitle = req.body.title || req.body.Title;
-      const bodyDescription = req.body.description;
-      const bodyCategory = req.body.category;
-      const bodySlug = req.body.slug;
-      const bodyThumbnailUrl = req.body.thumbnailUrl || req.body.thumbnail_url;
-      const bodyBannerUrl = req.body.bannerUrl || req.body.banner_url;
-      const bodyStatus = req.body.status;
+      const { title, description, category, slug, thumbnailUrl, bannerUrl, status } = req.body;
 
-      console.log('=== EXTRACTED VALUES ===');
-      console.log('bodyTitle:', bodyTitle);
-      console.log('bodyDescription:', bodyDescription);
-      console.log('bodyCategory:', bodyCategory);
-      console.log('bodySlug:', bodySlug);
-      console.log('bodyThumbnailUrl:', bodyThumbnailUrl);
-      console.log('bodyBannerUrl:', bodyBannerUrl);
-      console.log('bodyStatus:', bodyStatus);
-
-      if (!bodyTitle) {
-        console.log('❌ Validation failed: title is missing');
+      if (!title) {
         return res.status(400).json({ error: 'Title is required' });
       }
 
-      // Transform camelCase to snake_case for storage layer
       const updateData: any = {
-        title: bodyTitle.trim(),
-        description: bodyDescription?.trim() || null,
-        category: bodyCategory?.trim() || 'Ramayana',
-        slug: bodySlug?.trim() || bodyTitle.toLowerCase().replace(/\s+/g, '-'),
-        thumbnail_url: bodyThumbnailUrl?.trim() || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
-        status: bodyStatus || 'draft'
+        title: title.trim(),
+        description: description?.trim() || null,
+        category: category?.trim() || 'Ramayana',
+        slug: slug?.trim() || title.toLowerCase().replace(/\s+/g, '-'),
+        thumbnail_url: thumbnailUrl?.trim() || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400',
+        status: status || 'draft'
       };
 
-      // Only include banner_url if it's provided
-      if (bodyBannerUrl !== undefined) {
-        updateData.banner_url = bodyBannerUrl?.trim() || null;
+      if (bannerUrl !== undefined) {
+        updateData.banner_url = bannerUrl?.trim() || null;
       }
-
-      console.log('Transformed update data:', JSON.stringify(updateData, null, 2));
 
       const series = await storage.updateSeries(id, updateData);
       if (!series) {
-        console.log('❌ Series not found in database');
         return res.status(404).json({ error: "Series not found" });
       }
-      console.log('✅ Series updated successfully:', series.id);
       res.json(series);
     } catch (error: any) {
-      console.error('❌ Error updating series:', error);
-      console.error('Error details:', error.message);
-      console.error('Error stack:', error.stack);
+      console.error('Error updating series:', error.message);
       res.status(500).json({ error: "Failed to update series", details: error.message });
     }
   });
