@@ -32,7 +32,7 @@ export default function AdminSeriesList() {
               className="border rounded-lg p-4 hover:shadow transition bg-white flex flex-col">
               <img src={s.thumbnail_url || '/placeholder.jpg'} alt={s.title} className="h-40 w-full object-cover rounded" />
               <div className="mt-2 flex-1">
-                <h3 className="font-semibold text-lg">{s.title}</h3>
+                <h3 className="font-semibold text-lg text-gray-900">{s.title}</h3>
                 <p className="text-sm text-gray-500">{s.total_episodes} episodes</p>
               </div>
               <Button variant="outline" className="mt-2 w-full">Manage</Button>

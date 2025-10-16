@@ -637,13 +637,13 @@ export class SupabaseStorage implements IStorage {
   async renumberEpisodesAfterDeletion(seriesId: string, deletedEpisodeNumber: number): Promise<void> {
     console.log(`Renumbering episodes for series ${seriesId} after deleting episode ${deletedEpisodeNumber}`);
     
-    // Get all active videos in the series, ordered by episode number
+    // Get all active videos in the series, ordered by creation date to maintain proper order
     const { data: activeVideos, error: fetchError } = await supabase
       .from('videos')
-      .select('id, title, episode_number')
+      .select('id, title, episode_number, created_at')
       .eq('series_id', seriesId)
       .eq('is_active', true)
-      .order('episode_number', { ascending: true });
+      .order('created_at', { ascending: true });
 
     if (fetchError) {
       console.error('Error fetching active videos for renumbering:', fetchError);
@@ -657,23 +657,21 @@ export class SupabaseStorage implements IStorage {
 
     console.log(`Found ${activeVideos.length} active videos to renumber`);
 
-    // Step 1: Move ALL videos (active and inactive) that might conflict to temporary positions
-    console.log('Step 1: Moving conflicting videos to temporary positions...');
+    // Step 1: Move ALL videos in this series to very high temporary positions to avoid conflicts
+    console.log('Step 1: Moving ALL videos to temporary positions...');
     
-    // Get all videos that might conflict with episodes 1-10
-    const { data: conflictingVideos } = await supabase
+    const { data: allVideosInSeries } = await supabase
       .from('videos')
       .select('id, title, episode_number, is_active')
       .eq('series_id', seriesId)
-      .lte('episode_number', 10)
       .order('episode_number', { ascending: true });
 
-    if (conflictingVideos && conflictingVideos.length > 0) {
-      console.log(`Found ${conflictingVideos.length} potentially conflicting videos`);
+    if (allVideosInSeries && allVideosInSeries.length > 0) {
+      console.log(`Found ${allVideosInSeries.length} total videos in series`);
       
-      for (let i = 0; i < conflictingVideos.length; i++) {
-        const video = conflictingVideos[i];
-        const tempEpisodeNumber = 40000 + i; // Use very high numbers to avoid conflicts
+      for (let i = 0; i < allVideosInSeries.length; i++) {
+        const video = allVideosInSeries[i];
+        const tempEpisodeNumber = 80000 + i; // Use very high numbers to avoid conflicts
         
         console.log(`  Moving ${video.title}: Ep ${video.episode_number} -> Ep ${tempEpisodeNumber} (temp)`);
         
