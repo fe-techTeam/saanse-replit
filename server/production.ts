@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
-import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import path from "path";
 import fs from "fs";
@@ -23,7 +22,7 @@ function parseBaseUrl(baseUrl: string) {
 // Get configuration from BASE_URL
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const { port, host } = parseBaseUrl(BASE_URL);
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const NODE_ENV = process.env.NODE_ENV || 'production';
 
 // Validate required environment variables
 const requiredVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY'];
@@ -36,12 +35,8 @@ if (missingVars.length > 0) {
 }
 
 const app = express();
-
-// Increase timeout and payload limits for video uploads
-app.use(express.json({ limit: '150mb' }));
-app.use(express.urlencoded({ extended: false, limit: '150mb' }));
-
-// Server timeout will be set on the HTTP server instance
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -87,7 +82,7 @@ function log(message: string, source = "express") {
 
 // Production static file serving
 function serveStatic(app: express.Express) {
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  const distPath = path.resolve(process.cwd(), "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -104,14 +99,10 @@ function serveStatic(app: express.Express) {
 }
 
 (async () => {
-  // Log configuration in development
-  if (NODE_ENV === 'development') {
-    console.log('🔧 Environment Configuration:');
-    console.log(`   NODE_ENV: ${NODE_ENV}`);
-    console.log(`   BASE_URL: ${BASE_URL} (single source of truth)`);
-    console.log(`   PORT: ${port} (extracted from BASE_URL)`);
-    console.log(`   API_BASE_URL: ${BASE_URL}/api (derived from BASE_URL)`);
-  }
+  console.log('🚀 Starting SAANSE Platform in production mode...');
+  console.log(`   NODE_ENV: ${NODE_ENV}`);
+  console.log(`   BASE_URL: ${BASE_URL}`);
+  console.log(`   PORT: ${port}`);
 
   await registerRoutes(app);
 
@@ -123,31 +114,14 @@ function serveStatic(app: express.Express) {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (NODE_ENV === "development") {
-    const { setupVite } = await import("./vite");
-    const server = createServer(app);
-    await setupVite(app, server);
-    // Set server timeouts for large file uploads
-    server.timeout = 600000; // 10 minutes
-    server.keepAliveTimeout = 650000; // Slightly longer than timeout
-    server.headersTimeout = 660000; // Slightly longer than keepAliveTimeout
-    
-    server.listen({
-      port: port,
-      host: host,
-    }, () => {
-      log(`serving on port ${port}`);
-    });
-  } else {
-    serveStatic(app);
-    app.listen({
-      port: port,
-      host: host,
-    }, () => {
-      log(`serving on port ${port}`);
-    });
-  }
+  // Serve static files in production
+  serveStatic(app);
+  
+  app.listen({
+    port: port,
+    host: '0.0.0.0', // Bind to all interfaces in container
+  }, () => {
+    log(`🎉 SAANSE Platform serving on port ${port}`);
+    log(`🌐 External URL: ${BASE_URL}`);
+  });
 })();
