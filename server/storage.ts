@@ -37,7 +37,7 @@ export interface IStorage {
   getVideosBySeries(seriesId: string): Promise<Video[]>;
   getAllVideosBySeries(seriesId: string): Promise<Video[]>;
   shiftEpisodesForInsert(seriesId: string, insertEpisodeNumber: number): Promise<void>;
-  renumberEpisodesInSeries(seriesId: string): Promise<void>;
+  renumberEpisodesAfterDeletion(seriesId: string, deletedEpisodeNumber: number): Promise<void>;
 
   // User operations
   getUsers(): Promise<User[]>;
@@ -300,10 +300,10 @@ export class SupabaseStorage implements IStorage {
   }
 
   async deleteVideo(id: string): Promise<boolean> {
-    // Get the current video to find its series_id
+    // Get the current video to find its series_id and episode_number
     const { data: currentVideo, error: fetchError } = await supabase
       .from('videos')
-      .select('series_id')
+      .select('series_id, episode_number')
       .eq('id', id)
       .single();
     
@@ -317,6 +317,21 @@ export class SupabaseStorage implements IStorage {
       .eq('id', id);
 
     if (error) throw error;
+    
+    // If this was a series video, renumber remaining episodes
+    if (currentVideo?.series_id && currentVideo?.episode_number) {
+      console.log(`Video deletion detected: series_id=${currentVideo.series_id}, episode_number=${currentVideo.episode_number}`);
+      try {
+        console.log('Calling renumberEpisodesAfterDeletion...');
+        await this.renumberEpisodesAfterDeletion(currentVideo.series_id, currentVideo.episode_number);
+        console.log(`✅ Renumbered episodes after deletion in series ${currentVideo.series_id}`);
+      } catch (renumberError) {
+        console.error("❌ Error renumbering episodes after deletion:", renumberError);
+        // Don't throw error here as video deletion was successful
+      }
+    } else {
+      console.log('No series video detected, skipping renumbering');
+    }
     
     // Update series episode count if video had a series_id
     if (currentVideo?.series_id) {
@@ -617,6 +632,83 @@ export class SupabaseStorage implements IStorage {
     }
 
     console.log('Episode shifting completed successfully');
+  }
+
+  async renumberEpisodesAfterDeletion(seriesId: string, deletedEpisodeNumber: number): Promise<void> {
+    console.log(`Renumbering episodes for series ${seriesId} after deleting episode ${deletedEpisodeNumber}`);
+    
+    // Get all active videos in the series, ordered by episode number
+    const { data: activeVideos, error: fetchError } = await supabase
+      .from('videos')
+      .select('id, title, episode_number')
+      .eq('series_id', seriesId)
+      .eq('is_active', true)
+      .order('episode_number', { ascending: true });
+
+    if (fetchError) {
+      console.error('Error fetching active videos for renumbering:', fetchError);
+      throw fetchError;
+    }
+
+    if (!activeVideos || activeVideos.length === 0) {
+      console.log('No active videos found, no renumbering needed');
+      return;
+    }
+
+    console.log(`Found ${activeVideos.length} active videos to renumber`);
+
+    // Step 1: Move ALL videos (active and inactive) that might conflict to temporary positions
+    console.log('Step 1: Moving conflicting videos to temporary positions...');
+    
+    // Get all videos that might conflict with episodes 1-10
+    const { data: conflictingVideos } = await supabase
+      .from('videos')
+      .select('id, title, episode_number, is_active')
+      .eq('series_id', seriesId)
+      .lte('episode_number', 10)
+      .order('episode_number', { ascending: true });
+
+    if (conflictingVideos && conflictingVideos.length > 0) {
+      console.log(`Found ${conflictingVideos.length} potentially conflicting videos`);
+      
+      for (let i = 0; i < conflictingVideos.length; i++) {
+        const video = conflictingVideos[i];
+        const tempEpisodeNumber = 40000 + i; // Use very high numbers to avoid conflicts
+        
+        console.log(`  Moving ${video.title}: Ep ${video.episode_number} -> Ep ${tempEpisodeNumber} (temp)`);
+        
+        const { error: updateError } = await supabase
+          .from('videos')
+          .update({ episode_number: tempEpisodeNumber })
+          .eq('id', video.id);
+
+        if (updateError) {
+          console.error(`    Error moving video ${video.id}:`, updateError);
+          throw updateError;
+        }
+      }
+    }
+
+    // Step 2: Move active videos to their final sequential positions (1, 2, 3, etc.)
+    console.log('Step 2: Moving active videos to final sequential positions...');
+    for (let i = 0; i < activeVideos.length; i++) {
+      const video = activeVideos[i];
+      const finalEpisodeNumber = i + 1;
+      
+      console.log(`  Finalizing ${video.title}: Ep ${video.episode_number} -> Ep ${finalEpisodeNumber}`);
+      
+      const { error: updateError } = await supabase
+        .from('videos')
+        .update({ episode_number: finalEpisodeNumber })
+        .eq('id', video.id);
+
+      if (updateError) {
+        console.error(`    Error finalizing video ${video.id}:`, updateError);
+        throw updateError;
+      }
+    }
+
+    console.log('Episode renumbering completed successfully');
   }
 
   async renumberEpisodesInSeries(seriesId: string): Promise<void> {
